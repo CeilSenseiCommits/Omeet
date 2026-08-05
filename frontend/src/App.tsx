@@ -1,3 +1,5 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import OrgWorkspaceLayout from "./components/organization/OrgWorkspaceLayout";
 import Dashboard from "./pages/Dashboard";
 
 /**
@@ -6,7 +8,15 @@ import Dashboard from "./pages/Dashboard";
  * workspace, or a meeting screen without changing the components themselves.
  */
 function App() {
-  return <Dashboard />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/organization/:organizationId" element={<OrgWorkspaceLayout />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;
