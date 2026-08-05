@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+/*
+ * These base rules make the application fill the browser window. Component-specific
+ * styling remains in the components as Tailwind utilities, where the layout is easiest to read.
+ */
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-width: 1024px;
+    background: var(--color-zinc-950);
+    color: var(--color-white);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}

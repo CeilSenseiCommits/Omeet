@@ -1,0 +1,7 @@
+# Installed packages are recreated from package.json and package-lock.json.
+node_modules/
+
+# Vite creates this production output; source files are the project of record.
+dist/
+
+*.tsbuildinfo
