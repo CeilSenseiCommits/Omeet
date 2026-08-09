@@ -10,4 +10,13 @@ export const API = {
   recentActivity: "/api/activity",
   createMeeting: "/api/meet/create",
   joinMeeting: "/api/meet/join",
+  notifications: "/api/notifications",
+  notificationsIncoming: "/api/notifications/incoming",
+  notificationsOutgoing: "/api/notifications/outgoing",
+  notificationsRead: "/api/notifications/:id/read",
+  invitations: "/api/invitations",
+  invitationsSent: "/api/invitations/sent",
+  validateInvitation: "/api/invitations/validate",
+  acceptInvitation: "/api/invitations/accept",
+  declineInvitation: "/api/invitations/decline",
 } as const;

@@ -9,9 +9,17 @@ The dashboard acts as a personal workspace hub, while each organization can beco
 ### Dashboard
 
 - Header with global search
+- Header notification bell and notification dropdown with Incoming and Outgoing tabs
 - Left navigation rail for primary app actions
 - Center content with organization carousel, meet actions, and recent activity
 - Right utility rail with profile and utility actions
+
+### Global Notification Center
+
+- Notification bell icon is rendered in the top header beside search and profile.
+- Notification dropdown is a reusable data-driven surface with Incoming and Outgoing tabs.
+- Incoming examples include organization invitations, meeting invitations, and organization announcements.
+- Outgoing examples include sent invitations with state metadata such as Pending, Accepted, and Expired.
 
 ### Organization Workspace
 
@@ -32,3 +40,5 @@ The dashboard acts as a personal workspace hub, while each organization can beco
 - Desktop-first layout with wide center column and fixed side rails.
 - Use dark surfaces and generous spacing for a SaaS-style product feel.
 - Keep hover states and transitions subtle and consistent.
+- Notification surfaces are small, contextual, and anchored to global header behavior rather than consuming full-page layout.
+- The notification dropdown is explicit about its two backend-facing domains: incoming user-facing flows and outgoing organizational actions.

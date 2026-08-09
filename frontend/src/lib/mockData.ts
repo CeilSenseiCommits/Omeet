@@ -18,6 +18,70 @@ export interface ActivityItem {
   dotClass: string;
 }
 
+export interface Notification {
+  id: string;
+  type: "Organization invitation" | "Meeting invitation" | "Organization announcement" | "Invitation sent";
+  title: string;
+  message: string;
+  createdAt: string;
+  direction: "incoming" | "outgoing";
+  status?: "Pending" | "Accepted" | "Expired";
+}
+
+export const notifications: Notification[] = [
+  {
+    id: "notify-001",
+    type: "Organization invitation",
+    title: "Organization invitation",
+    message: "You have been invited to join OpenAI Research as an ML Engineer.",
+    createdAt: "2 min ago",
+    direction: "incoming",
+  },
+  {
+    id: "notify-002",
+    type: "Meeting invitation",
+    title: "Meeting invitation",
+    message: "Priya Sharma invited you to the Applied AI Weekly Review.",
+    createdAt: "18 min ago",
+    direction: "incoming",
+  },
+  {
+    id: "notify-003",
+    type: "Organization announcement",
+    title: "Organization announcement",
+    message: "New workspace access guidelines were published for Engineering.",
+    createdAt: "1 hour ago",
+    direction: "incoming",
+  },
+  {
+    id: "notify-004",
+    type: "Invitation sent",
+    title: "Invitation sent to Suryansh Rao",
+    message: "OpenAI Research invitation is pending acceptance.",
+    createdAt: "5 min ago",
+    direction: "outgoing",
+    status: "Pending",
+  },
+  {
+    id: "notify-005",
+    type: "Invitation sent",
+    title: "Invitation sent to Suraj Kumar",
+    message: "Startup Team invitation was accepted by the recipient.",
+    createdAt: "46 min ago",
+    direction: "outgoing",
+    status: "Accepted",
+  },
+  {
+    id: "notify-006",
+    type: "Invitation sent",
+    title: "Invitation sent to Suresh Patel",
+    message: "University Lab invitation expired before the recipient responded.",
+    createdAt: "3 hours ago",
+    direction: "outgoing",
+    status: "Expired",
+  },
+];
+
 export const organizations: Organization[] = [
   {
     id: "openai-research",

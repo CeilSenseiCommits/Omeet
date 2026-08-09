@@ -1,5 +1,123 @@
 # API Contracts
 
+## Notification APIs
+
+### GET /api/notifications
+
+**Expected request**
+- Authenticated user context
+
+**Expected response**
+```json
+{
+  "notifications": [
+    {
+      "id": "notify-001",
+      "type": "Organization invitation",
+      "title": "Organization invitation",
+      "message": "You have been invited to join OpenAI Research as an ML Engineer.",
+      "createdAt": "2 min ago",
+      "direction": "incoming"
+    }
+  ]
+}
+```
+
+**Used by**
+- NotificationBell
+- NotificationDropdown
+
+### GET /api/notifications/incoming
+
+**Expected request**
+- Authenticated user scope
+
+**Expected response**
+```json
+{
+  "notifications": [
+    {
+      "id": "notify-001",
+      "type": "Organization invitation",
+      "title": "Organization invitation",
+      "message": "You have been invited to join OpenAI Research as an ML Engineer.",
+      "createdAt": "2 min ago",
+      "direction": "incoming"
+    }
+  ]
+}
+```
+
+**Used by**
+- NotificationDropdown Incoming tab
+
+### GET /api/notifications/outgoing
+
+**Expected request**
+- Authenticated user scope
+
+**Expected response**
+```json
+{
+  "notifications": [
+    {
+      "id": "notify-004",
+      "type": "Invitation sent",
+      "title": "Invitation sent to Suryansh Rao",
+      "message": "OpenAI Research invitation is pending acceptance.",
+      "createdAt": "5 min ago",
+      "direction": "outgoing",
+      "status": "Pending"
+    }
+  ]
+}
+```
+
+**Used by**
+- NotificationDropdown Outgoing tab
+
+### POST /api/notifications/:id/read
+
+**Expected request**
+```json
+{
+  "userId": "user_suryansh"
+}
+```
+
+**Expected response**
+```json
+{
+  "id": "notify-001",
+  "isRead": true
+}
+```
+
+**Used by**
+- Future notification center read-state integration
+
+### GET /api/invitations/sent
+
+**Expected request**
+- Authenticated user who is able to issue invitations
+
+**Expected response**
+```json
+{
+  "invitations": [
+    {
+      "id": "inv_004",
+      "recipient": "Suryansh Rao",
+      "organization": "OpenAI Research",
+      "status": "Pending"
+    }
+  ]
+}
+```
+
+**Used by**
+- Outgoing notification content in the global notification surface
+
 ## Organization Details
 
 ### GET /api/organizations/:organizationId
