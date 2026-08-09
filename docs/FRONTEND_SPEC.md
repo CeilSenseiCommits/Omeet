@@ -21,6 +21,13 @@ The dashboard acts as a personal workspace hub, while each organization can beco
 - Incoming examples include organization invitations, meeting invitations, and organization announcements.
 - Outgoing examples include sent invitations with state metadata such as Pending, Accepted, and Expired.
 
+### User Search and Public Profile
+
+- Global search is now scoped to user name prefix discovery for people records.
+- Search results are lexicographically sorted so Suraj Kumar, Suresh Patel, and Suryansh Rao appear in the expected order when typing Sur.
+- A profile record can be opened through the dynamic profile route /profile/:userId.
+- The public profile page is a public-read page that presents name, username, organization, location, role, about copy, skills, and organization exposure.
+
 ### Organization Workspace
 
 - Workspace header with back navigation and action buttons
