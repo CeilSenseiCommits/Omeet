@@ -11,8 +11,14 @@ The dashboard acts as a personal workspace hub, while each organization can beco
 - Header with global search
 - Header notification bell and notification dropdown with Incoming and Outgoing tabs
 - Left navigation rail for primary app actions
-- Center content with organization carousel, meet actions, and recent activity
+- Center content with organization carousel, join organization CTA/modal flow, meet actions, and recent activity
 - Right utility rail with profile and utility actions
+
+### Organization Carousel / Join Flow
+
+- The organization carousel is the dashboard’s primary organization-listing surface.
+- Its header exposes a Join Organization action that opens a modal-driven invite-code workflow.
+- The join modal accepts a token/invite code and forwards that value into the invitation placeholder route flow via navigation state.
 
 ### Global Notification Center
 

@@ -7,6 +7,8 @@
 - Header notification bell and dropdown shell
 - Global notification center tabs and item rendering
 - Organization carousel
+- Join Organization CTA and join invite-code modal integration inside the carousel
+- Join organization modal with invite-code input and placeholder navigation handoff
 - Meet section
 - Recent activity feed
 - Left sidebar navigation
