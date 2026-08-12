@@ -1,4 +1,15 @@
-import type { DepartmentNode, OrganizationDetails, OrganizationMeeting, OrganizationSummaryItem } from "../types/organization";
+import type {
+  DepartmentNode,
+  DirectMessage,
+  OngoingMeeting,
+  OrganizationChatRoom,
+  OrganizationDetails,
+  OrganizationGroup,
+  OrganizationMeeting,
+  OrganizationSummaryItem,
+  RecentlyEndedMeeting,
+  UpcomingMeeting,
+} from "../types/organization";
 
 export interface Organization {
   id: string;
@@ -283,6 +294,40 @@ export const organizationDetails: OrganizationDetails[] = [
     hierarchy: organizationHierarchy,
     aiSummary: "Priority work is concentrated on launch readiness and investor-facing communication rituals.",
   },
+];
+
+export const organizationChatRooms: OrganizationChatRoom[] = [
+  { id: "chat-general", name: "General", unreadCount: 4, active: true },
+  { id: "chat-engineering", name: "Engineering", unreadCount: 2, active: false },
+  { id: "chat-research", name: "Research", unreadCount: 0, active: false },
+  { id: "chat-hr", name: "HR", unreadCount: 1, active: false },
+];
+
+export const directMessages: DirectMessage[] = [
+  { id: "dm-priya", name: "Priya Sharma", role: "Product Lead", lastSeen: "2m ago", unreadCount: 1, active: false },
+  { id: "dm-rahul", name: "Rahul Verma", role: "Engineering Manager", lastSeen: "9m ago", unreadCount: 0, active: true },
+  { id: "dm-arjun", name: "Arjun Singh", role: "Research Partner", lastSeen: "12m ago", unreadCount: 3, active: false },
+];
+
+export const organizationGroups: OrganizationGroup[] = [
+  { id: "group-applied-ai", name: "Applied AI", unreadCount: 3, active: false },
+  { id: "group-backend", name: "Backend Team", unreadCount: 0, active: false },
+  { id: "group-nlp", name: "NLP", unreadCount: 2, active: true },
+];
+
+export const ongoingOrganizationMeetings: OngoingMeeting[] = [
+  { id: "ongoing-1", title: "Engineering Standup", group: "Backend Team", participants: ["Priya", "Rahul", "Neha", "Suresh"] },
+  { id: "ongoing-2", title: "Applied AI Sync", group: "Applied AI", participants: ["Disha", "Mina", "Arjun", "Tara"] },
+];
+
+export const upcomingOrganizationMeetings: UpcomingMeeting[] = [
+  { id: "upcoming-1", title: "Research Planning", date: "Mon, May 12", time: "10:00 AM", organizer: "Mina Chen", group: "Research", status: "Accepted" },
+  { id: "upcoming-2", title: "Product Review", date: "Tue, May 13", time: "2:30 PM", organizer: "Priya Sharma", group: "Applied AI", status: "Confirmed" },
+];
+
+export const recentlyEndedMeetings: RecentlyEndedMeeting[] = [
+  { id: "ended-1", title: "Sprint Review", duration: "45 min", recordingAvailable: true, aiSummaryAvailable: true },
+  { id: "ended-2", title: "Onboarding Sync", duration: "30 min", recordingAvailable: false, aiSummaryAvailable: true },
 ];
 
 export const organizationMeetings: OrganizationMeeting[] = [

@@ -1,20 +1,25 @@
 # Project Roadmap
 
-## Near Term
+## Completed — feature/org-workspace
 
-- Connect the workspace layout to real organization data.
-- Add real API services for search, organization details, and meetings.
-- Introduce loading and empty states for organization and meeting views.
-- Replace notification mock content with server-side GET /api/notifications and read-state endpoints.
+- Organization workspace route and shared application shell integration
+- Communication sidebar with organization-scoped mock content
+- Default meetings workspace with create/join, ongoing, upcoming, and recently ended sections
+- Organization meeting and communication API contract documentation
 
-## Medium Term
+## Next — feature/org-chat-layout
 
-- Add member roster and department editing flows.
-- Support organizational hierarchy editing and drag-and-drop.
-- Add meeting room UI with live participant presence.
+The branch has been created from `feature/org-workspace`. It will prepare the UI layout opened by a chat room, direct message, or group selection:
 
-## Long Term
+- Conversation header and message area
+- Message composer with attachment, emoji, and call affordances
+- Right-side conversation information panel
+- Thread-ready visual structure
 
-- Build AI-powered summaries and communication analysis.
-- Add notifications, recommendations, and richer collaboration workflows.
-- Expand the workspace to support routing, permissions, and teams.
+This branch will not implement chat messages, realtime transport, persistence, or call behavior.
+
+## Later
+
+- Connect organization, communication, and meeting surfaces to authenticated APIs.
+- Implement member roster, files, meeting room, and realtime presence.
+- Add permissions, recording retention controls, AI summaries, and organization administration.
