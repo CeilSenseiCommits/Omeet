@@ -1,4 +1,6 @@
 import type { OngoingMeeting, RecentlyEndedMeeting, UpcomingMeeting } from "../../types/organization";
+import Carousel from "./Carousel";
+import { Video, LogIn, ChevronRight, MoreVertical, Shield } from "lucide-react";
 
 interface MeetingsTabProps {
   ongoingMeetings: OngoingMeeting[];
@@ -6,6 +8,10 @@ interface MeetingsTabProps {
   recentlyEndedMeetings: RecentlyEndedMeeting[];
   onCreateMeeting: () => void;
   onJoinMeeting: () => void;
+}
+
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase();
 }
 
 function MeetingsTab({
@@ -16,56 +22,170 @@ function MeetingsTab({
   onJoinMeeting,
 }: MeetingsTabProps) {
   return (
-    <div className="space-y-6">
-      <section className="grid gap-4 lg:grid-cols-2" aria-label="Organization meeting actions">
-        <button type="button" onClick={onCreateMeeting} className="rounded-[28px] border border-fuchsia-500/30 bg-fuchsia-500/10 p-6 text-left transition hover:border-fuchsia-400/60 hover:bg-fuchsia-500/15">
-          <p className="text-sm font-semibold text-fuchsia-200">Create Organization Meeting</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-300">Start a meeting for the organization or a group you manage.</p>
-          <span className="mt-5 inline-block rounded-xl bg-fuchsia-500 px-3 py-2 text-sm font-medium text-white">Create meeting</span>
+    <div className="flex flex-col space-y-10 py-6">
+      <section className="grid gap-6 md:grid-cols-2" aria-label="Organization meeting actions">
+        <button type="button" onClick={onCreateMeeting} className="flex flex-col justify-between rounded-xl border border-fuchsia-900/50 bg-[#1f0f29] p-6 text-left transition hover:border-fuchsia-800">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-fuchsia-900/50 text-fuchsia-400 border border-fuchsia-800/50">
+              <Video className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-white">Create Organization Meeting</p>
+              <p className="mt-1 text-sm text-zinc-400 leading-snug">Start a meeting for the organization or<br/>a group you manage.</p>
+            </div>
+          </div>
+          <div className="mt-6 flex">
+            <span className="inline-flex rounded-lg bg-fuchsia-900 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-fuchsia-800">Create meeting</span>
+          </div>
         </button>
-        <button type="button" onClick={onJoinMeeting} className="rounded-[28px] border border-zinc-700 bg-zinc-950/60 p-6 text-left transition hover:border-zinc-600 hover:bg-zinc-800/70">
-          <p className="text-sm font-semibold text-white">Join Organization Meeting</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">Enter a meeting code or join one of the active group meetings below.</p>
-          <span className="mt-5 inline-block rounded-xl border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-200">Join with code</span>
+        <button type="button" onClick={onJoinMeeting} className="flex flex-col justify-between rounded-xl border border-zinc-800/60 bg-[#1a1a1c] p-6 text-left transition hover:border-zinc-700">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-800/50 text-zinc-400 border border-zinc-800">
+              <LogIn className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-white">Join Organization Meeting</p>
+              <p className="mt-1 text-sm text-zinc-400 leading-snug">Enter a meeting code or join one of the<br/>active group meetings below.</p>
+            </div>
+          </div>
+          <div className="mt-6 flex">
+            <span className="inline-flex rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-zinc-800">Join with code</span>
+          </div>
         </button>
       </section>
 
       <section>
-        <div className="flex items-end justify-between gap-4">
-          <div><h2 className="text-lg font-semibold text-white">Ongoing meetings</h2><p className="mt-1 text-sm text-zinc-400">Active meetings from groups you belong to.</p></div>
-          <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">Live now</span>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-white">Ongoing Meetings</h2>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+            </span>
+          </div>
+          <button type="button" className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-800 transition">View all</button>
         </div>
-        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+        <Carousel cardWidth={340}>
           {ongoingMeetings.map((meeting) => (
-            <article key={meeting.id} className="rounded-3xl border border-zinc-800 bg-zinc-950/60 p-5">
-              <p className="font-semibold text-white">{meeting.title}</p>
-              <p className="mt-1 text-sm text-zinc-400">{meeting.group}</p>
-              <div className="mt-5 flex items-center justify-between gap-3"><span className="text-sm text-zinc-300">{meeting.participants.length} participants</span><button type="button" onClick={onJoinMeeting} className="rounded-xl bg-emerald-400 px-3 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-300">Join</button></div>
+            <article key={meeting.id} className="flex h-full flex-col justify-between rounded-xl border border-zinc-800/60 bg-[#151517] p-5 hover:border-zinc-700 transition">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="rounded bg-emerald-950 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-900">Live</span>
+                  <p className="font-semibold text-white text-base truncate">{meeting.title}</p>
+                </div>
+                <p className="text-xs font-medium text-zinc-400">{meeting.group}</p>
+              </div>
+              <div className="mt-6 flex items-center justify-between">
+                <div className="flex -space-x-1.5">
+                  {meeting.participants.slice(0, 4).map((p, i) => (
+                    <div key={i} className="flex h-6 w-6 items-center justify-center rounded-full border border-[#151517] bg-zinc-700 text-[8px] font-bold text-white shadow-sm">
+                      {getInitials(p)}
+                    </div>
+                  ))}
+                  {meeting.participants.length > 4 && (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full border border-[#151517] bg-zinc-800 text-[8px] font-bold text-zinc-400 shadow-sm">
+                      +{meeting.participants.length - 4}
+                    </div>
+                  )}
+                </div>
+                <button type="button" onClick={onJoinMeeting} className="rounded-lg bg-fuchsia-900 px-5 py-1.5 text-xs font-semibold text-white transition hover:bg-fuchsia-800 shadow-sm">
+                  Join
+                </button>
+              </div>
             </article>
           ))}
+        </Carousel>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-white">Upcoming Meetings</h2>
+            <span className="text-xs text-zinc-500">Next meetings you're part of or invited to</span>
+          </div>
+          <button type="button" className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-800 transition">View all</button>
+        </div>
+        <div className="flex rounded-xl border border-zinc-800/60 bg-[#151517] overflow-hidden">
+          <div className="flex flex-col flex-1 divide-y divide-zinc-800/60">
+            {upcomingMeetings.map((meeting) => {
+              const [month, day] = meeting.date.split(" ");
+              return (
+                <article key={meeting.id} className="flex items-center px-6 py-4 hover:bg-zinc-900/30 transition group">
+                  <div className="flex flex-col items-center justify-center w-12 shrink-0 border-r border-zinc-800/60 pr-6 mr-6">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">{month}</span>
+                    <span className="text-lg font-bold text-white">{day}</span>
+                  </div>
+                  <div className="flex-1 min-w-0 pr-4">
+                    <p className="font-semibold text-white text-sm truncate">{meeting.title}</p>
+                    <p className="text-xs text-zinc-500 mt-0.5 truncate">{meeting.group}</p>
+                  </div>
+                  <div className="w-36 shrink-0 hidden md:block">
+                    <p className="text-xs text-zinc-300">{meeting.time}</p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">30 min</p>
+                  </div>
+                  <div className="w-32 shrink-0 hidden lg:block">
+                    <p className="text-xs text-zinc-300 truncate">{meeting.organizer}</p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">Organizer</p>
+                  </div>
+                  <div className="w-24 shrink-0 flex justify-end pr-4">
+                    <span className="rounded-md bg-fuchsia-950/40 px-2 py-1 text-[10px] font-medium text-fuchsia-400 border border-fuchsia-900/40">
+                      {meeting.status}
+                    </span>
+                  </div>
+                  <button type="button" className="text-zinc-500 hover:text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition">
+                    <MoreVertical className="h-4 w-4" />
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+          <button type="button" className="w-10 bg-zinc-900/50 border-l border-zinc-800/60 flex items-center justify-center text-zinc-500 hover:text-white hover:bg-zinc-800/50 transition">
+            <ChevronRight className="h-5 w-5" />
+          </button>
         </div>
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-white">Upcoming meetings</h2><p className="mt-1 text-sm text-zinc-400">Accepted invitations and meetings from your groups.</p>
-        <div className="mt-4 overflow-hidden rounded-3xl border border-zinc-800">
-          {upcomingMeetings.map((meeting) => (
-            <article key={meeting.id} className="grid gap-2 border-b border-zinc-800 bg-zinc-950/40 p-4 last:border-b-0 md:grid-cols-[1.2fr_repeat(3,1fr)_auto] md:items-center">
-              <div><p className="font-medium text-white">{meeting.title}</p><p className="text-sm text-zinc-500">{meeting.group}</p></div>
-              <p className="text-sm text-zinc-300">{meeting.date}</p><p className="text-sm text-zinc-300">{meeting.time}</p><p className="text-sm text-zinc-400">{meeting.organizer}</p><span className="w-fit rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-1 text-xs text-sky-200">{meeting.status}</span>
-            </article>
-          ))}
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-white">Recently Ended</h2>
+            <span className="text-xs text-zinc-500">Your recently completed meetings</span>
+          </div>
+          <button type="button" className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-800 transition">View all</button>
         </div>
-      </section>
-
-      <section>
-        <h2 className="text-lg font-semibold text-white">Recently ended</h2>
-        <p className="mt-1 text-sm text-zinc-400">Organizations can choose to store meeting recordings and metadata.</p>
-        <div className="mt-4 grid gap-3 xl:grid-cols-2">
+        <Carousel cardWidth={340}>
           {recentlyEndedMeetings.map((meeting) => (
-            <article key={meeting.id} className="rounded-3xl border border-zinc-800 bg-zinc-950/60 p-5"><div className="flex items-start justify-between gap-3"><div><p className="font-medium text-white">{meeting.title}</p><p className="mt-1 text-sm text-zinc-400">Duration: {meeting.duration}</p></div><button type="button" className="rounded-xl border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800">Open details</button></div><div className="mt-4 flex flex-wrap gap-2"><span className="rounded-full bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300">Recording {meeting.recordingAvailable ? "available" : "not stored"}</span><span className="rounded-full bg-fuchsia-500/10 px-2.5 py-1 text-xs text-fuchsia-200">AI summary {meeting.aiSummaryAvailable ? "available" : "pending"}</span></div></article>
+            <article key={meeting.id} className="flex h-full flex-col justify-between rounded-xl border border-zinc-800/60 bg-[#151517] p-5 hover:border-zinc-700 transition">
+              <div>
+                <p className="font-semibold text-white text-base truncate">{meeting.title}</p>
+                <p className="text-xs font-medium text-zinc-400 mt-1">{meeting.group}</p>
+                <p className="text-[10px] text-zinc-500 mt-1.5">Ended {meeting.duration} ago • 45 min</p>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <span className="flex items-center gap-1 rounded bg-fuchsia-950/40 px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-400 border border-fuchsia-900/40">
+                  <Video className="h-3 w-3" /> Recording
+                </span>
+                <span className="flex items-center gap-1 rounded bg-emerald-950/40 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-900/40">
+                  <Shield className="h-3 w-3" /> AI Summary
+                </span>
+              </div>
+              <div className="mt-6 flex items-center justify-between">
+                <div className="flex -space-x-1.5">
+                  {["Alice", "Bob", "Charlie", "David"].slice(0, 4).map((p, i) => (
+                    <div key={i} className="flex h-6 w-6 items-center justify-center rounded-full border border-[#151517] bg-zinc-700 text-[8px] font-bold text-white shadow-sm">
+                      {getInitials(p)}
+                    </div>
+                  ))}
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full border border-[#151517] bg-zinc-800 text-[8px] font-bold text-zinc-400 shadow-sm">
+                    +6
+                  </div>
+                </div>
+                <button type="button" className="rounded-lg border border-zinc-700 bg-transparent px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition hover:bg-zinc-800 hover:text-white">
+                  Details
+                </button>
+              </div>
+            </article>
           ))}
-        </div>
+        </Carousel>
       </section>
     </div>
   );

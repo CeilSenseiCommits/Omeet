@@ -1,3 +1,4 @@
+import { ArrowLeft, Video, LogIn, Menu } from "lucide-react";
 import type { OrganizationDetails } from "../../types/organization";
 
 interface OrgHeaderProps {
@@ -5,42 +6,76 @@ interface OrgHeaderProps {
   onBack: () => void;
   onCreateMeeting: () => void;
   onJoinMeeting: () => void;
+  onToggleRightPanel: () => void;
+  rightPanelCollapsed: boolean;
 }
 
-function OrgHeader({ organization, onBack, onCreateMeeting, onJoinMeeting }: OrgHeaderProps) {
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase();
+}
+
+function OrgHeader({
+  organization,
+  onBack,
+  onCreateMeeting,
+  onJoinMeeting,
+  onToggleRightPanel,
+}: OrgHeaderProps) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 rounded-[28px] border border-zinc-800 bg-zinc-900/90 p-6">
-      <div className="flex items-center gap-4">
+    <header className="flex w-full items-center justify-between">
+      {/* Left Block: Back Button aligned with Left Sidebar (280px) */}
+      <div className="w-[280px] shrink-0">
         <button
           type="button"
           onClick={onBack}
-          className="rounded-2xl border border-zinc-800 bg-zinc-950/70 px-3 py-2 text-sm text-zinc-300 transition hover:border-zinc-700 hover:text-white"
+          className="flex h-11 items-center gap-2 rounded-xl border border-zinc-800/60 bg-[#111113] px-4 text-sm font-medium text-zinc-300 transition hover:bg-zinc-800/50 hover:text-white"
         >
-          ← Dashboard
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
         </button>
+      </div>
 
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${organization.accent} text-sm font-semibold text-white`}>
-          {organization.initials}
+      {/* Middle Block: Organization Info */}
+      <div className="flex flex-1 items-center gap-4 px-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-fuchsia-950 border border-fuchsia-900 text-lg font-bold text-fuchsia-200">
+          {getInitials(organization.name)}
         </div>
-
         <div>
-          <h1 className="text-2xl font-semibold text-white">{organization.name}</h1>
-          <p className="mt-1 text-sm text-zinc-400">{organization.description}</p>
-          <p className="mt-2 text-sm text-zinc-500">
-            {organization.memberCount} members • {organization.activeMeetings} active meetings • {organization.status}
-          </p>
+          <h1 className="text-xl font-semibold tracking-tight text-white">{organization.name}</h1>
+          <p className="mt-0.5 text-xs text-zinc-400">{organization.description}</p>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={onCreateMeeting} className="rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm font-medium text-white transition hover:border-zinc-600 hover:bg-zinc-700">
+      {/* Right Block: Actions aligned with Right Sidebar */}
+      <div className="flex shrink-0 items-center gap-3">
+        <button
+          type="button"
+          onClick={onCreateMeeting}
+          className="flex h-11 items-center gap-2 rounded-xl bg-fuchsia-900 border border-fuchsia-800 px-4 text-sm font-semibold text-white transition hover:bg-fuchsia-800"
+        >
+          <Video className="h-4 w-4" />
           Create Meeting
         </button>
-        <button type="button" onClick={onJoinMeeting} className="rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-2.5 text-sm font-medium text-white transition hover:border-zinc-600 hover:bg-zinc-800">
+        
+        <button
+          type="button"
+          onClick={onJoinMeeting}
+          className="flex h-11 items-center gap-2 rounded-xl border border-zinc-800/60 bg-[#111113] px-4 text-sm font-medium text-zinc-300 transition hover:bg-zinc-800/50 hover:text-white"
+        >
+          <LogIn className="h-4 w-4" />
           Join Meeting
         </button>
+
+        <button
+          type="button"
+          onClick={onToggleRightPanel}
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800/60 bg-[#111113] text-zinc-400 transition hover:bg-zinc-800/50 hover:text-white"
+          aria-label="Toggle right panel"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
       </div>
-    </div>
+    </header>
   );
 }
 
