@@ -21,6 +21,8 @@
 - Create meeting modal
 - Notifications mock data layer
 - Organization invitation mock data and token validation route shape
+- Create Organization page UI (`/create-organization`)
+- Create Organization dummy data logic and mock API interaction
 
 ## In Progress
 

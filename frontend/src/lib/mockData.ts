@@ -309,3 +309,18 @@ export const organizationSummary: OrganizationSummaryItem[] = [
   { id: "summary-2", label: "Signal", value: "Manager alignment is improving after the latest weekly review session." },
   { id: "summary-3", label: "Next best action", value: "Prioritize the ML and Backend handoff before the next launch checkpoint." },
 ];
+
+export interface AuthenticatedUser {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  initials: string;
+}
+
+export const currentUser: AuthenticatedUser = {
+  id: "user_456",
+  name: "Suryansh Rao",
+  email: "suryansh@example.com",
+  initials: "SR",
+};

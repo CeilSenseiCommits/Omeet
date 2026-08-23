@@ -33,7 +33,7 @@ function OrganizationCarousel({ organizations }: OrganizationCarouselProps) {
           </button>
 
           <button
-            onClick={() => navigate("/createOrganization")}
+            onClick={() => navigate("/create-organization")}
             className="rounded-full bg-white text-black px-4 py-2 text-sm font-medium hover:bg-white/90 transition"
           >
             Create Organization

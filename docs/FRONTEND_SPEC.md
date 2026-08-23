@@ -48,3 +48,16 @@ The dashboard acts as a personal workspace hub, while each organization can beco
 - Keep hover states and transitions subtle and consistent.
 - Notification surfaces are small, contextual, and anchored to global header behavior rather than consuming full-page layout.
 - The notification dropdown is explicit about its two backend-facing domains: incoming user-facing flows and outgoing organizational actions.
+
+## Create Organization
+
+- **Purpose**: Allows a user to create a new organization/workspace.
+- **Route**: `/create-organization`
+- **UI Sections**:
+  - Organization Information (Name, Description, Industry, Size)
+  - Creator Information (Current User Profile, Position, Department)
+- **Form Fields**: Organization Name (required), Position (required). Other fields are optional.
+- **Validation**: Frontend validates required fields before submission.
+- **Creator/Owner Behavior**: The creator is automatically designated as the OWNER and the first member of the organization.
+- **Navigation Behavior**: On success, redirects the user to the newly created organization's workspace (`/organization/:id`).
+- **Dummy-data Behavior**: Uses mock authentication data (`currentUser` from `mockData.ts`) and a simulated API delay (`createOrganizationAPI`) to mimic a real backend roundtrip.

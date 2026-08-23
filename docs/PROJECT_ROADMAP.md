@@ -1,5 +1,10 @@
 # Project Roadmap
 
+## Completed
+
+- Implement Create Organization frontend page and routing (`/create-organization`)
+- Add Create Organization mock API integration and dummy current user data
+
 ## Near Term
 
 - Connect the workspace layout to real organization data.

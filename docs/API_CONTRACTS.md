@@ -141,6 +141,42 @@
 - OrgHeader
 - OrgWorkspaceLayout
 
+### POST /api/organizations
+
+**Expected request**
+- Authenticated user context (backend resolves `userId` from auth)
+```json
+{
+  "name": "Acme Corp",
+  "description": "A technology company",
+  "industry": "Technology",
+  "size": "51-200",
+  "position": "CEO",
+  "department": "Executive"
+}
+```
+
+**Expected response**
+```json
+{
+  "organizationId": "org_12345",
+  "name": "Acme Corp",
+  "ownerId": "user_456",
+  "createdAt": "2026-08-24T00:00:00Z"
+}
+```
+
+**Database Generation Rules**
+- Backend generates `organizationId`
+- Backend registers the creator as the owner.
+- Backend adds the creator as the first employee/member.
+- Relationship is stored using `organizationId` and `userId` rather than names.
+- Example initial employee record for the creator: `organizationId: org_123`, `userId: user_456`, `position: Founder`, `role: OWNER`, `joiningDate: [creation date]`, `leavingDate: null`, `status: ACTIVE`.
+- Future iterations may include `managerId`, `mentorId`, and `teamId`.
+
+**Used by**
+- CreateOrganization page
+
 ## Organization Hierarchy
 
 ### GET /api/organizations/:organizationId/hierarchy

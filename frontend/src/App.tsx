@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import OrgWorkspaceLayout from "./components/organization/OrgWorkspaceLayout";
 import Dashboard from "./pages/Dashboard";
+import CreateOrganization from "./pages/CreateOrganization";
 
 /**
  * App is the composition root: it decides which top-level page React should render.
@@ -12,6 +13,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/create-organization" element={<CreateOrganization />} />
         <Route path="/organization/:organizationId" element={<OrgWorkspaceLayout />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
