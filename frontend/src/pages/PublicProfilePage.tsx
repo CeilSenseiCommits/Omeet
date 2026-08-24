@@ -29,15 +29,27 @@ function PublicProfilePage() {
         </div>
       }
       rightRail={
-        <div className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Public profile</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Directory</h2>
+        <div className="space-y-4">
+          <div className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Public profile</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">Directory</h2>
+              </div>
+              <span className="rounded-full border border-emerald-400/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+                Public
+              </span>
             </div>
-            <span className="rounded-full border border-emerald-400/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
-              Public
-            </span>
+          </div>
+          
+          <div className="rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-5">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Actions</p>
+            <button
+              type="button"
+              className="w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800 hover:text-white shadow-sm"
+            >
+              Invite to Organization (Coming Soon)
+            </button>
           </div>
         </div>
       }
@@ -103,17 +115,9 @@ function PublicProfilePage() {
         </section>
 
         <section className="rounded-[28px] border border-zinc-800 bg-zinc-900/80 p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Organizations</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">Current access</h2>
-            </div>
-            <button
-              type="button"
-              className="rounded-2xl border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
-            >
-              Invite to Organization (Coming Soon)
-            </button>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Organizations</p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">Current access</h2>
           </div>
 
           <div className="mt-5 grid gap-3 md:grid-cols-3">
