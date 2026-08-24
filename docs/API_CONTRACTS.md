@@ -118,6 +118,54 @@
 **Used by**
 - Outgoing notification content in the global notification surface
 
+## User Search and Profile APIs
+
+### GET /api/users/search?name=
+
+**Expected request**
+- Query parameter: name
+
+**Expected response**
+```json
+{
+  "users": [
+    {
+      "id": "user_suraj",
+      "name": "Suraj Kumar",
+      "username": "suraj.kumar",
+      "position": "ML Platform Engineer",
+      "organization": "OpenAI Research"
+    }
+  ]
+}
+```
+
+**Used by**
+- SearchBar
+
+### GET /api/users/:userId
+
+**Expected request**
+- Path parameter: userId
+
+**Expected response**
+```json
+{
+  "id": "user_suryansh",
+  "name": "Suryansh Rao",
+  "username": "suryansh.rao",
+  "position": "Workspace admin",
+  "organization": "OpenAI Research",
+  "location": "Bangalore",
+  "about": "Suryansh leads workspace administration and cross-org onboarding for research and delivery programs.",
+  "skills": ["Platform strategy", "Workspace ops", "Collaboration"],
+  "organizations": ["OpenAI Research", "Startup Team"]
+}
+```
+
+**Used by**
+- PublicProfilePage
+
 ## Organization Details
 
 ### GET /api/organizations/:organizationId

@@ -6,6 +6,7 @@
 - Add real API services for search, organization details, and meetings.
 - Introduce loading and empty states for organization and meeting views.
 - Replace notification mock content with server-side GET /api/notifications and read-state endpoints.
+- Replace user search mock content with GET /api/users/search?name= and GET /api/users/:userId endpoints.
 
 ## Medium Term
 
