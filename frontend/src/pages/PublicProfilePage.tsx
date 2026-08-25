@@ -1,10 +1,11 @@
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import SidebarNav from "../components/SidebarNav";
 import { users } from "../lib/mockData";
 
 function PublicProfilePage() {
   const { userId } = useParams();
+  const navigate = useNavigate();
 
   const profile = users.find((user) => user.id === userId) ?? users[0];
 
@@ -46,9 +47,10 @@ function PublicProfilePage() {
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Actions</p>
             <button
               type="button"
+              onClick={() => navigate(`/invitation/${profile.id}`)}
               className="w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:bg-zinc-800 hover:text-white shadow-sm"
             >
-              Invite to Organization (Coming Soon)
+              Invite to Organization
             </button>
           </div>
         </div>

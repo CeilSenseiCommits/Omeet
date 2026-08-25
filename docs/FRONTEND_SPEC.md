@@ -41,6 +41,18 @@ The dashboard acts as a personal workspace hub, while each organization can beco
 - Hierarchy tab with an interactive recursive tree and detailed department panel
 - Meeting creation modal with hierarchy-aware placeholders
 
+### Invitation Creation
+
+- This section handles the **Sender side** of the invitation process. (Note: The receiver-side "Invitation Details / Accept Invitation" flow is a separate future implementation).
+- A user can be invited to an organization by navigating to their public profile (`/profile/:userId`) and clicking "Invite to Organization".
+- The route `/invitation/:userId` hosts the invitation form.
+- **Invitee Card:** Displays the selected user's details (Avatar, Name, Username, ID) in a read-only format.
+- **Organization Selector:** Displays dummy organizations the current user can invite members to.
+- **Dependent Fields:** Selecting an organization dynamically updates the available options for the "Position" and "Immediate Senior" dropdowns, and pre-fills the organization's contact email and phone.
+- **Validation:** Ensures required fields (Organization, Position, Contact Email) are filled before sending.
+- **Mock Submission:** Clicking "Send Invitation" triggers a mock service that mimics network latency, displays a success message, and redirects the user back to the profile page.
+- **Cancel Behavior:** Discards the form and routes back to the profile page without submitting.
+
 ## Architectural Principles
 
 - Separate presentational components from data and routing concerns.

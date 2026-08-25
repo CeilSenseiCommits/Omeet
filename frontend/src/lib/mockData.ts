@@ -520,3 +520,55 @@ export const organizationSummary: OrganizationSummaryItem[] = [
   { id: "summary-2", label: "Signal", value: "Manager alignment is improving after the latest weekly review session." },
   { id: "summary-3", label: "Next best action", value: "Prioritize the ML and Backend handoff before the next launch checkpoint." },
 ];
+
+export interface EligibleImmediateSenior {
+  id: string;
+  name: string;
+}
+
+export interface InvitationOrganization {
+  id: string;
+  name: string;
+  availablePositions: string[];
+  eligibleImmediateSeniors: EligibleImmediateSenior[];
+  defaultContactEmail: string;
+  defaultContactPhone: string;
+}
+
+export const invitationOrganizations: InvitationOrganization[] = [
+  {
+    id: "openai-research",
+    name: "OpenAI Research",
+    availablePositions: ["ML Engineer", "Research Scientist", "Backend Platform Lead", "NLP Scientist", "Vision Research Lead"],
+    eligibleImmediateSeniors: [
+      { id: "user_suryansh", name: "Suryansh Rao" },
+      { id: "user_mina", name: "Mina Chen" },
+    ],
+    defaultContactEmail: "hr@openairesearch.example.com",
+    defaultContactPhone: "+1 (555) 010-0001",
+  },
+  {
+    id: "startup-team",
+    name: "Startup Team",
+    availablePositions: ["Software Engineer", "Product Designer", "Backend Engineer"],
+    eligibleImmediateSeniors: [
+      { id: "user_amina", name: "Amina Patel" },
+      { id: "user_suryansh", name: "Suryansh Rao" },
+    ],
+    defaultContactEmail: "careers@startupteam.example.com",
+    defaultContactPhone: "+1 (555) 010-0002",
+  }
+];
+
+export async function sendInvitation(payload: any): Promise<{ success: boolean; message: string }> {
+  // Simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 800));
+  
+  // Basic validation mock
+  if (!payload.organizationId || !payload.position) {
+    throw new Error("Missing required fields");
+  }
+  
+  return { success: true, message: "Invitation sent successfully." };
+}
+

@@ -7,6 +7,7 @@
 - Introduce loading and empty states for organization and meeting views.
 - Replace notification mock content with server-side GET /api/notifications and read-state endpoints.
 - Replace user search mock content with GET /api/users/search?name= and GET /api/users/:userId endpoints.
+- Implement the receiver-side Invitation Details and Accept/Decline flow (sender-side is complete).
 
 ## Medium Term
 

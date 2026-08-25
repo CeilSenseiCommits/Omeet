@@ -118,6 +118,58 @@
 **Used by**
 - Outgoing notification content in the global notification surface
 
+## Invitations (Creation)
+
+### GET /api/me/organizations
+
+**Expected request**
+- Authenticated user context
+
+**Expected response**
+```json
+{
+  "organizations": [
+    {
+      "id": "openai-research",
+      "name": "OpenAI Research"
+    }
+  ]
+}
+```
+
+**Used by**
+- Organization selector in InvitationPage
+
+### POST /api/organizations/:organizationId/invitations
+
+**Expected request**
+```json
+{
+  "inviteeUserId": "user_1024",
+  "position": "ML Engineer",
+  "immediateSeniorId": "employee_205",
+  "contactEmail": "hr@example.com",
+  "contactPhone": "+91..."
+}
+```
+
+**Expected response**
+```json
+{
+  "invitationId": "inv_890",
+  "status": "PENDING",
+  "createdAt": "2024-03-10T12:00:00Z"
+}
+```
+
+**Notes**
+- **Validation**: Backend must validate that the inviter is authenticated, belongs to the organization, and has permission to invite. Must validate the invitee exists and is not already an active member, and that no duplicate pending invitations exist.
+- **Token Generation**: The backend MUST generate the secure invitation token. The frontend will NOT generate this token.
+- **Relationships**: The `inviterUserId` is derived from authentication context, not the request payload.
+
+**Used by**
+- Send Invitation action in InvitationPage
+
 ## User Search and Profile APIs
 
 ### GET /api/users/search?name=
