@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import NotificationBell from "./NotificationBell";
 import { notifications } from "../lib/mockData";
@@ -16,6 +17,8 @@ const user = {
 function TopHeader() {
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [activeNotificationTab, setActiveNotificationTab] = useState<"incoming" | "outgoing">("incoming");
+  const location = useLocation();
+  const isHomePage = location.pathname === "/";
 
   const incomingNotifications = notifications.filter((item) => item.direction === "incoming");
   const outgoingNotifications = notifications.filter((item) => item.direction === "outgoing");
@@ -35,8 +38,19 @@ function TopHeader() {
           alt={`${user.name}'s profile`}
         />
         <div>
-          <p className="text-lg font-semibold text-white">Good morning, {user.name}</p>
-          <p className="mt-1 text-sm text-zinc-400">Hope you have a productive day.</p>
+          {isHomePage ? (
+            <>
+              <p className="text-lg font-semibold text-white">Good morning, {user.name}</p>
+              <p className="mt-1 text-sm text-zinc-400">Hope you have a productive day.</p>
+            </>
+          ) : (
+            <Link
+              to="/"
+              className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
+            >
+              Home
+            </Link>
+          )}
         </div>
       </div>
 
