@@ -3,7 +3,7 @@ interface OrgTabsProps {
   onChange: (tab: string) => void;
 }
 
-const tabs = ["Hierarchy", "Meetings", "Members", "Files", "AI"];
+const tabs = ["Meetings", "Members", "Files", "AI"];
 
 function OrgTabs({ activeTab, onChange }: OrgTabsProps) {
   return (

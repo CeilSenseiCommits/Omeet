@@ -3,9 +3,11 @@ import type { OrganizationDetails } from "../../types/organization";
 interface OrgHeaderProps {
   organization: OrganizationDetails;
   onBack: () => void;
+  onCreateMeeting: () => void;
+  onJoinMeeting: () => void;
 }
 
-function OrgHeader({ organization, onBack }: OrgHeaderProps) {
+function OrgHeader({ organization, onBack, onCreateMeeting, onJoinMeeting }: OrgHeaderProps) {
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 rounded-[28px] border border-zinc-800 bg-zinc-900/90 p-6">
       <div className="flex items-center gap-4">
@@ -31,10 +33,10 @@ function OrgHeader({ organization, onBack }: OrgHeaderProps) {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <button className="rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm font-medium text-white transition hover:border-zinc-600 hover:bg-zinc-700">
+        <button type="button" onClick={onCreateMeeting} className="rounded-2xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm font-medium text-white transition hover:border-zinc-600 hover:bg-zinc-700">
           Create Meeting
         </button>
-        <button className="rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-2.5 text-sm font-medium text-white transition hover:border-zinc-600 hover:bg-zinc-800">
+        <button type="button" onClick={onJoinMeeting} className="rounded-2xl border border-zinc-700 bg-zinc-950/70 px-4 py-2.5 text-sm font-medium text-white transition hover:border-zinc-600 hover:bg-zinc-800">
           Join Meeting
         </button>
       </div>

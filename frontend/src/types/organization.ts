@@ -22,6 +22,54 @@ export interface OrganizationDetails {
   aiSummary: string;
 }
 
+export interface OrganizationChatRoom {
+  id: string;
+  name: string;
+  unreadCount: number;
+  active: boolean;
+}
+
+export interface DirectMessage {
+  id: string;
+  name: string;
+  role: string;
+  lastSeen: string;
+  unreadCount: number;
+  active: boolean;
+}
+
+export interface OrganizationGroup {
+  id: string;
+  name: string;
+  unreadCount: number;
+  active: boolean;
+}
+
+export interface OngoingMeeting {
+  id: string;
+  title: string;
+  group: string;
+  participants: string[];
+}
+
+export interface UpcomingMeeting {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  organizer: string;
+  group: string;
+  status: string;
+}
+
+export interface RecentlyEndedMeeting {
+  id: string;
+  title: string;
+  duration: string;
+  recordingAvailable: boolean;
+  aiSummaryAvailable: boolean;
+}
+
 export interface OrganizationMeeting {
   id: string;
   title: string;

@@ -1,6 +1,6 @@
 # API Contracts
 
-## Notification APIs
+All organization workspace endpoints require authenticated membership in `:organizationId`.
 
 ### GET /api/notifications
 
@@ -220,27 +220,17 @@
 
 ## Organization Details
 
+## Organization and communication
+
 ### GET /api/organizations/:organizationId
 
-**Expected request**
-- Path parameter: organizationId
+Returns organization identity, avatar, status, member count, active-meeting count, and description. Used by the workspace header and utility rail.
 
-**Expected response**
-```json
-{
-  "id": "openai-research",
-  "name": "OpenAI Research",
-  "memberCount": 128,
-  "activeMeetings": 3,
-  "status": "Active",
-  "description": "A high-velocity research organization"
-}
-```
+### GET /api/organizations/:organizationId/chatrooms
 
-**Used by**
-- OrgHeader
-- OrgWorkspaceLayout
+Returns chat rooms available to the member: `id`, `name`, `unreadCount`, and membership/access state. Used by `OrgSidebar`.
 
+<<<<<<< HEAD
 ### POST /api/organizations
 
 **Expected request**
@@ -279,136 +269,42 @@
 
 ## Organization Hierarchy
 
-### GET /api/organizations/:organizationId/hierarchy
+### GET /api/organizations/:organizationId/groups
 
-**Expected request**
-- Path parameter: organizationId
+Returns organization groups: `id`, `name`, `unreadCount`, and membership/access state. Used by `OrgSidebar` and meeting group labels.
 
-**Expected response**
-```json
-{
-  "id": "ceo",
-  "name": "CEO",
-  "manager": "Amina Patel",
-  "members": 14,
-  "activeMeetings": 2,
-  "description": "Executive oversight",
-  "children": []
-}
-```
+### GET /api/organizations/:organizationId/direct-messages
 
-**Used by**
-- HierarchyTab
-- OrgTree
-
-## Department Details
-
-### GET /api/departments/:departmentId
-
-**Expected request**
-- Path parameter: departmentId
-
-**Expected response**
-```json
-{
-  "id": "engineering",
-  "name": "Engineering",
-  "manager": "Rahul Verma",
-  "members": 46,
-  "activeMeetings": 5,
-  "description": "Core product and platform development"
-}
-```
-
-**Used by**
-- DepartmentDetailsPanel
+Returns direct-message conversation summaries for the current member: conversation ID, person summary, last activity, unread count, and active/presence state. Used by `OrgSidebar`.
 
 ## Meetings
 
 ### GET /api/organizations/:organizationId/meetings
 
-**Expected request**
-- Path parameter: organizationId
-
-**Expected response**
-```json
-{
-  "meetings": [
-    {
-      "id": "meeting-1",
-      "title": "Weekly Leadership Sync",
-      "status": "active",
-      "participants": 24,
-      "hierarchyMode": true,
-      "scope": "Entire Organization"
-    }
-  ]
-}
-```
-
-**Used by**
-- OrgWorkspaceLayout meetings tab
+Returns meetings currently active for groups to which the current user belongs, including `id`, `title`, `group`, participant summaries, and join eligibility. Used by Ongoing Meetings.
 
 ### POST /api/organizations/:organizationId/meetings
 
-**Expected request**
+Creates an organization-scoped meeting.
+
 ```json
-{
-  "title": "Strategy sync",
-  "hierarchyMode": true,
-  "scope": "Entire Organization"
-}
+{ "title": "Engineering Standup", "groupId": "group-backend", "scheduledAt": "2026-08-12T10:00:00Z" }
 ```
 
-**Expected response**
-```json
-{
-  "meetingId": "meeting-123",
-  "status": "created"
-}
-```
-
-**Used by**
-- CreateMeetingModal
+Responds with the created meeting ID and join URL. Used by Create Meeting.
 
 ### POST /api/organizations/:organizationId/meetings/join
 
-**Expected request**
-```json
-{
-  "meetingId": "meeting-123"
-}
-```
+Joins an authorized organization meeting using `meetingId` or a meeting code. Responds with meeting ID, authorization state, and join URL. Used by Join Meeting and active-meeting cards.
 
-**Expected response**
-```json
-{
-  "meetingId": "meeting-123",
-  "status": "joined"
-}
-```
+### GET /api/organizations/:organizationId/meetings/upcoming
 
-**Used by**
-- OrgHeader join meeting action
+Returns accepted invitations and meetings for the user’s groups, including time, date, organizer, group, and RSVP/status. Used by Upcoming Meetings.
 
-## AI Summary
+### GET /api/organizations/:organizationId/meetings/recent
 
-### GET /api/organizations/:organizationId/ai-summary
+Returns recently ended meetings with duration, organization retention decisions, recording availability, AI-summary availability, and details URL. Used by Recently Ended.
 
-**Expected request**
-- Path parameter: organizationId
+## Existing global APIs
 
-**Expected response**
-```json
-{
-  "summary": [
-    {
-      "label": "AI summary",
-      "value": "Engineering and Research have coordinated around three active delivery waves this week."
-    }
-  ]
-}
-```
-
-**Used by**
-- AI tab in OrgWorkspaceLayout
+Notification and invitation endpoints remain documented by the corresponding dashboard surfaces and will be consolidated with authenticated API client implementation work.

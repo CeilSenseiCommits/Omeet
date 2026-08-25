@@ -1,4 +1,4 @@
-# Frontend Progress
+# Implementation Progress
 
 ## Completed
 
@@ -29,23 +29,26 @@
 - Dummy organization selector with dependent fields (Position, Senior)
 - Mock invitation submission form and validation
 
+- Dashboard shell, organization carousel, and organization-card routing
+- Shared `AppLayout` with global search, navigation rail, and utility rail
+- Organization workspace shell on `/organization/:organizationId`
+- Workspace header, dashboard back action, organization identity/status, and meeting actions
+- Meetings, Members, Files, and AI navigation; Meetings is the default tab
+- Organization communication sidebar with mock chat rooms, direct messages, groups, unread indicators, and people filtering
+- Organization meeting create/join modals
+- Ongoing, upcoming, and recently ended organization meeting mock surfaces
+- Mock data and TypeScript contracts for organization communication and meeting data
+- Documented future organization workspace API contracts
+
 ## In Progress
 
-- Backend API wiring
-- Meeting room interactions
-- Organization member roster
-- Invitation validation
-- Backend integration
-- Notification API wiring
+- Backend API wiring and persistence
+- Member roster and files data sources
+- Meeting room interactions and realtime meeting state
 
-## Pending
+## Planned Next
 
-- Authentication
-- Hierarchy editing UI
-- AI assistant panel
-- Real-time meeting state
-- Realtime invitation updates
-- Video meeting UI
+- `feature/org-chat-layout`: conversation shell only (message area, composer, conversation header, call/attachment/emoji affordances, right information panel, and thread-ready layout). No chat transport or message persistence in that branch.
 
 ## Backend Pending (Invitations)
 
@@ -61,19 +64,6 @@
 
 ## Technical Debt
 
-- Using mock data instead of real API calls
-- No authentication state
-- No WebSocket or realtime sync
-- No persistence for meeting creation
-- Invitation token validation is mock-only
-- Notification item states are mock-only
-
-## Future Work
-
-- Replace mock data with backend services
-- Add real search API integration
-- Add live meeting updates
-- Add AI-generated organization summaries
-- Add organization notifications
-- Add real invitation lifecycle and token service integration
-- Replace notification lookup mocks with GET /api/notifications, /incoming, /outgoing, and POST read endpoints
+- Workspace data is static mock data.
+- Create/join modals do not invoke APIs or navigate to a meeting room.
+- Conversation controls are presentational pending the next branch and realtime backend work.
