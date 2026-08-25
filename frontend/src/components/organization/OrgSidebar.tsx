@@ -1,109 +1,225 @@
+import { useState, useMemo } from "react";
 import type { ChangeEvent } from "react";
+import { MessageSquare, Users, UserPlus, Search, X } from "lucide-react";
 import type { DirectMessage, OrganizationChatRoom, OrganizationGroup } from "../../types/organization";
 
 interface OrgSidebarProps {
-  searchValue: string;
-  onSearchChange: (value: string) => void;
   chatRooms: OrganizationChatRoom[];
   directMessages: DirectMessage[];
   groups: OrganizationGroup[];
+  onSelectConversation: (id: string) => void;
 }
 
-function OrgSidebar({ searchValue, onSearchChange, chatRooms, directMessages, groups }: OrgSidebarProps) {
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase();
+}
+
+function OrgSidebar({ chatRooms, directMessages, groups, onSelectConversation }: OrgSidebarProps) {
+  const [expandedSection, setExpandedSection] = useState<"rooms" | "dms" | "groups">("rooms");
+  const [searchModes, setSearchModes] = useState({ rooms: false, dms: false, groups: false });
+  const [searchQueries, setSearchQueries] = useState({ rooms: "", dms: "", groups: "" });
+
+  const handleToggleSearch = (section: "rooms" | "dms" | "groups", event: React.MouseEvent) => {
+    event.stopPropagation();
+    setSearchModes((prev) => ({ ...prev, [section]: !prev[section] }));
+    if (searchModes[section]) {
+      setSearchQueries((prev) => ({ ...prev, [section]: "" }));
+    } else {
+      setExpandedSection(section);
+    }
+  };
+
+  const handleSearchChange = (section: "rooms" | "dms" | "groups", e: ChangeEvent<HTMLInputElement>) => {
+    setSearchQueries((prev) => ({ ...prev, [section]: e.target.value }));
+  };
+
+  const filteredRooms = useMemo(() => {
+    if (!searchQueries.rooms) return chatRooms;
+    const lower = searchQueries.rooms.toLowerCase();
+    return chatRooms.filter((r) => r.name.toLowerCase().startsWith(lower)).sort((a, b) => a.name.localeCompare(b.name));
+  }, [chatRooms, searchQueries.rooms]);
+
+  const filteredDms = useMemo(() => {
+    if (!searchQueries.dms) return directMessages;
+    const lower = searchQueries.dms.toLowerCase();
+    return directMessages.filter((m) => m.name.toLowerCase().startsWith(lower)).sort((a, b) => a.name.localeCompare(b.name));
+  }, [directMessages, searchQueries.dms]);
+
+  const filteredGroups = useMemo(() => {
+    if (!searchQueries.groups) return groups;
+    const lower = searchQueries.groups.toLowerCase();
+    return groups.filter((g) => g.name.toLowerCase().startsWith(lower)).sort((a, b) => a.name.localeCompare(b.name));
+  }, [groups, searchQueries.groups]);
+
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Organization chat</p>
-        <div className="mt-4 space-y-3 rounded-3xl border border-zinc-800 bg-zinc-950/70 p-4">
-          <label className="block text-sm font-medium text-zinc-400" htmlFor="org-search">
-            Search people
-          </label>
-          <input
-            id="org-search"
-            type="search"
-            value={searchValue}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => onSearchChange(event.target.value)}
-            placeholder="Search people"
-            className="mt-2 w-full rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-500/20"
-          />
-          <button
-            type="button"
-            className="mt-4 w-full rounded-2xl border border-fuchsia-600 bg-fuchsia-600/10 px-4 py-2 text-sm font-medium text-fuchsia-200 transition hover:bg-fuchsia-600/20"
+    <aside className="flex h-full w-full flex-col">
+      <div className="flex flex-col h-full gap-2 p-3">
+        {/* Chat Rooms Section */}
+        <div className={`flex flex-col rounded-xl border transition-colors ${expandedSection === "rooms" ? "flex-1 overflow-hidden border-fuchsia-900 bg-fuchsia-950/10" : "border-transparent"}`}>
+          <div
+            className={`flex items-center justify-between px-3 py-3 rounded-xl cursor-pointer transition-colors ${expandedSection === "rooms" ? "" : "hover:bg-zinc-800/40"}`}
+            onClick={() => setExpandedSection("rooms")}
           >
-            + Create Group
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Chat Rooms</p>
-        <div className="mt-3 space-y-2 rounded-3xl border border-zinc-800 bg-zinc-950/70 p-3">
-          {chatRooms.map((room) => (
+            <div className="flex items-center gap-3">
+              <MessageSquare className={`h-4 w-4 ${expandedSection === "rooms" ? "text-fuchsia-400" : "text-zinc-500"}`} />
+              <h2 className={`text-sm font-semibold ${expandedSection === "rooms" ? "text-fuchsia-100" : "text-zinc-300"}`}>Chat Rooms</h2>
+            </div>
             <button
-              key={room.id}
               type="button"
-              className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm transition ${
-                room.active ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-300 hover:bg-zinc-900/80"
-              }`}
+              onClick={(e) => handleToggleSearch("rooms", e)}
+              className={`p-1 rounded-md transition-colors ${expandedSection === "rooms" ? "text-fuchsia-300 hover:bg-fuchsia-900/50" : "text-zinc-500 hover:text-white"}`}
+              aria-label="Search chat rooms"
             >
-              <span>{room.name}</span>
-              {room.unreadCount > 0 ? (
-                <span className="rounded-full bg-fuchsia-500 px-2 py-0.5 text-[11px] font-semibold text-white">
-                  {room.unreadCount}
-                </span>
-              ) : null}
+              <Search className="h-4 w-4" />
             </button>
-          ))}
+          </div>
+          {expandedSection === "rooms" && (
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <div className="px-3 pb-3">
+                <input
+                  type="text"
+                  placeholder="Search chat rooms..."
+                  value={searchQueries.rooms}
+                  onChange={(e) => handleSearchChange("rooms", e)}
+                  className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-fuchsia-700 transition-colors"
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto px-2 pb-2 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
+                {filteredRooms.map((room) => (
+                  <button
+                    key={room.id}
+                    onClick={() => onSelectConversation(room.id)}
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors"
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      <span className="text-zinc-500 font-mono">#</span>
+                      <span className="truncate">{room.name}</span>
+                    </span>
+                    {room.unreadCount > 0 && (
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-fuchsia-600 text-[10px] font-bold text-white">
+                        {room.unreadCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Direct Messages</p>
-        <div className="mt-3 space-y-2 rounded-3xl border border-zinc-800 bg-zinc-950/70 p-3">
-          {directMessages.map((message) => (
+        {/* Direct Messages Section */}
+        <div className={`flex flex-col rounded-xl border transition-colors ${expandedSection === "dms" ? "flex-1 overflow-hidden border-fuchsia-900 bg-fuchsia-950/10" : "border-transparent"}`}>
+          <div
+            className={`flex items-center justify-between px-3 py-3 rounded-xl cursor-pointer transition-colors ${expandedSection === "dms" ? "" : "hover:bg-zinc-800/40"}`}
+            onClick={() => setExpandedSection("dms")}
+          >
+            <div className="flex items-center gap-3">
+              <Users className={`h-4 w-4 ${expandedSection === "dms" ? "text-fuchsia-400" : "text-zinc-500"}`} />
+              <h2 className={`text-sm font-semibold ${expandedSection === "dms" ? "text-fuchsia-100" : "text-zinc-300"}`}>Direct Messages</h2>
+            </div>
             <button
-              key={message.id}
               type="button"
-              className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm transition ${
-                message.active ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-300 hover:bg-zinc-900/80"
-              }`}
+              onClick={(e) => handleToggleSearch("dms", e)}
+              className={`p-1 rounded-md transition-colors ${expandedSection === "dms" ? "text-fuchsia-300 hover:bg-fuchsia-900/50" : "text-zinc-500 hover:text-white"}`}
+              aria-label="Search direct messages"
             >
-              <span>
-                <span className="block font-medium text-white">{message.name}</span>
-                <span className="block text-[11px] text-zinc-500">{message.role}</span>
-              </span>
-              {message.unreadCount > 0 ? (
-                <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[11px] font-semibold text-black">
-                  {message.unreadCount}
-                </span>
-              ) : null}
+              <Search className="h-4 w-4" />
             </button>
-          ))}
+          </div>
+          {expandedSection === "dms" && (
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <div className="px-3 pb-3">
+                <input
+                  type="text"
+                  placeholder="Search messages..."
+                  value={searchQueries.dms}
+                  onChange={(e) => handleSearchChange("dms", e)}
+                  className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-fuchsia-700 transition-colors"
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto px-2 pb-2 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
+                {filteredDms.map((dm) => (
+                  <button
+                    key={dm.id}
+                    onClick={() => onSelectConversation(dm.id)}
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors"
+                  >
+                    <span className="flex items-center gap-3 overflow-hidden">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold text-white border border-zinc-700">
+                        {getInitials(dm.name)}
+                      </div>
+                      <span className="flex flex-col truncate">
+                        <span className="truncate font-medium">{dm.name}</span>
+                      </span>
+                    </span>
+                    {dm.unreadCount > 0 && (
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
+                        {dm.unreadCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">Groups</p>
-        <div className="mt-3 space-y-2 rounded-3xl border border-zinc-800 bg-zinc-950/70 p-3">
-          {groups.map((group) => (
+        {/* Groups Section */}
+        <div className={`flex flex-col rounded-xl border transition-colors ${expandedSection === "groups" ? "flex-1 overflow-hidden border-fuchsia-900 bg-fuchsia-950/10" : "border-transparent"}`}>
+          <div
+            className={`flex items-center justify-between px-3 py-3 rounded-xl cursor-pointer transition-colors ${expandedSection === "groups" ? "" : "hover:bg-zinc-800/40"}`}
+            onClick={() => setExpandedSection("groups")}
+          >
+            <div className="flex items-center gap-3">
+              <UserPlus className={`h-4 w-4 ${expandedSection === "groups" ? "text-fuchsia-400" : "text-zinc-500"}`} />
+              <h2 className={`text-sm font-semibold ${expandedSection === "groups" ? "text-fuchsia-100" : "text-zinc-300"}`}>Groups</h2>
+            </div>
             <button
-              key={group.id}
               type="button"
-              className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm transition ${
-                group.active ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-300 hover:bg-zinc-900/80"
-              }`}
+              onClick={(e) => handleToggleSearch("groups", e)}
+              className={`p-1 rounded-md transition-colors ${expandedSection === "groups" ? "text-fuchsia-300 hover:bg-fuchsia-900/50" : "text-zinc-500 hover:text-white"}`}
+              aria-label="Search groups"
             >
-              <span>{group.name}</span>
-              {group.unreadCount > 0 ? (
-                <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[11px] font-semibold text-black">
-                  {group.unreadCount}
-                </span>
-              ) : null}
+              <Search className="h-4 w-4" />
             </button>
-          ))}
+          </div>
+          {expandedSection === "groups" && (
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <div className="px-3 pb-3">
+                <input
+                  type="text"
+                  placeholder="Search groups..."
+                  value={searchQueries.groups}
+                  onChange={(e) => handleSearchChange("groups", e)}
+                  className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-fuchsia-700 transition-colors"
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto px-2 pb-2 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
+                {filteredGroups.map((group) => (
+                  <button
+                    key={group.id}
+                    onClick={() => onSelectConversation(group.id)}
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors"
+                  >
+                    <span className="flex items-center gap-3 truncate">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-[10px] font-bold text-white border border-zinc-700">
+                        {getInitials(group.name)}
+                      </div>
+                      <span className="truncate font-medium">{group.name}</span>
+                    </span>
+                    {group.unreadCount > 0 && (
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
+                        {group.unreadCount}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </aside>
   );
 }
 
