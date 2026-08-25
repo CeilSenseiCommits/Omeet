@@ -6,6 +6,8 @@
 export const API = {
   profile: "/api/profile",
   search: "/api/search",
+  usersSearch: "/api/users/search?name=",
+  userById: "/api/users/:userId",
   organizations: "/api/organizations",
   recentActivity: "/api/activity",
   createMeeting: "/api/meet/create",

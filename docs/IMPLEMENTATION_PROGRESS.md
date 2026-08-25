@@ -23,6 +23,11 @@
 - Organization invitation mock data and token validation route shape
 - Create Organization page UI (`/create-organization`)
 - Create Organization dummy data logic and mock API interaction
+- Invitation creation page UI (Sender side)
+- Navigation from profile to invitation creation
+- Dummy invitee data integration for invitations
+- Dummy organization selector with dependent fields (Position, Senior)
+- Mock invitation submission form and validation
 
 ## In Progress
 
@@ -41,6 +46,18 @@
 - Real-time meeting state
 - Realtime invitation updates
 - Video meeting UI
+
+## Backend Pending (Invitations)
+
+- Authentication-derived inviter logic
+- Organization permissions validation
+- Organization retrieval API (`GET /api/me/organizations`)
+- Employee/senior lookup API
+- Real invitation POST endpoint (`POST /api/organizations/:organizationId/invitations`)
+- Secure token generation
+- Database persistence for invitations
+- Invitation notifications
+- Invitation expiration handling
 
 ## Technical Debt
 

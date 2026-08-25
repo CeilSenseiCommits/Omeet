@@ -18,6 +18,19 @@ export interface ActivityItem {
   dotClass: string;
 }
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  username: string;
+  initials: string;
+  position: string;
+  organization: string;
+  location: string;
+  about: string;
+  skills: string[];
+  organizations: string[];
+}
+
 export interface Notification {
   id: string;
   type: "Organization invitation" | "Meeting invitation" | "Organization announcement" | "Invitation sent";
@@ -27,6 +40,189 @@ export interface Notification {
   direction: "incoming" | "outgoing";
   status?: "Pending" | "Accepted" | "Expired";
 }
+
+export const users: UserProfile[] = [
+  {
+    id: "user_suryansh",
+    name: "Suryansh Rao",
+    username: "suryansh.rao",
+    initials: "SR",
+    position: "Workspace admin",
+    organization: "OpenAI Research",
+    location: "Bangalore",
+    about: "Suryansh leads workspace administration and cross-org onboarding for research and delivery programs.",
+    skills: ["Platform strategy", "Workspace ops", "Collaboration"],
+    organizations: ["OpenAI Research", "Startup Team"],
+  },
+  {
+    id: "user_suraj",
+    name: "Suraj Kumar",
+    username: "suraj.kumar",
+    initials: "SK",
+    position: "ML Platform Engineer",
+    organization: "OpenAI Research",
+    location: "Hyderabad",
+    about: "Suraj owns ML platform readiness and research tooling integration across applied AI programs.",
+    skills: ["Python", "ML Infrastructure", "Pipelines"],
+    organizations: ["OpenAI Research", "University Lab"],
+  },
+  {
+    id: "user_suresh",
+    name: "Suresh Patel",
+    username: "suresh.patel",
+    initials: "SP",
+    position: "Research Operations Lead",
+    organization: "University Lab",
+    location: "Ahmedabad",
+    about: "Suresh coordinates research operations, secure data access, and team readiness for lab programs.",
+    skills: ["Operations", "Research planning", "Governance"],
+    organizations: ["University Lab"],
+  },
+  {
+    id: "user_aman",
+    name: "Aman Singh",
+    username: "aman.singh",
+    initials: "AS",
+    position: "Backend Engineer",
+    organization: "Startup Team",
+    location: "Delhi",
+    about: "Aman designs and ships the backend systems that power the product and collaboration surfaces.",
+    skills: ["Node.js", "APIs", "Architecture"],
+    organizations: ["Startup Team"],
+  },
+  {
+    id: "user_priya",
+    name: "Priya Sharma",
+    username: "priya.sharma",
+    initials: "PS",
+    position: "ML Engineer",
+    organization: "OpenAI Research",
+    location: "Bangalore",
+    about: "Priya leads applied ML programs and contributes to research delivery and experimentation.",
+    skills: ["Applied AI", "Evaluation", "Research"],
+    organizations: ["OpenAI Research"],
+  },
+  {
+    id: "user_rahul",
+    name: "Rahul Verma",
+    username: "rahul.verma",
+    initials: "RV",
+    position: "Engineering Manager",
+    organization: "Engineering",
+    location: "Bangalore",
+    about: "Rahul mentors engineering squads and supports the operating rhythm of cross-functional delivery.",
+    skills: ["Engineering leadership", "Delivery", "Mentoring"],
+    organizations: ["OpenAI Research", "Engineering"],
+  },
+  {
+    id: "user_nina",
+    name: "Nina Patel",
+    username: "nina.patel",
+    initials: "NP",
+    position: "Product Designer",
+    organization: "Product Design",
+    location: "Mumbai",
+    about: "Nina designs product surfaces and helps teams align on collaborative workspace patterns.",
+    skills: ["Design systems", "Workflows", "Research synthesis"],
+    organizations: ["Product Design"],
+  },
+  {
+    id: "user_vikram",
+    name: "Vikram Singh",
+    username: "vikram.singh",
+    initials: "VS",
+    position: "Backend Platform Lead",
+    organization: "OpenAI Research",
+    location: "Pune",
+    about: "Vikram owns platform services, observability, and API readiness for partner teams.",
+    skills: ["Services", "Infrastructure", "APIs"],
+    organizations: ["OpenAI Research"],
+  },
+  {
+    id: "user_neha",
+    name: "Neha Rao",
+    username: "neha.rao",
+    initials: "NR",
+    position: "ML Research Scientist",
+    organization: "OpenAI Research",
+    location: "Chennai",
+    about: "Neha runs data science and experimentation programs that feed model and product intelligence.",
+    skills: ["Modeling", "Evaluation", "Statistics"],
+    organizations: ["OpenAI Research"],
+  },
+  {
+    id: "user_arjun",
+    name: "Arjun Mehta",
+    username: "arjun.mehta",
+    initials: "AM",
+    position: "DevOps Engineer",
+    organization: "Engineering",
+    location: "Jaipur",
+    about: "Arjun keeps deployment, observability, and service reliability aligned with team operating needs.",
+    skills: ["DevOps", "CI/CD", "Cloud"],
+    organizations: ["Engineering"],
+  },
+  {
+    id: "user_mina",
+    name: "Mina Chen",
+    username: "mina.chen",
+    initials: "MC",
+    position: "Research Director",
+    organization: "OpenAI Research",
+    location: "San Francisco",
+    about: "Mina leads research programs that connect model capability with practical workspace transformation.",
+    skills: ["Research strategy", "Evaluation", "Leadership"],
+    organizations: ["OpenAI Research"],
+  },
+  {
+    id: "user_disha",
+    name: "Disha Kapoor",
+    username: "disha.kapoor",
+    initials: "DK",
+    position: "NLP Scientist",
+    organization: "OpenAI Research",
+    location: "Mumbai",
+    about: "Disha researches text intelligence patterns with a practical product and model delivery lens.",
+    skills: ["NLP", "Embeddings", "Evaluation"],
+    organizations: ["OpenAI Research"],
+  },
+  {
+    id: "user_tara",
+    name: "Tara Shah",
+    username: "tara.shah",
+    initials: "TS",
+    position: "Vision Research Lead",
+    organization: "OpenAI Research",
+    location: "Pune",
+    about: "Tara works across multimodal research and practical perception utility features.",
+    skills: ["Vision", "Data analysis", "Research"],
+    organizations: ["OpenAI Research"],
+  },
+  {
+    id: "user_lina",
+    name: "Lina Gomez",
+    username: "lina.gomez",
+    initials: "LG",
+    position: "People Partner",
+    organization: "Human Resources",
+    location: "Bengaluru",
+    about: "Lina's work connects talent programs and employee experience programs to the operating model.",
+    skills: ["Employee lifecycle", "Culture", "Programs"],
+    organizations: ["Human Resources"],
+  },
+  {
+    id: "user_amina",
+    name: "Amina Patel",
+    username: "amina.patel",
+    initials: "AP",
+    position: "Executive Sponsor",
+    organization: "Startup Team",
+    location: "Mumbai",
+    about: "Amina coordinates leadership decisions and cross-functional programs for the growth platform.",
+    skills: ["Executive communication", "Roadmaps", "Operations"],
+    organizations: ["Startup Team"],
+  },
+];
 
 export const notifications: Notification[] = [
   {
@@ -166,8 +362,23 @@ export function searchMockData(query: string) {
     organizations: organizations
       .filter((organization) => organization.name.toLowerCase().includes(normalized))
       .map((organization) => organization.name),
-    people: ["Aman Singh", "Priya Shah", "Nina Patel"].filter((person) => person.toLowerCase().includes(normalized)),
+    people: users
+      .filter((user) => user.name.toLowerCase().includes(normalized))
+      .map((user) => user.name)
+      .sort((left, right) => left.localeCompare(right)),
   };
+}
+
+export function searchUsersByNamePrefix(query: string) {
+  const normalized = query.trim().toLowerCase();
+
+  if (!normalized) {
+    return [];
+  }
+
+  return users
+    .filter((user) => user.name.toLowerCase().startsWith(normalized))
+    .sort((left, right) => left.name.localeCompare(right.name));
 }
 
 export const organizationHierarchy: DepartmentNode = {
@@ -324,3 +535,54 @@ export const currentUser: AuthenticatedUser = {
   email: "suryansh@example.com",
   initials: "SR",
 };
+
+export interface EligibleImmediateSenior {
+  id: string;
+  name: string;
+}
+
+export interface InvitationOrganization {
+  id: string;
+  name: string;
+  availablePositions: string[];
+  eligibleImmediateSeniors: EligibleImmediateSenior[];
+  defaultContactEmail: string;
+  defaultContactPhone: string;
+}
+
+export const invitationOrganizations: InvitationOrganization[] = [
+  {
+    id: "openai-research",
+    name: "OpenAI Research",
+    availablePositions: ["ML Engineer", "Research Scientist", "Backend Platform Lead", "NLP Scientist", "Vision Research Lead"],
+    eligibleImmediateSeniors: [
+      { id: "user_suryansh", name: "Suryansh Rao" },
+      { id: "user_mina", name: "Mina Chen" },
+    ],
+    defaultContactEmail: "hr@openairesearch.example.com",
+    defaultContactPhone: "+1 (555) 010-0001",
+  },
+  {
+    id: "startup-team",
+    name: "Startup Team",
+    availablePositions: ["Software Engineer", "Product Designer", "Backend Engineer"],
+    eligibleImmediateSeniors: [
+      { id: "user_amina", name: "Amina Patel" },
+      { id: "user_suryansh", name: "Suryansh Rao" },
+    ],
+    defaultContactEmail: "careers@startupteam.example.com",
+    defaultContactPhone: "+1 (555) 010-0002",
+  }
+];
+
+export async function sendInvitation(payload: any): Promise<{ success: boolean; message: string }> {
+  // Simulate network latency
+  await new Promise(resolve => setTimeout(resolve, 800));
+  
+  // Basic validation mock
+  if (!payload.organizationId || !payload.position) {
+    throw new Error("Missing required fields");
+  }
+  
+  return { success: true, message: "Invitation sent successfully." };
+}
