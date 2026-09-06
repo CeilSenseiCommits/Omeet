@@ -18,6 +18,7 @@ export interface OrganizationDetails {
   activeMeetings: number;
   status: string;
   description: string;
+  brief?: string;
   hierarchy: DepartmentNode;
   aiSummary: string;
 }
@@ -50,6 +51,7 @@ export interface OngoingMeeting {
   title: string;
   group: string;
   participants: string[];
+  meetingCode?: string;
 }
 
 export interface UpcomingMeeting {

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **3-Way Meeting Creation & Instant/Scheduled Workflows**:
+  - **Direct Message Chat**: Launches meeting pre-populated with the recipient, with the ability to invite additional colleagues from the organization.
+  - **Group Chat**: Launches meeting pre-populated with all group participants, with the ability to invite additional colleagues from the organization.
+  - **Manual Creation ("Create Meeting" button)**: Opens meeting creation with an empty participant roster and searchable organization colleague picker.
+  - **Instant vs. Scheduled Timing**: Users choose between starting an instant meeting (enters video conference immediately) or scheduling for a future date/time.
+- **Access-Gated Video Conferencing Meeting Room (`/meeting/:meetingCode`)**:
+  - **Organization Access Gate**: Meetings created inside an organization dashboard can ONLY be joined by verified active members of that organization. Unauthorized join attempts show a restricted access banner.
+  - **Public Non-Hierarchical Meetings**: Meetings created outside an organization dashboard (e.g. from home page Meet section) are non-hierarchical and open to all authenticated participants.
+  - **Rich Meeting Interface**: Responsive video grid with self preview tile, host/participant stream tiles, active speaker glow, floating control bar (mic, video, screen share, raise hand), participants drawer, and in-meeting chat.
+- **Organization Header Refactoring & Org-Scoped Notification Center**:
+  - Removed "Create Meeting" and "Join Meeting" buttons from the organization top bar (`OrgHeader.tsx`).
+  - Added an **Organization-Scoped Notification Center** in `OrgHeader` filtering membership and meeting invites strictly to the active organization.
+  - The home page notification bell retains global scope across all organizations.
+- **Meeting Invitation Notifications & Upcoming Meetings Feed**:
+  - Provisioned `meeting_invitations` table in PostgreSQL.
+  - Creating a meeting dispatches meeting invite notifications with live status badges and direct "Join Meeting" triggers.
+  - Invited users automatically see the meeting in their "Upcoming Meetings" feed.
 - **Group Details, Member Management & Group Deletion**:
   - Clicking the group icon or header title in `OrgChatView` opens the interactive `GroupInfoModal`.
   - **Member Roster & Roles**: Displays group members with badges (`Owner`, `Admin`, `Member`), organization roles, and join dates.

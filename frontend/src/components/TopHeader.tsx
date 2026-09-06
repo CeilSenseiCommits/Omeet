@@ -4,7 +4,7 @@ import SearchBar from "./SearchBar";
 import NotificationBell from "./NotificationBell";
 import { useAuth } from "../context/AuthContext";
 import { LogOut, ShieldCheck } from "lucide-react";
-import type { IncomingInvitation, OutgoingInvitation } from "../types/invitation";
+import type { IncomingInvitation, OutgoingInvitation, MeetingInvitation } from "../types/invitation";
 
 /**
  * The persistent header owns global identity, live member search, and organization invitation notifications.
@@ -15,9 +15,10 @@ function TopHeader() {
   const navigate = useNavigate();
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [activeNotificationTab, setActiveNotificationTab] = useState<"incoming" | "outgoing">("incoming");
+  const [activeNotificationTab, setActiveNotificationTab] = useState<"incoming" | "meetings" | "outgoing">("incoming");
   const [incomingInvites, setIncomingInvites] = useState<IncomingInvitation[]>([]);
   const [outgoingInvites, setOutgoingInvites] = useState<OutgoingInvitation[]>([]);
+  const [meetingInvites, setMeetingInvites] = useState<MeetingInvitation[]>([]);
   const location = useLocation();
   const isHomePage = location.pathname === "/";
 
@@ -37,6 +38,13 @@ function TopHeader() {
       if (outgoingRes.ok) {
         const data = await outgoingRes.json();
         setOutgoingInvites(data.invitations || []);
+      }
+
+      // 3. Fetch meeting invitations for this user (all organizations)
+      const meetingRes = await fetch(`http://localhost:5000/api/meetings/invitations/user/${user.id}`);
+      if (meetingRes.ok) {
+        const data = await meetingRes.json();
+        setMeetingInvites(data.invitations || []);
       }
     } catch (err) {
       console.warn("Could not query live invitations:", err);
@@ -93,6 +101,7 @@ function TopHeader() {
         <NotificationBell
           incoming={incomingInvites}
           outgoing={outgoingInvites}
+          meetingInvitations={meetingInvites}
           isOpen={isNotificationsOpen}
           activeTab={activeNotificationTab}
           userId={user?.id}

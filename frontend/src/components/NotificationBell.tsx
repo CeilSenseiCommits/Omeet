@@ -1,23 +1,25 @@
 import { useRef, useEffect } from "react";
 import { Bell } from "lucide-react";
 import NotificationDropdown from "./NotificationDropdown";
-import type { IncomingInvitation, OutgoingInvitation } from "../types/invitation";
+import type { IncomingInvitation, OutgoingInvitation, MeetingInvitation } from "../types/invitation";
 
 interface NotificationBellProps {
   incoming: IncomingInvitation[];
   outgoing: OutgoingInvitation[];
+  meetingInvitations?: MeetingInvitation[];
   isOpen: boolean;
-  activeTab: "incoming" | "outgoing";
+  activeTab: "incoming" | "meetings" | "outgoing";
   userId?: string;
   onToggle: () => void;
   onClose?: () => void;
-  onTabChange: (tab: "incoming" | "outgoing") => void;
+  onTabChange: (tab: "incoming" | "meetings" | "outgoing") => void;
   onRefresh?: () => void;
 }
 
 function NotificationBell({
   incoming,
   outgoing,
+  meetingInvitations = [],
   isOpen,
   activeTab,
   userId,
@@ -41,7 +43,9 @@ function NotificationBell({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen, onClose]);
 
-  const unreadCount = incoming.filter((inv) => inv.status === "PENDING").length;
+  const unreadOrgCount = incoming.filter((inv) => inv.status === "PENDING").length;
+  const unreadMeetingsCount = meetingInvitations.filter((inv) => inv.status === "PENDING").length;
+  const unreadCount = unreadOrgCount + unreadMeetingsCount;
 
   return (
     <div ref={bellRef} className="relative">
@@ -68,6 +72,7 @@ function NotificationBell({
       <NotificationDropdown
         incoming={incoming}
         outgoing={outgoing}
+        meetingInvitations={meetingInvitations}
         isOpen={isOpen}
         activeTab={activeTab}
         userId={userId}

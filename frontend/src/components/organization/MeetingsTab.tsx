@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { OngoingMeeting, RecentlyEndedMeeting, UpcomingMeeting } from "../../types/organization";
 import Carousel from "./Carousel";
 import { Video, LogIn, ChevronRight, MoreVertical, Shield } from "lucide-react";
@@ -21,6 +22,7 @@ function MeetingsTab({
   onCreateMeeting,
   onJoinMeeting,
 }: MeetingsTabProps) {
+  const navigate = useNavigate();
   return (
     <div className="flex flex-col space-y-10 py-6">
       <section className="grid gap-6 md:grid-cols-2" aria-label="Organization meeting actions">
@@ -87,7 +89,11 @@ function MeetingsTab({
                     </div>
                   )}
                 </div>
-                <button type="button" onClick={onJoinMeeting} className="rounded-lg bg-fuchsia-900 px-5 py-1.5 text-xs font-semibold text-white transition hover:bg-fuchsia-800 shadow-sm">
+                <button 
+                  type="button" 
+                  onClick={() => meeting.meetingCode ? navigate(`/meeting/${meeting.meetingCode}`) : onJoinMeeting()} 
+                  className="rounded-lg bg-fuchsia-900 px-5 py-1.5 text-xs font-semibold text-white transition hover:bg-fuchsia-800 shadow-sm"
+                >
                   Join
                 </button>
               </div>

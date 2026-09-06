@@ -65,6 +65,10 @@
 - Provisioned `messages` table on PostgreSQL with `GET` and `POST` message endpoints
 - Group details & management modal (`GroupInfoModal`): clickable group header and icon opening group roster, role badges, member addition for admins, member removal with owner guard, group deletion with cascading cleanup, and safe leave group option for members
 - Group participant management APIs (`GET /details`, `POST /participants`, `DELETE /participants/:targetUserId`, `DELETE /conversations/:convId`) with automated system announcements in timeline
+- 3-Way meeting creation workflows (Direct Message pre-fill, Group Chat pre-fill, and Manual employee selection) with colleague expansion and Instant vs. Scheduled timing
+- Access-gated video conferencing meeting room page (`/meeting/:meetingCode`) with organization-only verification vs. non-hierarchical open meetings, stage video grid, bottom controls, and drawer panels
+- Organization header refactoring removing Create/Join buttons and introducing an Organization-Scoped Notification Bell filtering membership and meeting invites strictly to the active workspace
+- Provisioned `meeting_invitations` table on PostgreSQL and connected meeting invites to notifications and the Upcoming Meetings feed
 
 ## In Progress
 

@@ -252,6 +252,67 @@ function OrgChatView({
     ? (recipient?.name || "Direct Message") 
     : (conversation?.name || "Team Chat");
 
+  const handleStartMeetingClick = async () => {
+    if (isDirect && recipient) {
+      onStartMeeting?.({
+        initialType: "DIRECT",
+        initialParticipants: [
+          {
+            id: recipient.id,
+            name: recipient.name,
+            username: recipient.username,
+            avatarUrl: recipient.avatarUrl,
+            position: recipient.position,
+            department: recipient.department,
+          },
+        ],
+        initialTitle: `1:1 Sync with ${recipient.name}`,
+        conversationId,
+      });
+    } else {
+      try {
+        const res = await fetch(
+          `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/details?userId=${user?.id || ""}`,
+          { headers: { "x-user-id": user?.id || "" } }
+        );
+        if (res.ok) {
+          const d = await res.json();
+          const groupParticipants = (d.members || [])
+            .filter((m: any) => m.userId !== user?.id)
+            .map((m: any) => ({
+              id: m.userId,
+              name: m.name,
+              username: m.username,
+              avatarUrl: m.avatarUrl,
+              position: m.position,
+              department: m.department,
+            }));
+
+          onStartMeeting?.({
+            initialType: "GROUP",
+            initialParticipants: groupParticipants,
+            initialTitle: `${conversation?.name || "Team"} Huddle`,
+            conversationId,
+          });
+        } else {
+          onStartMeeting?.({
+            initialType: "GROUP",
+            initialParticipants: [],
+            initialTitle: `${conversation?.name || "Team"} Huddle`,
+            conversationId,
+          });
+        }
+      } catch {
+        onStartMeeting?.({
+          initialType: "GROUP",
+          initialParticipants: [],
+          initialTitle: `${conversation?.name || "Team"} Huddle`,
+          conversationId,
+        });
+      }
+    }
+  };
+
   return (
     <section className="flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800/60 bg-[#111113]">
       {/* 1. Header Bar */}
@@ -312,7 +373,7 @@ function OrgChatView({
           {/* Quick Meeting trigger */}
           <button
             type="button"
-            onClick={() => onStartMeeting?.(isDirect ? recipient : conversation)}
+            onClick={handleStartMeetingClick}
             className="flex items-center gap-1.5 rounded-xl border border-zinc-700/80 bg-zinc-800/70 hover:bg-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:text-white transition shadow-sm"
             title={isDirect ? "Start 1-on-1 Meeting" : "Start Team Huddle"}
           >
@@ -483,7 +544,7 @@ function OrgChatView({
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => onStartMeeting?.(isDirect ? recipient : conversation)}
+                  onClick={handleStartMeetingClick}
                   className="flex items-center gap-1 hover:text-emerald-400 transition"
                   title="Share instant meeting link"
                 >

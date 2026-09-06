@@ -9,6 +9,7 @@ import PublicProfilePage from "./pages/PublicProfilePage";
 import InvitationPage from "./pages/InvitationPage";
 import InvitationPreviewPage from "./pages/InvitationPreviewPage";
 import InviteToOrganization from "./pages/InviteToOrganization";
+import MeetingRoomPage from "./pages/MeetingRoomPage";
 import LoginPage from "./pages/LoginPage";
 
 const GOOGLE_CLIENT_ID =
@@ -86,6 +87,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <InvitationPreviewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/meeting/:meetingCode"
+            element={
+              <ProtectedRoute>
+                <MeetingRoomPage />
               </ProtectedRoute>
             }
           />

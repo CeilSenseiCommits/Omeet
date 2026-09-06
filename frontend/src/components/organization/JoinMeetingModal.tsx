@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface JoinMeetingModalProps {
   isOpen: boolean;
@@ -7,17 +8,20 @@ interface JoinMeetingModalProps {
 }
 
 function JoinMeetingModal({ isOpen, onClose, organizationId }: JoinMeetingModalProps) {
+  const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleJoin = () => {
-    if (!code.trim()) {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) {
       setError("Please enter a valid meeting code.");
       return;
     }
     onClose();
+    navigate(`/meeting/${trimmed}`);
   };
 
   return (

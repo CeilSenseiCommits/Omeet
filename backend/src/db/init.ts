@@ -198,6 +198,13 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_org_meetings_scheduled ON organization_meetings(scheduled_at);
     `);
 
+    console.log("Applying schema migrations for organization_meetings (nullable org, is_hierarchical, meeting_type)...");
+    await client.query(`
+      ALTER TABLE organization_meetings ALTER COLUMN organization_id DROP NOT NULL;
+      ALTER TABLE organization_meetings ADD COLUMN IF NOT EXISTS is_hierarchical BOOLEAN NOT NULL DEFAULT TRUE;
+      ALTER TABLE organization_meetings ADD COLUMN IF NOT EXISTS meeting_type VARCHAR(20) NOT NULL DEFAULT 'INSTANT';
+    `);
+
     console.log("Creating 'meeting_participants' table if not exists...");
     await client.query(`
       CREATE TABLE IF NOT EXISTS meeting_participants (
@@ -209,6 +216,24 @@ export async function initializeDatabase() {
         left_at TIMESTAMPTZ NULL,
         CONSTRAINT uq_meeting_participant UNIQUE (meeting_id, user_id)
       );
+    `);
+
+    console.log("Creating 'meeting_invitations' table if not exists...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS meeting_invitations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        meeting_id UUID NOT NULL REFERENCES organization_meetings(id) ON DELETE CASCADE,
+        organization_id UUID NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        inviter_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invitee_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT uq_meeting_invitee UNIQUE (meeting_id, invitee_user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_meeting_invitations_invitee ON meeting_invitations(invitee_user_id);
+      CREATE INDEX IF NOT EXISTS idx_meeting_invitations_org ON meeting_invitations(organization_id);
+      CREATE INDEX IF NOT EXISTS idx_meeting_invitations_meeting ON meeting_invitations(meeting_id);
     `);
 
     console.log("Provisioning default channels (# general, # random) for all organizations...");

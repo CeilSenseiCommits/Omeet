@@ -394,6 +394,7 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
 router.get("/:id/meetings", async (req: Request, res: Response) => {
   try {
     const orgId = req.params.id;
+    const userId = (req.query.userId as string) || (req.headers["x-user-id"] as string) || "";
 
     const meetingsResult = await query(
       `SELECT 
@@ -407,31 +408,58 @@ router.get("/:id/meetings", async (req: Request, res: Response) => {
          m.ended_at,
          m.has_recording,
          m.has_ai_summary,
+         m.host_user_id,
          u.name AS host_name,
          u.avatar_url AS host_avatar_url,
-         c.name AS channel_name
+         c.name AS channel_name,
+         COALESCE(
+           (
+             SELECT json_agg(json_build_object('id', pu.id, 'name', pu.name, 'avatarUrl', pu.avatar_url, 'role', mp.role))
+             FROM meeting_participants mp
+             JOIN users pu ON pu.id = mp.user_id
+             WHERE mp.meeting_id = m.id
+           ),
+           '[]'::json
+         ) AS participants_data
        FROM organization_meetings m
        JOIN users u ON u.id = m.host_user_id
        LEFT JOIN conversations c ON c.id = m.conversation_id
        WHERE m.organization_id = $1
+         AND (
+           m.status = 'LIVE' 
+           OR m.status = 'ENDED'
+           OR ($2::varchar = '' OR m.scope = 'ORG_WIDE' OR m.host_user_id = $2::uuid OR EXISTS (
+             SELECT 1 FROM meeting_participants mp2 WHERE mp2.meeting_id = m.id AND mp2.user_id = $2::uuid
+           ) OR EXISTS (
+             SELECT 1 FROM meeting_invitations mi2 WHERE mi2.meeting_id = m.id AND mi2.invitee_user_id = $2::uuid
+           ))
+         )
        ORDER BY m.scheduled_at ASC;`,
-      [orgId]
+      [orgId, userId || "00000000-0000-0000-0000-000000000000"]
     );
 
     const ongoingMeetings = meetingsResult.rows
       .filter((m) => m.status === "LIVE")
-      .map((m) => ({
-        id: m.id,
-        title: m.title,
-        group: m.channel_name ? `#${m.channel_name}` : "Workspace Sync",
-        participants: [m.host_name],
-        meetingCode: m.meeting_code,
-      }));
+      .map((m) => {
+        const participantNames = Array.isArray(m.participants_data) && m.participants_data.length > 0
+          ? m.participants_data.map((p: any) => p.name)
+          : [m.host_name];
+        return {
+          id: m.id,
+          title: m.title,
+          group: m.channel_name ? `#${m.channel_name}` : "Workspace Sync",
+          participants: participantNames,
+          meetingCode: m.meeting_code,
+        };
+      });
 
     const upcomingMeetings = meetingsResult.rows
       .filter((m) => m.status === "SCHEDULED")
       .map((m) => {
         const d = new Date(m.scheduled_at);
+        const participantNames = Array.isArray(m.participants_data) && m.participants_data.length > 0
+          ? m.participants_data.map((p: any) => p.name)
+          : [m.host_name];
         return {
           id: m.id,
           title: m.title,
@@ -441,6 +469,7 @@ router.get("/:id/meetings", async (req: Request, res: Response) => {
           group: m.channel_name ? `#${m.channel_name}` : "Workspace Sync",
           status: "Scheduled",
           meetingCode: m.meeting_code,
+          participants: participantNames,
         };
       });
 
@@ -479,7 +508,7 @@ router.get("/:id/meetings", async (req: Request, res: Response) => {
 router.post("/:id/meetings", async (req: Request, res: Response) => {
   try {
     const orgId = req.params.id;
-    const { title, scheduledAt, scope, conversationId, userId } = req.body;
+    const { title, meetingType, scheduledAt, scope, participantUserIds, conversationId, userId } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: "Meeting title is required." });
@@ -488,9 +517,9 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Host user ID is required." });
     }
 
-    const meetingDate = scheduledAt ? new Date(scheduledAt) : new Date();
-    const isInstant = !scheduledAt || new Date(scheduledAt).getTime() <= Date.now() + 60000;
+    const isInstant = meetingType === "INSTANT" || (!scheduledAt && meetingType !== "SCHEDULED");
     const status = isInstant ? "LIVE" : "SCHEDULED";
+    const meetingDate = scheduledAt ? new Date(scheduledAt) : new Date();
 
     // Generate unique meeting code: e.g. OM-7F2A9B
     const hex = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -505,10 +534,11 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
          host_user_id,
          status,
          scope,
+         meeting_type,
          scheduled_at,
          started_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *;`,
       [
         orgId,
@@ -518,12 +548,57 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
         userId,
         status,
         scope || "ORG_WIDE",
+        isInstant ? "INSTANT" : "SCHEDULED",
         meetingDate,
         isInstant ? new Date() : null,
       ]
     );
 
     const meeting = insertResult.rows[0];
+
+    // 1. Insert host participant
+    await query(
+      `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
+       VALUES ($1, $2, 'HOST', NOW())
+       ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+      [meeting.id, userId]
+    );
+
+    // 2. Insert invited participants & meeting invitations
+    if (Array.isArray(participantUserIds) && participantUserIds.length > 0) {
+      for (const pId of participantUserIds) {
+        if (!pId || pId === userId) continue;
+        // Participant table
+        await query(
+          `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
+           VALUES ($1, $2, 'LISTENER', NOW())
+           ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+          [meeting.id, pId]
+        );
+        // Invitation notification record
+        await query(
+          `INSERT INTO meeting_invitations (meeting_id, organization_id, inviter_user_id, invitee_user_id, status)
+           VALUES ($1, $2, $3, $4, 'PENDING')
+           ON CONFLICT (meeting_id, invitee_user_id) DO NOTHING;`,
+          [meeting.id, orgId, userId, pId]
+        );
+      }
+    }
+
+    // 3. If tied to conversation, post system activity message
+    if (conversationId) {
+      const hostUserRes = await query("SELECT name FROM users WHERE id = $1;", [userId]);
+      const hostName = hostUserRes.rows[0]?.name || "Someone";
+      const actionText = isInstant
+        ? `${hostName} started an instant meeting: "${title.trim()}" (Code: ${meetingCode})`
+        : `${hostName} scheduled a meeting: "${title.trim()}" for ${meetingDate.toLocaleString()} (Code: ${meetingCode})`;
+
+      await query(
+        `INSERT INTO messages (conversation_id, sender_id, content, message_type)
+         VALUES ($1, $2, $3, 'SYSTEM');`,
+        [conversationId, userId, actionText]
+      );
+    }
 
     return res.status(201).json({
       success: true,
@@ -532,6 +607,7 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
         meetingCode: meeting.meeting_code,
         title: meeting.title,
         status: meeting.status,
+        meetingType: meeting.meeting_type,
         scheduledAt: meeting.scheduled_at,
       },
     });

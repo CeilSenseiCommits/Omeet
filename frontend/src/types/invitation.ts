@@ -33,3 +33,19 @@ export interface OutgoingInvitation {
   inviteeUsername: string;
   inviteeAvatarUrl?: string | null;
 }
+
+export interface MeetingInvitation {
+  id: string;
+  meetingId: string;
+  meetingCode: string;
+  title: string;
+  meetingStatus: string;
+  scheduledAt: string;
+  startedAt?: string;
+  organizationId?: string;
+  organizationName: string;
+  inviterName: string;
+  inviterAvatarUrl?: string | null;
+  status: "PENDING" | "ACCEPTED" | "DECLINED";
+  createdAt: string;
+}

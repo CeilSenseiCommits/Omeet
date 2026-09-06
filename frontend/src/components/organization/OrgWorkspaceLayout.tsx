@@ -36,6 +36,30 @@ function OrgWorkspaceLayout() {
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const [meetingModalConfig, setMeetingModalConfig] = useState<{
+    initialType: "DIRECT" | "GROUP" | "MANUAL";
+    initialParticipants: any[];
+    initialTitle?: string;
+    conversationId?: string;
+  }>({
+    initialType: "MANUAL",
+    initialParticipants: [],
+  });
+
+  const handleOpenCreateMeeting = (config?: {
+    initialType?: "DIRECT" | "GROUP" | "MANUAL";
+    initialParticipants?: any[];
+    initialTitle?: string;
+    conversationId?: string;
+  }) => {
+    setMeetingModalConfig({
+      initialType: config?.initialType || "MANUAL",
+      initialParticipants: config?.initialParticipants || [],
+      initialTitle: config?.initialTitle,
+      conversationId: config?.conversationId,
+    });
+    setIsCreateModalOpen(true);
+  };
 
   // Live Data State
   const [organization, setOrganization] = useState<OrganizationDetails | null>(null);
@@ -240,7 +264,7 @@ function OrgWorkspaceLayout() {
             conversationId={selectedConversationId}
             onClose={() => setSelectedConversationId(null)}
             onViewProfile={(employee) => setSelectedEmployeeForModal(employee)}
-            onStartMeeting={() => setIsCreateModalOpen(true)}
+            onStartMeeting={(config) => handleOpenCreateMeeting(config)}
             onGroupDeleted={() => {
               setSelectedConversationId(null);
               fetchWorkspaceData();
@@ -282,7 +306,7 @@ function OrgWorkspaceLayout() {
                     ongoingMeetings={ongoingMeetingsList} 
                     upcomingMeetings={upcomingMeetingsList} 
                     recentlyEndedMeetings={recentlyEndedMeetingsList} 
-                    onCreateMeeting={() => setIsCreateModalOpen(true)} 
+                    onCreateMeeting={() => handleOpenCreateMeeting({ initialType: "MANUAL" })} 
                     onJoinMeeting={() => setIsJoinModalOpen(true)} 
                   />
                 )}
@@ -417,6 +441,10 @@ function OrgWorkspaceLayout() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         organizationId={organization.id}
+        initialType={meetingModalConfig.initialType}
+        initialParticipants={meetingModalConfig.initialParticipants}
+        initialTitle={meetingModalConfig.initialTitle}
+        conversationId={meetingModalConfig.conversationId}
         onMeetingCreated={fetchWorkspaceData}
       />
       <JoinMeetingModal
@@ -436,8 +464,24 @@ function OrgWorkspaceLayout() {
         employee={selectedEmployeeForModal}
         onMessage={handleStartDirectMessage}
         onInviteMeeting={() => {
+          const emp = selectedEmployeeForModal;
           setSelectedEmployeeForModal(null);
-          setIsCreateModalOpen(true);
+          if (emp) {
+            handleOpenCreateMeeting({
+              initialType: "DIRECT",
+              initialParticipants: [{
+                id: emp.userId || emp.id,
+                name: emp.name,
+                username: emp.username,
+                avatarUrl: emp.avatarUrl,
+                position: emp.position,
+                department: emp.department,
+              }],
+              initialTitle: `1:1 Meeting with ${emp.name}`,
+            });
+          } else {
+            handleOpenCreateMeeting({ initialType: "MANUAL" });
+          }
         }}
       />
     </main>
