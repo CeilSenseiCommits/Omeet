@@ -3,12 +3,15 @@
 ## Completed
 
 - Dashboard layout
-- Header with search
+- Header with search (Connected to live PostgreSQL search with debouncing and active organization affiliation)
 - Header notification bell and dropdown shell
-- Global notification center tabs and item rendering
-- Organization carousel
+- Global notification center tabs and item rendering (Exclusively real database invitations: Received & Sent)
+- Dynamic notification unread badge counting pending incoming invitations
+- In-app invitation acceptance & decline without page redirection; inline status badges (`✓ Accepted` / `✕ Declined`)
+- Cross-component event dispatch (`organization-updated`) for automatic live re-render of `OrganizationCarousel` on Dashboard
+- Organization carousel (Dynamically fetched from user's active memberships in PostgreSQL)
 - Join Organization CTA and join invite-code modal integration inside the carousel
-- Join organization modal with invite-code input and placeholder navigation handoff
+- Join organization modal with invite-code input and account-exclusive redemption validation
 - Meet section
 - Recent activity feed
 - Left sidebar navigation
@@ -19,30 +22,27 @@
 - Recursive hierarchy tree
 - Department details panel
 - Create meeting modal
-- Notifications mock data layer
-- Organization invitation mock data and token validation route shape
+- Notifications real database layer (`GET /api/invitations/user/:userId`, `GET /api/invitations/sent/:userId`)
+- Organization invitation database persistence and atomic lifecycle
 - Create Organization page UI (`/create-organization`)
-- Create Organization dummy data logic and mock API interaction
-- Invitation creation page UI (Sender side)
-- Navigation from profile to invitation creation
-- Dummy invitee data integration for invitations
-- Dummy organization selector with dependent fields (Position, Senior)
-- Mock invitation submission form and validation
-- Join organization by code UI and mock validation logic
-- Invitation notification preview entry mapping to invitationId
+- Create Organization live API integration with atomic multi-table transaction (`organizations` + `organization_employees`)
+- Invitation creation page UI (Sender side) (`/organization/:organizationId/invite`)
+- Navigation from public profile to invitation creation with organization permissions resolution and modal selector
+- Candidate pre-population via `?candidateId=...` query param in `InviteToOrganization.tsx`
+- Successful invite dispatch and cancel flows returning to candidate profile (`/profile/:id`)
+- Deprecated legacy mock `/invitation/:userId` with automatic redirection
+- Subordinate tree query (`GET /api/organizations/:organizationId/invitation-options`) enforcing strict hierarchy assignment
 - Receiver-side invitation preview page (`/invitation-preview/:invitationId`)
-- Accept/decline mock actions with dummy state tracking
 - Google OAuth Login Page (`/login`)
 - App-wide route authentication guard (`ProtectedRoute`) and session persistence
 - 1-Step User Profile Onboarding Card with real-time unique username handle validation
 - Avatar selector supporting Google profile picture and dynamic initial badge avatars
 - User profile header integration with Sign Out functionality
 - Node.js + Express TypeScript backend initialization (`backend/`)
-- PostgreSQL database schema migrations & initialization script (`init.ts`) for users, organizations, invitations, roles, channels, and meetings
-- Backend user endpoints: Google OAuth token exchange, real-time username availability check, profile completion, and profile retrieval
+- PostgreSQL database schema migrations & initialization script (`init.ts`) for users, organizations, employees, invitations, and permissions
+- Backend user endpoints: Google OAuth token exchange, real-time username availability check, profile completion, profile retrieval, and live user search
 - Backend organization endpoints: user organization listing and organization creation
 - Master System Documentation (`docs/DOCUMENTATION.md`) and Database Schema Specification (`docs/DATABASE_SCHEMA.md`)
-
 - Dashboard shell, organization carousel, and organization-card routing
 - Shared `AppLayout` with global search, navigation rail, and utility rail
 - Organization workspace shell on `/organization/:organizationId`
@@ -56,33 +56,22 @@
 
 ## In Progress
 
-- Frontend-to-backend live API wiring (connecting `mockApi` consumers to Express backend)
-- Member roster and files data sources
-- Meeting room interactions and realtime meeting state
+- Organization Workspace dynamic backend migration:
+  - Designing and creating `conversations` (channels, groups, DMs) and `conversation_participants` tables in PostgreSQL.
+  - Designing and creating `organization_meetings` table in PostgreSQL.
+  - Updating `OrgWorkspaceLayout.tsx` and child components to fetch real organization workspace data by UUID instead of mock arrays.
+- Member roster and files live database sources.
+- Meeting room interactions and realtime meeting state.
 
 ## Planned Next
 
-- `feature/org-chat-layout`: conversation shell only (message area, composer, conversation header, call/attachment/emoji affordances, right information panel, and thread-ready layout). No chat transport or message persistence in that branch.
+- Realtime chat and communication backend using PostgreSQL `conversations` & `conversation_participants`.
+- Meeting creation and joining linked to real `organization_meetings`.
+- Audio/Video WebRTC integration for organization meetings.
 
-## Backend Pending (Invitations)
+## Technical Debt / Next Refactors
 
-- Authentication-derived inviter logic
-- Organization permissions validation
-- Organization retrieval API (`GET /api/me/organizations`)
-- Employee/senior lookup API
-- Real invitation POST endpoint (`POST /api/organizations/:organizationId/invitations`)
-- Secure token generation
-- Database persistence for invitations
-- Invitation notifications
-- Invitation expiration handling
-- Real code/token validation (`POST /api/invitations/validate-code`)
-- Authenticated user and invitation ownership validation (`GET /api/invitations/:invitationId`)
-- Real accept/decline APIs (`POST /api/invitations/:invitationId/accept`, `POST /api/invitations/:invitationId/decline`)
-- Notification updates on acceptance/decline
-- `OrganizationEmployees` record creation upon acceptance
+- Connect `OrgWorkspaceLayout.tsx` to live backend data to eliminate "Unknown workspace" on real organization UUIDs.
+- Connect workspace communication sidebar (Channels, Groups, Direct Messages) to live conversation endpoints.
+- Wire meeting modal triggers to live meeting persistence API.
 
-## Technical Debt
-
-- Workspace data is static mock data.
-- Create/join modals do not invoke APIs or navigate to a meeting room.
-- Conversation controls are presentational pending the next branch and realtime backend work.

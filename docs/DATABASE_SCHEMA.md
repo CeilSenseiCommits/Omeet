@@ -327,3 +327,121 @@ sequenceDiagram
    - `joining_date`: **`CURRENT_DATE`**
 3. **Immediate Home Page update**:
    - Because `organization_employees` has a row linking the creator to the new organization, when the creator goes to the Home Page, the new organization card immediately appears!
+
+---
+
+## 5. Invitation Acceptance Lifecycle (Atomic Transaction)
+
+When an invitee accepts an organization invitation in the in-app Notification Center or Preview Page:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Invitee as User (Invitee)
+    participant API as Backend (POST /api/invitations/:id/respond)
+    participant DB as PostgreSQL Database
+
+    Invitee->>API: POST /api/invitations/:id/respond { action: 'ACCEPT', userId }
+    
+    rect rgb(20, 20, 30)
+    Note over API,DB: BEGIN ATOMIC DATABASE TRANSACTION
+    API->>DB: 1. SELECT * FROM organization_invitations WHERE id = $1 AND invitee_user_id = $2 AND status = 'PENDING' FOR UPDATE
+    DB-->>API: Return invitation record
+    
+    API->>DB: 2. UPDATE organization_invitations SET status = 'ACCEPTED', updated_at = NOW() WHERE id = $1
+    
+    API->>DB: 3. INSERT INTO organization_employees (organization_id, user_id, manager_employee_id, position, department, role, salary, status = 'ACTIVE', has_permission = FALSE)
+    DB-->>API: Return new employee record
+    
+    API->>DB: 4. UPDATE organizations SET employee_count = employee_count + 1 WHERE id = $organization_id
+    DB-->>API: COMMIT TRANSACTION
+    end
+
+    API-->>Invitee: 200 OK { message: "Invitation accepted successfully", status: "ACCEPTED" }
+    Note over Invitee: Frontend dispatches 'organization-updated' event to live-refresh carousel
+```
+
+If the action is `'REJECT'`:
+- `organization_invitations.status` is set to `'REJECTED'`.
+- No entry is inserted into `organization_employees`.
+- The invitation remains in the notification list marked with `'REJECTED'`.
+
+---
+
+## 6. Organization Workspace: Communication & Conversations Schema
+
+To power the Organization Workspace sidebar (Channels, Team Groups, and Direct Messages) with live database data:
+
+### Table 5: `conversations`
+Unified conversation container supporting organizational channels, team groups, and 1-on-1 direct messages.
+
+```sql
+CREATE TABLE conversations (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    type                VARCHAR(20) NOT NULL,                 -- 'CHANNEL' | 'GROUP' | 'DIRECT'
+    name                VARCHAR(100) NULL,                    -- e.g. "general", "frontend-team" (NULL for direct messages)
+    topic               VARCHAR(255) NULL,                    -- Brief room purpose or description
+    is_private          BOOLEAN NOT NULL DEFAULT FALSE,       -- Public to all org members vs restricted
+    created_by          UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_conversations_org ON conversations(organization_id);
+CREATE INDEX idx_conversations_type ON conversations(type);
+```
+
+### Table 6: `conversation_participants`
+Junction table linking employees/users to conversations, tracking membership, roles, and unread counts.
+
+```sql
+CREATE TABLE conversation_participants (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id     UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role                VARCHAR(20) NOT NULL DEFAULT 'MEMBER', -- 'OWNER' | 'ADMIN' | 'MEMBER'
+    last_read_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_conversation_user UNIQUE (conversation_id, user_id)
+);
+
+CREATE INDEX idx_conv_participants_user ON conversation_participants(user_id);
+CREATE INDEX idx_conv_participants_conv ON conversation_participants(conversation_id);
+```
+
+#### Seed Defaults on Organization Creation:
+When an organization is created, the system auto-provisions standard public channels:
+1. `# general`: Organization-wide company announcements and general discussion.
+2. `# random`: Casual watercooler chat.
+3. Automatically enrolls the creator (Owner) as a participant in both channels.
+
+---
+
+## 7. Organization Meetings Schema
+
+### Table 7: `organization_meetings`
+Represents organization-scoped synchronous video/audio meetings (Live, Scheduled, and Past).
+
+```sql
+CREATE TABLE organization_meetings (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    conversation_id     UUID NULL REFERENCES conversations(id) ON DELETE SET NULL,
+    meeting_code        VARCHAR(20) UNIQUE NOT NULL,          -- e.g. "OM-ENG-492"
+    title               VARCHAR(255) NOT NULL,
+    host_user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status              VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED', -- 'SCHEDULED' | 'LIVE' | 'ENDED'
+    scope               VARCHAR(50) NOT NULL DEFAULT 'ORG_WIDE',  -- 'SELF' | 'DIRECT_REPORTS' | 'DEPTH_2' | 'ORG_WIDE'
+    scheduled_at        TIMESTAMPTZ NOT NULL,
+    started_at          TIMESTAMPTZ NULL,
+    ended_at            TIMESTAMPTZ NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_org_meetings_org ON organization_meetings(organization_id);
+CREATE INDEX idx_org_meetings_status ON organization_meetings(status);
+CREATE INDEX idx_org_meetings_scheduled ON organization_meetings(scheduled_at);
+```
+

@@ -482,9 +482,74 @@ When any user logs into OMeet (or navigates to the dashboard):
 3. **Notification Bell:** Populates with high-priority unread items showing:
    - *"Acme Labs Invitation: Priya invited you to join as Senior ML Engineer. Reports to Rahul Verma."*
    - Includes a direct **Preview Invitation** button opening the official offer screen.
-4. **Atomic Acceptance:**
-   - Clicking **Accept** triggers `POST /api/invitations/:id/respond` with `{ action: 'ACCEPT', userId }`.
-   - In a single database transaction, the invitation status becomes `'ACCEPTED'`, `organizations.employee_count` is incremented, and the user is added to `organization_employees` with their assigned direct senior!
+4. **Atomic Acceptance & Notification In-App Response:**
+   - Clicking **Accept** or **Decline** directly inside `NotificationItem.tsx` triggers `POST /api/invitations/:id/respond` with `{ action: 'ACCEPT' | 'REJECT', userId }`.
+   - In a single database transaction, the invitation status becomes `'ACCEPTED'` (or `'REJECTED'`), `organizations.employee_count` is incremented, and the user is added to `organization_employees` with their assigned direct senior!
+   - The notification item stays in the drawer without page redirection, cleanly displaying `✓ Accepted` or `✕ Declined`.
+   - A window event (`organization-updated`) is fired, instantly re-rendering the `OrganizationCarousel` on the dashboard.
+
+---
+
+## 6. Global Live Search & User Public Profile
+
+### 6.1 Real-Time PostgreSQL User Search
+The top navigation bar features a dynamic search input connected directly to the database:
+* **Endpoint:** `GET /api/users/search?q=...`
+* **Debouncing & Efficiency:** 300ms debouncing delay coupled with `AbortController` cancellation prevents stale responses from overwriting newer query results.
+* **Affiliation Enrichment:** Each matching user record automatically joins with `organization_employees` and `organizations` to display the user's primary organization and current title (e.g. `Shivam Pandey (@shivam) • OpenAI Research · Staff Research Engineer`).
+* **Instant Profile Navigation:** Clicking a search result navigates directly to `/profile/:userId`.
+
+### 6.2 Public Profile & Dynamic Invitation Handshake
+* **Endpoint:** `GET /api/users/profile/:userId` retrieves full identity details, bio, timezone, skills, and all active organization affiliations.
+* **Permission-Aware "Invite to Organization" Button:**
+  - When viewing another user's profile, clicking **"Invite to Organization"** queries all organizations where the viewer has invite permissions (`has_permission = true` or `role = 'OWNER'/'ADMIN'`).
+  - **Single Organization:** Seamlessly navigates straight to `/organization/:orgId/invite?candidateId=:targetId`.
+  - **Multiple Organizations:** Opens an elegant modal allowing the viewer to select which organization they wish to recruit the candidate into.
+* **Candidate Pre-Population & Return Routing:**
+  - `InviteToOrganization.tsx` detects `?candidateId=...` and automatically locks the candidate's name and avatar into the form.
+  - Upon sending the invitation or canceling, the user is redirected cleanly back to the candidate's profile (`/profile/:id`), maintaining intuitive navigation.
+
+---
+
+## 7. Dedicated In-App Notification Center
+
+OMeet's notification center is specifically dedicated to real, database-backed organization invitations:
+
+### 7.1 Dual Stream: Received & Sent
+1. **Received Tab (`GET /api/invitations/user/:userId`):**
+   - Displays all invitations directed to the logged-in user.
+   - Preserves historical records (`PENDING`, `ACCEPTED`, `REJECTED`) so users have an audit trail of past invitations.
+2. **Sent Tab (`GET /api/invitations/sent/:userId`):**
+   - Displays all invitations sent by the logged-in user, showing target candidate, position, department, status, and expiration duration.
+
+### 7.2 Dynamic Unread Badge
+* `NotificationBell.tsx` calculates its badge count strictly from incoming invitations with `status === 'PENDING'`.
+* As soon as an invitation is accepted or declined, the unread count automatically decrements to 0.
+
+### 7.3 Frictionless In-App Acceptance & Cross-Component Reactivity
+* **No Unnecessary Redirects:** Responding to an invitation keeps the user in their current flow. Action buttons are replaced by permanent text (`✓ Accepted` / `✕ Declined`).
+* **Live Dashboard Refresh:** When an invite is accepted, an `organization-updated` event is dispatched across the browser window:
+  ```typescript
+  window.dispatchEvent(new Event("organization-updated"));
+  ```
+  The dashboard's `OrganizationCarousel` listens for this event and immediately refetches `GET /api/organizations/user/:userId`, displaying the newly joined organization card in real-time.
+
+---
+
+## 8. Upcoming Architecture: Organization Workspace Dynamic Data System
+
+The next phase transitions the Organization Workspace from static mock data to PostgreSQL-backed entities:
+
+### 8.1 Unified Conversations Model (`conversations` & `conversation_participants`)
+* **Channels:** Public and private text communication channels (e.g. `# general`, `# dev-announcements`).
+* **Team Groups:** Functional cross-subordinate discussion groups tied to organizational departments.
+* **Direct Messages:** 1-on-1 employee communication streams.
+* **Participant Junction:** Tracks user membership, unread counters, and per-conversation roles.
+
+### 8.2 Synchronous Meetings Engine (`organization_meetings`)
+* **Live & Scheduled Meetings:** Stores meeting codes, start/end timestamps, host identity, and communication scope (`ORG_WIDE`, `DIRECT_REPORTS`, `DEPTH_2`).
+* **Deep Dynamic Routing:** Replaces mock array lookups in `OrgWorkspaceLayout.tsx` with dynamic API queries by organization UUID (`GET /api/organizations/:organizationId`), loading real members, channels, and meetings seamlessly.
+
 
 
 

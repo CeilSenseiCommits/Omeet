@@ -60,41 +60,52 @@ recording, chat, and AI summaries can follow in later milestones.
 
 Future scopes may include a team-only room, upward communication, and custom groups.
 
-## Proposed technology stack
+## Technology Stack
 
-- **Frontend:** React and TypeScript
-- **Backend:** Node.js, TypeScript, and a REST API
-- **Database:** PostgreSQL
-- **Real-time events:** WebSockets
-- **Caching / shared real-time state:** Redis
-- **Audio/video:** WebRTC, with a media server when the product scales
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons
+- **Backend:** Node.js, Express, TypeScript
+- **Database:** Neon Serverless PostgreSQL (Connection pooled, SSL)
+- **Authentication:** Google OAuth 2.0 (`@react-oauth/google` + `google-auth-library`)
+- **Real-Time Communication (Planned):** WebSockets, WebRTC
 
-These are proposals, not final decisions. See [HLD.md](./HLD.md) for the architecture and the questions we will answer before implementation.
+## Project Status & Implemented Features
 
-## Project status
+OMeet is actively under development with a fully functional frontend and database-backed backend:
 
-This repository currently contains product and architecture planning. No application code has been written yet.
+- **Google OAuth Authentication & Profiles:** One-tap Google authentication with 1-step profile completion, live unique username validation, and dynamic avatars.
+- **Organization Hierarchy & Management:** Organization creation with atomic multi-table transactions, owner role assignment, and dynamic dashboard carousel.
+- **Live Search & Public Profiles:** Debounced search bar querying PostgreSQL users with organizational affiliation; public profile views with dynamic invitation handshake.
+- **In-App Notification Center:** Dual-stream notification center (Received & Sent tabs) exclusively handling invitations with dynamic unread badges.
+- **Frictionless In-App Acceptance:** Accept or decline invitations without page redirects; automatic `organization_employees` provisioning and live dashboard carousel refresh.
+- **Branded Quick-Share Codes:** `OM-XXXXXX` invite codes with configurable expiration and account-exclusive redemption.
 
-## Documents
+## Quickstart
 
-- [High-level design](./HLD.md)
-- [Project brief](./docs/project-brief.md) *(to be added later from the original idea notes)*
-
-## Getting started with Git
-
-The local repository uses a `main` branch. When you make a meaningful change:
-
+### 1. Backend Setup
 ```bash
-git status
-git add README.md HLD.md
-git commit -m "docs: add initial project documentation"
-git push
+cd backend
+npm install
+npm run migrate # Initializes tables on Neon PostgreSQL
+npm run dev     # Runs on http://localhost:5000
 ```
 
-`git status` shows what changed, `git add` selects changes for the next snapshot,
-`git commit` creates that snapshot locally, and `git push` sends it to GitHub.
+### 2. Frontend Setup
+```bash
+cd frontend
+npm install
+npm run dev     # Runs on http://localhost:5173
+```
+
+## Documentation
+
+- [Master System Documentation](./docs/DOCUMENTATION.md)
+- [Database Schema & Architecture](./docs/DATABASE_SCHEMA.md)
+- [API Contracts](./docs/API_CONTRACTS.md)
+- [Implementation Progress](./docs/IMPLEMENTATION_PROGRESS.md)
+- [High-Level Design](./HLD.md)
+- [Changelog](./docs/CHANGELOG.md)
 
 ## License
 
-No license has been chosen yet. Until one is added, others do not automatically
-have permission to reuse the code.
+All rights reserved.
+

@@ -2,123 +2,122 @@
 
 All organization workspace endpoints require authenticated membership in `:organizationId`.
 
-### GET /api/notifications
+## In-App Notifications & Invitations
 
-**Expected request**
-- Authenticated user context
+Notifications are currently dedicated to real, database-backed organization invitations across two primary streams: **Received** and **Sent**.
 
-**Expected response**
-```json
-{
-  "notifications": [
-    {
-      "id": "notify-001",
-      "type": "Organization invitation",
-      "title": "Organization invitation",
-      "message": "You have been invited to join OpenAI Research as an ML Engineer.",
-      "createdAt": "2 min ago",
-      "direction": "incoming"
-    }
-  ]
-}
-```
+### GET /api/invitations/user/:userId
 
-**Used by**
-- NotificationBell
-- NotificationDropdown
+Returns all incoming invitations directed to the specified user (`oi.invitee_user_id = :userId`), including `PENDING`, `ACCEPTED`, and `REJECTED` states so history is retained in the notification drawer.
 
-### GET /api/notifications/incoming
+**Request**
+- Path parameter: `userId` (UUID)
 
-**Expected request**
-- Authenticated user scope
-
-**Expected response**
-```json
-{
-  "notifications": [
-    {
-      "id": "notify-001",
-      "type": "Organization invitation",
-      "title": "Organization invitation",
-      "message": "You have been invited to join OpenAI Research as an ML Engineer.",
-      "createdAt": "2 min ago",
-      "direction": "incoming"
-    }
-  ]
-}
-```
-
-**Used by**
-- NotificationDropdown Incoming tab
-
-### GET /api/notifications/outgoing
-
-**Expected request**
-- Authenticated user scope
-
-**Expected response**
-```json
-{
-  "notifications": [
-    {
-      "id": "notify-004",
-      "type": "Invitation sent",
-      "title": "Invitation sent to Suryansh Rao",
-      "message": "OpenAI Research invitation is pending acceptance.",
-      "createdAt": "5 min ago",
-      "direction": "outgoing",
-      "status": "Pending"
-    }
-  ]
-}
-```
-
-**Used by**
-- NotificationDropdown Outgoing tab
-
-### POST /api/notifications/:id/read
-
-**Expected request**
-```json
-{
-  "userId": "user_suryansh"
-}
-```
-
-**Expected response**
-```json
-{
-  "id": "notify-001",
-  "isRead": true
-}
-```
-
-**Used by**
-- Future notification center read-state integration
-
-### GET /api/invitations/sent
-
-**Expected request**
-- Authenticated user who is able to issue invitations
-
-**Expected response**
+**Response**
 ```json
 {
   "invitations": [
     {
-      "id": "inv_004",
-      "recipient": "Suryansh Rao",
-      "organization": "OpenAI Research",
-      "status": "Pending"
+      "id": "7b58c734-7164-4e3e-bc5d-0fa6d1dbb801",
+      "invite_code": "OM-7K9P2X",
+      "organization_id": "93f0cb18-20cf-4e31-8f85-3b9845d475ef",
+      "organization_name": "OpenAI Research",
+      "organization_brief": "Frontier AI lab and research collective.",
+      "inviter_name": "Suryansh Rao",
+      "inviter_avatar_url": "https://ui-avatars.com/api/?name=Suryansh+Rao&background=2563eb&color=ffffff",
+      "position": "Staff Research Engineer",
+      "department": "Reasoning & Alignment",
+      "manager_name": "Suryansh Rao",
+      "manager_position": "Founder & Research Lead",
+      "status": "PENDING",
+      "created_at": "2026-09-06T04:12:00.000Z",
+      "expires_at": "2026-09-13T04:12:00.000Z"
     }
   ]
 }
 ```
 
 **Used by**
-- Outgoing notification content in the global notification surface
+- `NotificationBell` (Calculates dynamic unread count where `status === 'PENDING'`)
+- `NotificationDropdown` (Received tab)
 
-## Invitations (Creation)
+---
+
+### GET /api/invitations/sent/:userId
+
+Returns all outgoing invitations sent by the authenticated user (`oi.inviter_user_id = :userId`), displaying the target invitee, position, status, and expiration.
+
+**Request**
+- Path parameter: `userId` (UUID)
+
+**Response**
+```json
+{
+  "invitations": [
+    {
+      "id": "7b58c734-7164-4e3e-bc5d-0fa6d1dbb801",
+      "invite_code": "OM-7K9P2X",
+      "organization_id": "93f0cb18-20cf-4e31-8f85-3b9845d475ef",
+      "organization_name": "OpenAI Research",
+      "invitee_id": "e42dc082-9f32-42ec-a068-07e3ea5935f8",
+      "invitee_name": "Shivam Pandey",
+      "invitee_username": "shivam",
+      "invitee_avatar_url": "https://ui-avatars.com/api/?name=Shivam+Pandey&background=2563eb&color=ffffff",
+      "position": "Staff Research Engineer",
+      "department": "Reasoning & Alignment",
+      "manager_name": "Suryansh Rao",
+      "manager_position": "Founder & Research Lead",
+      "status": "PENDING",
+      "created_at": "2026-09-06T04:12:00.000Z",
+      "expires_at": "2026-09-13T04:12:00.000Z"
+    }
+  ]
+}
+```
+
+**Used by**
+- `NotificationDropdown` (Sent tab)
+
+---
+
+### POST /api/invitations/:id/respond
+
+Atomically processes an invitation response (`ACCEPT` or `REJECT`). When accepted, it creates an `organization_employees` membership record and increments `organizations.employee_count`.
+
+**Request**
+```json
+{
+  "action": "ACCEPT",
+  "userId": "e42dc082-9f32-42ec-a068-07e3ea5935f8"
+}
+```
+
+**Response**
+```json
+{
+  "message": "Invitation accepted successfully",
+  "status": "ACCEPTED",
+  "organizationId": "93f0cb18-20cf-4e31-8f85-3b9845d475ef"
+}
+```
+
+**Database Generation Rules**
+- Atomic transaction:
+  1. Validates invitation exists, is `PENDING`, matches `invitee_user_id = userId`, and has not expired.
+  2. Updates `organization_invitations.status` to `'ACCEPTED'` (or `'REJECTED'`).
+  3. If `ACCEPT`:
+     - Inserts into `organization_employees (organization_id, user_id, manager_employee_id, position, role, salary, status, has_permission)`.
+     - Increments `organizations.employee_count`.
+  4. If `REJECT`:
+     - Skips employee creation.
+- Frontend dispatches `organization-updated` window event to refresh `OrganizationCarousel` on the dashboard.
+
+**Used by**
+- `NotificationItem` inline Accept/Decline action
+- `InvitationPreviewPage`
+
+---
+
 
 ### GET /api/me/organizations
 
@@ -267,51 +266,73 @@ All organization workspace endpoints require authenticated membership in `:organ
 
 ## User Search and Profile APIs
 
-### GET /api/users/search?name=
+### GET /api/users/search
 
-**Expected request**
-- Query parameter: name
+Live PostgreSQL search across registered users by display name, `@username`, or email. Automatically enriches each user with their primary active organization and position. Supports excluding current user and existing organization members/pending invitees.
 
-**Expected response**
+**Request**
+- Query parameters:
+  - `q`: Search query string (min length: 2 characters)
+  - `currentUserId` *(optional)*: Exclude caller from search results
+  - `orgId` *(optional)*: Exclude existing employees or pending invitees of an organization
+
+**Response**
 ```json
 {
   "users": [
     {
-      "id": "user_suraj",
-      "name": "Suraj Kumar",
-      "username": "suraj.kumar",
-      "position": "ML Platform Engineer",
-      "organization": "OpenAI Research"
+      "id": "e42dc082-9f32-42ec-a068-07e3ea5935f8",
+      "name": "Shivam Pandey",
+      "username": "shivam",
+      "email": "shivam@example.com",
+      "avatarUrl": "https://ui-avatars.com/api/?name=Shivam+Pandey&background=2563eb&color=ffffff",
+      "initials": "SP",
+      "bio": "Distributed systems engineer.",
+      "timezone": "Asia/Kolkata",
+      "organization": "OpenAI Research",
+      "position": "Staff Research Engineer"
     }
   ]
 }
 ```
 
 **Used by**
-- SearchBar
+- `SearchBar` (Top navigation with 300ms debounce and AbortController)
+- `InviteToOrganization` (Invitee search and autocomplete)
 
-### GET /api/users/:userId
+---
 
-**Expected request**
-- Path parameter: userId
+### GET /api/users/profile/:userId
 
-**Expected response**
+Fetches complete public profile data for any user by UUID or `@username`, including profile basics, active organization memberships, and roles.
+
+**Request**
+- Path parameter: `userId` (UUID or username handle)
+
+**Response**
 ```json
 {
-  "id": "user_suryansh",
-  "name": "Suryansh Rao",
-  "username": "suryansh.rao",
-  "position": "Workspace admin",
-  "organization": "OpenAI Research",
-  "location": "Bangalore",
-  "about": "Suryansh leads workspace administration and cross-org onboarding for research and delivery programs.",
-  "skills": ["Platform strategy", "Workspace ops", "Collaboration"],
-  "organizations": ["OpenAI Research", "Startup Team"]
+  "user": {
+    "id": "e42dc082-9f32-42ec-a068-07e3ea5935f8",
+    "name": "Shivam Pandey",
+    "username": "shivam",
+    "email": "shivam@example.com",
+    "avatarUrl": "https://ui-avatars.com/api/?name=Shivam+Pandey&background=2563eb&color=ffffff",
+    "initials": "SP",
+    "bio": "Distributed systems engineer.",
+    "location": "Asia/Kolkata",
+    "timezone": "Asia/Kolkata",
+    "position": "Staff Research Engineer",
+    "organization": "OpenAI Research",
+    "organizations": ["OpenAI Research"],
+    "skills": ["Collaboration", "Real-Time Comms", "Team Productivity"]
+  }
 }
 ```
 
 **Used by**
-- PublicProfilePage
+- `PublicProfilePage` (`/profile/:userId`)
+
 
 ## Organization Details
 
