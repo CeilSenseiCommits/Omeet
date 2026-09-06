@@ -170,6 +170,101 @@ All organization workspace endpoints require authenticated membership in `:organ
 **Used by**
 - Send Invitation action in InvitationPage
 
+## Invitations (Receiver / Validation)
+
+### POST /api/invitations/validate-code
+
+**Expected request**
+```json
+{
+  "code": "OPENAI-ML-2026"
+}
+```
+
+**Expected response**
+```json
+{
+  "invitationId": "inv_001",
+  "isValid": true
+}
+```
+
+**Used by**
+- JoinOrganizationModal
+
+### GET /api/invitations/:invitationId
+
+**Expected request**
+- Authenticated user context
+
+**Expected response**
+```json
+{
+  "invitationId": "inv_001",
+  "code": "OPENAI-ML-2026",
+  "organization": { "id": "org_001", "name": "OpenAI Research", "description": "...", "industry": "...", "size": "..." },
+  "invitee": { "id": "user_1024", "name": "Suryansh Rao", "username": "suryansh" },
+  "inviter": { "id": "user_201", "name": "Priya Sharma", "role": "HR Manager", "email": "...", "phone": "..." },
+  "position": "ML Engineer",
+  "department": "Applied AI",
+  "employmentType": "Full-time",
+  "joiningDate": "2026-09-15",
+  "directSenior": { "id": "emp_301", "name": "Rahul Verma", "position": "Senior ML Engineer" },
+  "contactEmail": "hr@...",
+  "contactPhone": "+91...",
+  "status": "PENDING",
+  "createdAt": "2026-08-31T00:00:00Z",
+  "expiresAt": "2026-09-07T00:00:00Z"
+}
+```
+
+**Notes**
+- Validates the invitation exists, hasn't expired, and belongs to the authenticated user.
+
+**Used by**
+- InvitationPreviewPage
+
+### POST /api/invitations/:invitationId/accept
+
+**Expected request**
+- Authenticated user context
+
+**Expected response**
+```json
+{
+  "success": true,
+  "message": "Invitation accepted successfully."
+}
+```
+
+**Database Generation Rules**
+- Backend marks the invitation status as `ACCEPTED`.
+- Backend creates an `OrganizationEmployees` record binding the user to the organization with the specified role and reporting structure.
+- Notification updates to reflect acceptance.
+
+**Used by**
+- InvitationPreviewPage Accept Action
+
+### POST /api/invitations/:invitationId/decline
+
+**Expected request**
+- Authenticated user context
+
+**Expected response**
+```json
+{
+  "success": true,
+  "message": "Invitation declined."
+}
+```
+
+**Database Generation Rules**
+- Backend marks the invitation status as `DECLINED`.
+- Notifies the sender.
+
+**Used by**
+- InvitationPreviewPage Decline Action
+
 ## User Search and Profile APIs
 
 ### GET /api/users/search?name=
@@ -230,7 +325,6 @@ Returns organization identity, avatar, status, member count, active-meeting coun
 
 Returns chat rooms available to the member: `id`, `name`, `unreadCount`, and membership/access state. Used by `OrgSidebar`.
 
-<<<<<<< HEAD
 ### POST /api/organizations
 
 **Expected request**
@@ -239,10 +333,8 @@ Returns chat rooms available to the member: `id`, `name`, `unreadCount`, and mem
 {
   "name": "Acme Corp",
   "description": "A technology company",
-  "industry": "Technology",
-  "size": "51-200",
-  "position": "CEO",
-  "department": "Executive"
+  "size": "1-10 employees",
+  "position": "CEO"
 }
 ```
 
@@ -252,17 +344,16 @@ Returns chat rooms available to the member: `id`, `name`, `unreadCount`, and mem
   "organizationId": "org_12345",
   "name": "Acme Corp",
   "ownerId": "user_456",
+  "employeeCount": 1,
   "createdAt": "2026-08-24T00:00:00Z"
 }
 ```
 
 **Database Generation Rules**
-- Backend generates `organizationId`
-- Backend registers the creator as the owner.
-- Backend adds the creator as the first employee/member.
-- Relationship is stored using `organizationId` and `userId` rather than names.
-- Example initial employee record for the creator: `organizationId: org_123`, `userId: user_456`, `position: Founder`, `role: OWNER`, `joiningDate: [creation date]`, `leavingDate: null`, `status: ACTIVE`.
-- Future iterations may include `managerId`, `mentorId`, and `teamId`.
+- Backend executes an atomic transaction:
+  1. Inserts into `organizations` with `employee_count = 1`.
+  2. Inserts into `organization_employees` linking creator to organization with `role = 'OWNER'` and specified `position`.
+  3. Initializes `hierarchy_tree` with creator node.
 
 **Used by**
 - CreateOrganization page

@@ -5,3 +5,8 @@ node_modules/
 dist/
 
 *.tsbuildinfo
+
+# Local Environment
+.env
+.env.local
+.env.*.local

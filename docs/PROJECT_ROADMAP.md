@@ -4,6 +4,7 @@
 
 - Implement Create Organization frontend page and routing (`/create-organization`)
 - Add Create Organization mock API integration and dummy current user data
+- Implement the receiver-side Invitation Details and Accept/Decline frontend flow (`/invitation-preview/:invitationId`)
 
 ## Near Term
 
@@ -12,7 +13,8 @@
 - Introduce loading and empty states for organization and meeting views.
 - Replace notification mock content with server-side GET /api/notifications and read-state endpoints.
 - Replace user search mock content with GET /api/users/search?name= and GET /api/users/:userId endpoints.
-- Implement the receiver-side Invitation Details and Accept/Decline flow (sender-side is complete).
+- Implement backend validation for the receiver-side Invitation acceptance flow (`validate-code`, `accept`, `decline`).
+- Implement organization membership creation upon accepting an invite.
 
 ## Completed — feature/org-workspace
 

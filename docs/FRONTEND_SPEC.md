@@ -50,11 +50,31 @@ The organization workspace is available at `/organization/:organizationId` and i
 - A user can be invited to an organization by navigating to their public profile (`/profile/:userId`) and clicking "Invite to Organization".
 - The route `/invitation/:userId` hosts the invitation form.
 - **Invitee Card:** Displays the selected user's details (Avatar, Name, Username, ID) in a read-only format.
-- **Organization Selector:** Displays dummy organizations the current user can invite members to.
-- **Dependent Fields:** Selecting an organization dynamically updates the available options for the "Position" and "Immediate Senior" dropdowns, and pre-fills the organization's contact email and phone.
+- **Organization Information:** Select organization with dynamic display of Company Name, Industry, Description, and Company Size (e.g. OpenAI Research, Artificial Intelligence, 100-250 employees).
+- **Offered Role:** Configurable Position (ML Engineer), Department (Applied AI), Employment Type (Full-time), and Expected Joining Date (2026-09-15).
+- **Reporting Structure:** Select and display cards for Direct Senior (e.g., Rahul Verma - RA badge, Senior ML Engineer) and Mentor (e.g., Ananya Mehta - AN badge, AI Research Lead).
+- **Invited By:** Shows inviter profile (Name: Priya Sharma, Role: HR Manager, Email: priya@openai-research.com, Phone: +91 9876543210).
+- **Invitation Details:** Configurable Invited On (2026-08-31) and Expires On (2026-09-07) timestamps.
+- **Organization Contact:** Pre-fills contact email (hr@openai-research.com) and phone (+91 9876543210).
 - **Validation:** Ensures required fields (Organization, Position, Contact Email) are filled before sending.
-- **Mock Submission:** Clicking "Send Invitation" triggers a mock service that mimics network latency, displays a success message, and redirects the user back to the profile page.
+- **Mock Submission:** Clicking "Send Invitation" triggers a mock service that mimics network latency, persists to receiver mock storage, displays a success message, and redirects the user back to the profile page.
 - **Cancel Behavior:** Discards the form and routes back to the profile page without submitting.
+
+## Receiver-Side Invitation / Join Organization Flow
+
+- **Purpose**: Allows a user to view the details of an organization invitation and accept or decline it.
+- **Entry Points**:
+  1. **Unique Code**: The user clicks "Join Organization" on the dashboard, enters an invitation code in the Join Modal, which validates the code and navigates to the preview page.
+  2. **Notification Preview**: The user receives a global notification of type `ORG_INVITATION` and clicks the "Preview Invitation" action button.
+- **Routes**:
+  - Join by code is handled in the `JoinOrganizationModal` component overlaying the dashboard.
+  - The preview page is located at `/invitation-preview/:invitationId`.
+- **Invitation Preview Page**:
+  - Displays comprehensive invitation details: Organization Info, Offered Role, Reporting Structure, Inviter Information, Invitation Metadata (dates and status), and Contact Information.
+- **Actions**:
+  - Accept and Decline buttons trigger mock service requests simulating a backend call, and update the local status to `ACCEPTED` or `DECLINED` respectively.
+  - The frontend relies on opaque tokens and must not generate, decode, or blindly trust mock data representing the invitation.
+- **Future Integration**: The client anticipates real backend validation of codes, token verification, and backend persistence for organization membership records.
 
 ## Architectural Principles
 
@@ -71,19 +91,32 @@ The organization workspace is available at `/organization/:organizationId` and i
 - Notification surfaces are small, contextual, and anchored to global header behavior rather than consuming full-page layout.
 - The notification dropdown is explicit about its two backend-facing domains: incoming user-facing flows and outgoing organizational actions.
 
-## Create Organization
-
 - **Purpose**: Allows a user to create a new organization/workspace.
 - **Route**: `/create-organization`
 - **UI Sections**:
-  - Organization Information (Name, Description, Industry, Size)
-  - Creator Information (Current User Profile, Position, Department)
-- **Form Fields**: Organization Name (required), Position (required). Other fields are optional.
+  - Organization Information (Name, Description, Size)
+  - Creator Information (Current Authenticated User Profile, Position)
+- **Form Fields**: Organization Name (required), Position (required). Description and Size are optional.
+- **Removed Fields**: "Industry / Organization Type" and "Department / Team" have been removed as per the data model simplification.
 - **Validation**: Frontend validates required fields before submission.
-- **Creator/Owner Behavior**: The creator is automatically designated as the OWNER and the first member of the organization.
+- **Creator/Owner Behavior**: The creator is automatically registered in `organizations` (with `employee_count = 1`) and in `organization_employees` as the `OWNER` (Employee #1).
 - **Navigation Behavior**: On success, redirects the user to the newly created organization's workspace (`/organization/:id`).
-- **Dummy-data Behavior**: Uses mock authentication data (`currentUser` from `mockData.ts`) and a simulated API delay (`createOrganizationAPI`) to mimic a real backend roundtrip.
+- **Data Persistence**: Inserts new records into both `dbOrganizations` and `dbOrganizationEmployees`, making the organization immediately appear on the Home Page dashboard.
 
 - The experience is desktop-first and uses the existing dark SaaS visual language.
 - Organization-scoped meetings keep meeting context limited to the organization and its groups.
 - Create and join actions are functional mock modals; persistence and meeting-room navigation await backend wiring.
+
+## Authentication & Route Guard
+
+- **Purpose**: Restricts access to all internal application pages unless the user is authenticated.
+- **Route**: `/login`
+- **Mechanism**:
+  - `AuthProvider` wraps the application root and persists session data in `localStorage`.
+  - `ProtectedRoute` acts as an authentication guard wrapping all protected routes (`/`, `/create-organization`, `/organization/:id`, `/profile/:id`, `/invitation/:id`, `/invitation-preview/:id`).
+  - If unauthenticated, navigating to any protected route immediately redirects the user to `/login`, preserving the intended destination in `location.state.from`.
+  - **Login Flow**:
+    - Focuses on Google OAuth single sign-on with a prominent "Continue with Google" action.
+    - Includes quick demo account selectors (e.g. Suryansh Rao, Priya Sharma) and custom Google account input.
+    - Upon signing in, the user is redirected to the home page (`/`) or their intended destination.
+    - `TopHeader` displays the authenticated user's name, email, avatar, and provides a "Sign Out" action in the profile menu.

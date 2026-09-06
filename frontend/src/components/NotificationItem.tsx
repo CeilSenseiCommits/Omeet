@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import type { Notification } from "../lib/mockData";
 
 interface NotificationItemProps {
@@ -5,6 +6,8 @@ interface NotificationItemProps {
 }
 
 function NotificationItem({ notification }: NotificationItemProps) {
+  const navigate = useNavigate();
+
   return (
     <article className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4 transition hover:bg-zinc-800/50">
       <div className="flex items-start justify-between gap-4">
@@ -27,6 +30,17 @@ function NotificationItem({ notification }: NotificationItemProps) {
           </span>
         ) : null}
       </div>
+
+      {notification.type === "ORG_INVITATION" && notification.invitationId && (
+        <div className="mt-3 flex justify-end">
+          <button
+            onClick={() => navigate(`/invitation-preview/${notification.invitationId}`)}
+            className="rounded-full bg-white px-3 py-1 text-xs font-medium text-black hover:bg-white/90 transition"
+          >
+            Preview Invitation
+          </button>
+        </div>
+      )}
     </article>
   );
 }

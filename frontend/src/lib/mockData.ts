@@ -14,8 +14,10 @@ import type {
 export interface Organization {
   id: string;
   name: string;
-  memberCount: number;
-  activeMeetings: number;
+  brief?: string;
+  description?: string;
+  position?: string;
+  department?: string;
   lastActivity: string;
   initials: string;
   accent: string;
@@ -44,12 +46,13 @@ export interface UserProfile {
 
 export interface Notification {
   id: string;
-  type: "Organization invitation" | "Meeting invitation" | "Organization announcement" | "Invitation sent";
+  type: "Organization invitation" | "Meeting invitation" | "Organization announcement" | "Invitation sent" | "ORG_INVITATION";
   title: string;
   message: string;
   createdAt: string;
   direction: "incoming" | "outgoing";
-  status?: "Pending" | "Accepted" | "Expired";
+  status?: "Pending" | "Accepted" | "Expired" | "UNREAD";
+  invitationId?: string;
 }
 
 export const users: UserProfile[] = [
@@ -287,14 +290,23 @@ export const notifications: Notification[] = [
     direction: "outgoing",
     status: "Expired",
   },
+  {
+    id: "notify-007",
+    type: "ORG_INVITATION",
+    title: "Invitation to join OpenAI Research",
+    message: "Priya Sharma invited you as ML Engineer.",
+    createdAt: "2026-08-31T10:00:00",
+    direction: "incoming",
+    status: "UNREAD",
+    invitationId: "inv_001",
+  },
 ];
 
 export const organizations: Organization[] = [
   {
     id: "openai-research",
     name: "OpenAI Research",
-    memberCount: 128,
-    activeMeetings: 3,
+    description: "AI research and product workspace",
     lastActivity: "12 min ago",
     initials: "OR",
     accent: "bg-fuchsia-500/20 text-fuchsia-200",
@@ -302,8 +314,7 @@ export const organizations: Organization[] = [
   {
     id: "startup-team",
     name: "Startup Team",
-    memberCount: 54,
-    activeMeetings: 2,
+    description: "A focused startup group managing product delivery and early growth experiments.",
     lastActivity: "27 min ago",
     initials: "ST",
     accent: "bg-sky-500/20 text-sky-200",
@@ -311,8 +322,7 @@ export const organizations: Organization[] = [
   {
     id: "university-lab",
     name: "University Lab",
-    memberCount: 81,
-    activeMeetings: 4,
+    description: "Academic lab exploring cutting-edge foundational perception models.",
     lastActivity: "1 hour ago",
     initials: "UL",
     accent: "bg-amber-500/20 text-amber-200",
@@ -320,8 +330,7 @@ export const organizations: Organization[] = [
   {
     id: "product-design",
     name: "Product Design",
-    memberCount: 37,
-    activeMeetings: 1,
+    description: "Design systems, user research, and collaborative workspace experience guild.",
     lastActivity: "3 hours ago",
     initials: "PD",
     accent: "bg-emerald-500/20 text-emerald-200",
@@ -581,42 +590,100 @@ export const currentUser: AuthenticatedUser = {
   initials: "SR",
 };
 
-export interface EligibleImmediateSenior {
+export interface EligiblePerson {
   id: string;
   name: string;
+  position: string;
 }
 
 export interface InvitationOrganization {
   id: string;
   name: string;
+  industry: string;
+  description: string;
+  size: string;
   availablePositions: string[];
-  eligibleImmediateSeniors: EligibleImmediateSenior[];
+  departments: string[];
+  eligibleImmediateSeniors: EligiblePerson[];
+  eligibleMentors: EligiblePerson[];
   defaultContactEmail: string;
   defaultContactPhone: string;
+  inviter: {
+    name: string;
+    role: string;
+    email: string;
+    phone: string;
+  };
+  defaultDepartment?: string;
+  defaultPosition?: string;
+  defaultEmploymentType?: string;
+  defaultJoiningDate?: string;
+  defaultInvitedOn?: string;
+  defaultExpiresOn?: string;
 }
 
 export const invitationOrganizations: InvitationOrganization[] = [
   {
     id: "openai-research",
     name: "OpenAI Research",
+    industry: "Artificial Intelligence",
+    description: "AI research and product workspace",
+    size: "100-250 employees",
     availablePositions: ["ML Engineer", "Research Scientist", "Backend Platform Lead", "NLP Scientist", "Vision Research Lead"],
+    departments: ["Applied AI", "Research Operations", "Core AI", "Platform Engineering"],
     eligibleImmediateSeniors: [
-      { id: "user_suryansh", name: "Suryansh Rao" },
-      { id: "user_mina", name: "Mina Chen" },
+      { id: "emp_301", name: "Rahul Verma", position: "Senior ML Engineer" },
+      { id: "user_mina", name: "Mina Chen", position: "Research Director" },
+      { id: "user_suryansh", name: "Suryansh Rao", position: "Workspace admin" },
     ],
-    defaultContactEmail: "hr@openairesearch.example.com",
-    defaultContactPhone: "+1 (555) 010-0001",
+    eligibleMentors: [
+      { id: "emp_302", name: "Ananya Mehta", position: "AI Research Lead" },
+      { id: "user_neha", name: "Neha Rao", position: "ML Research Scientist" },
+    ],
+    defaultContactEmail: "hr@openai-research.com",
+    defaultContactPhone: "+91 9876543210",
+    inviter: {
+      name: "Priya Sharma",
+      role: "HR Manager",
+      email: "priya@openai-research.com",
+      phone: "+91 9876543210",
+    },
+    defaultDepartment: "Applied AI",
+    defaultPosition: "ML Engineer",
+    defaultEmploymentType: "Full-time",
+    defaultJoiningDate: "2026-09-15",
+    defaultInvitedOn: "2026-08-31",
+    defaultExpiresOn: "2026-09-07",
   },
   {
     id: "startup-team",
     name: "Startup Team",
+    industry: "SaaS & Productivity",
+    description: "A focused startup group managing product delivery and early growth experiments.",
+    size: "50-100 employees",
     availablePositions: ["Software Engineer", "Product Designer", "Backend Engineer"],
+    departments: ["Engineering", "Product Design", "Growth Operations"],
     eligibleImmediateSeniors: [
-      { id: "user_amina", name: "Amina Patel" },
-      { id: "user_suryansh", name: "Suryansh Rao" },
+      { id: "user_amina", name: "Amina Patel", position: "Executive Sponsor" },
+      { id: "user_suryansh", name: "Suryansh Rao", position: "Workspace admin" },
+    ],
+    eligibleMentors: [
+      { id: "user_aman", name: "Aman Singh", position: "Backend Engineer" },
     ],
     defaultContactEmail: "careers@startupteam.example.com",
     defaultContactPhone: "+1 (555) 010-0002",
+    inviter: {
+      name: "Amina Patel",
+      role: "Founder & CEO",
+      email: "amina@startupteam.example.com",
+      phone: "+1 (555) 010-0002",
+    },
+    defaultDepartment: "Engineering",
+    defaultPosition: "Software Engineer",
+    defaultEmploymentType: "Full-time",
+    defaultJoiningDate: "2026-10-01",
+    defaultInvitedOn: "2026-08-31",
+    defaultExpiresOn: "2026-09-14",
   }
 ];
 
@@ -628,6 +695,390 @@ export async function sendInvitation(payload: any): Promise<{ success: boolean; 
   if (!payload.organizationId || !payload.position) {
     throw new Error("Missing required fields");
   }
+
+  const org = invitationOrganizations.find(o => o.id === payload.organizationId);
+  const inviteeUser = users.find(u => u.id === payload.inviteeUserId);
+  const senior = org?.eligibleImmediateSeniors.find(s => s.id === payload.immediateSeniorId);
+  const mentor = org?.eligibleMentors.find(m => m.id === payload.mentorId);
+
+  const newInvitation: ReceiverInvitation = {
+    invitationId: `inv_${Date.now()}`,
+    code: `${org?.name?.split(" ")[0]?.toUpperCase() || "ORG"}-${payload.position?.split(" ")[0]?.toUpperCase() || "ROLE"}-2026`,
+    organization: {
+      id: org?.id || payload.organizationId,
+      name: org?.name || "OpenAI Research",
+      description: org?.description || "AI research and product workspace",
+      industry: org?.industry || "Artificial Intelligence",
+      size: org?.size || "100-250 employees",
+    },
+    invitee: {
+      id: inviteeUser?.id || payload.inviteeUserId || "user_unknown",
+      name: inviteeUser?.name || "Invited User",
+      username: inviteeUser?.username || "invited.user",
+    },
+    inviter: payload.invitedBy || {
+      id: "user_201",
+      name: "Priya Sharma",
+      role: "HR Manager",
+      email: "priya@openai-research.com",
+      phone: "+91 9876543210",
+    },
+    position: payload.position,
+    department: payload.department || "Applied AI",
+    employmentType: payload.employmentType || "Full-time",
+    joiningDate: payload.joiningDate || "2026-09-15",
+    directSenior: {
+      id: senior?.id || "emp_301",
+      name: senior?.name || "Rahul Verma",
+      position: senior?.position || "Senior ML Engineer",
+    },
+    mentor: mentor
+      ? {
+          id: mentor.id,
+          name: mentor.name,
+          position: mentor.position,
+        }
+      : undefined,
+    contactEmail: payload.contactEmail || "hr@openai-research.com",
+    contactPhone: payload.contactPhone || "+91 9876543210",
+    status: "PENDING",
+    createdAt: payload.invitedOn || "2026-08-31",
+    expiresAt: payload.expiresOn || "2026-09-07",
+  };
+
+  receiverInvitations.unshift(newInvitation);
   
   return { success: true, message: "Invitation sent successfully." };
 }
+
+export interface ReceiverInvitation {
+  invitationId: string;
+  code: string;
+  organization: {
+    id: string;
+    name: string;
+    description: string;
+    industry: string;
+    size: string;
+  };
+  invitee: {
+    id: string;
+    name: string;
+    username: string;
+  };
+  inviter: {
+    id: string;
+    name: string;
+    role: string;
+    email: string;
+    phone: string;
+  };
+  position: string;
+  department: string;
+  employmentType: string;
+  joiningDate: string;
+  directSenior: {
+    id: string;
+    name: string;
+    position: string;
+  };
+  mentor?: {
+    id: string;
+    name: string;
+    position: string;
+  };
+  teamLead?: {
+    id: string;
+    name: string;
+    position: string;
+  };
+  contactEmail: string;
+  contactPhone: string;
+  status: "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED";
+  createdAt: string;
+  expiresAt: string;
+}
+
+export const receiverInvitations: ReceiverInvitation[] = [
+  {
+    invitationId: "inv_001",
+    code: "OPENAI-ML-2026",
+    organization: {
+      id: "org_001",
+      name: "OpenAI Research",
+      description: "AI research and product workspace",
+      industry: "Artificial Intelligence",
+      size: "100-250"
+    },
+    invitee: {
+      id: "user_1024",
+      name: "Suryansh Rao",
+      username: "suryansh"
+    },
+    inviter: {
+      id: "user_201",
+      name: "Priya Sharma",
+      role: "HR Manager",
+      email: "priya@openai-research.com",
+      phone: "+91 9876543210"
+    },
+    position: "ML Engineer",
+    department: "Applied AI",
+    employmentType: "Full-time",
+    joiningDate: "2026-09-15",
+    directSenior: {
+      id: "emp_301",
+      name: "Rahul Verma",
+      position: "Senior ML Engineer"
+    },
+    mentor: {
+      id: "emp_302",
+      name: "Ananya Mehta",
+      position: "AI Research Lead"
+    },
+    contactEmail: "hr@openai-research.com",
+    contactPhone: "+91 9876543210",
+    status: "PENDING",
+    createdAt: "2026-08-31",
+    expiresAt: "2026-09-07"
+  }
+];
+
+export async function validateInvitationCode(code: string): Promise<{ isValid: boolean; invitationId?: string }> {
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network
+  const invite = receiverInvitations.find(inv => inv.code === code);
+  if (invite) {
+    return { isValid: true, invitationId: invite.invitationId };
+  }
+  return { isValid: false };
+}
+
+export async function getInvitationById(id: string): Promise<ReceiverInvitation | undefined> {
+  await new Promise(resolve => setTimeout(resolve, 500));
+  return receiverInvitations.find(inv => inv.invitationId === id);
+}
+
+export async function acceptInvitation(id: string): Promise<{ success: boolean; message: string }> {
+  await new Promise(resolve => setTimeout(resolve, 800));
+  const invite = receiverInvitations.find(inv => inv.invitationId === id);
+  if (invite) {
+    invite.status = "ACCEPTED";
+    return { success: true, message: "Invitation accepted successfully." };
+  }
+  throw new Error("Invitation not found");
+}
+
+export async function declineInvitation(id: string): Promise<{ success: boolean; message: string }> {
+  await new Promise(resolve => setTimeout(resolve, 800));
+  const invite = receiverInvitations.find(inv => inv.invitationId === id);
+  if (invite) {
+    invite.status = "DECLINED";
+    return { success: true, message: "Invitation declined." };
+  }
+  throw new Error("Invitation not found");
+}
+
+// -------------------------------------------------------------
+// Database Dummy Tables: Users, Organizations, Organization Employees
+// -------------------------------------------------------------
+
+export interface DbOrganization {
+  id: string;
+  name: string;
+  brief?: string;
+  description: string;
+  size: string;
+  employeeCount: number;
+  ownerId: string;
+  initials: string;
+  accent: string;
+}
+
+export interface DbOrganizationEmployee {
+  id: string;
+  organizationId: string;
+  userId: string;
+  position: string;
+  department?: string;
+  role: "OWNER" | "ADMIN" | "MEMBER";
+  employmentType: string;
+  salary: number;
+  managerEmployeeId?: string;
+  mentorEmployeeId?: string;
+  joiningDate: string;
+  lastAccessedAt: string;
+  status: "ACTIVE" | "INVITED" | "RESIGNED";
+}
+
+export const dbOrganizations: DbOrganization[] = [
+  {
+    id: "openai-research",
+    name: "OpenAI Research",
+    description: "AI research and product workspace",
+    size: "100-250 employees",
+    employeeCount: 128,
+    ownerId: "user_mina",
+    initials: "OR",
+    accent: "bg-fuchsia-500/20 text-fuchsia-200",
+  },
+  {
+    id: "startup-team",
+    name: "Startup Team",
+    description: "A focused startup group managing product delivery and early growth experiments.",
+    size: "50-100 employees",
+    employeeCount: 54,
+    ownerId: "user_amina",
+    initials: "ST",
+    accent: "bg-sky-500/20 text-sky-200",
+  },
+  {
+    id: "university-lab",
+    name: "University Lab",
+    description: "Academic lab exploring cutting-edge foundational perception models.",
+    size: "20-50 employees",
+    employeeCount: 81,
+    ownerId: "user_suresh",
+    initials: "UL",
+    accent: "bg-amber-500/20 text-amber-200",
+  },
+  {
+    id: "product-design",
+    name: "Product Design",
+    description: "Design systems, user research, and collaborative workspace experience guild.",
+    size: "10-25 employees",
+    employeeCount: 37,
+    ownerId: "user_nina",
+    initials: "PD",
+    accent: "bg-emerald-500/20 text-emerald-200",
+  },
+];
+
+export const dbOrganizationEmployees: DbOrganizationEmployee[] = [
+  {
+    id: "emp_sr_01",
+    organizationId: "openai-research",
+    userId: "user_suryansh",
+    position: "Workspace Admin",
+    department: "Applied AI",
+    role: "ADMIN",
+    employmentType: "Full-time",
+    salary: 195000,
+    managerEmployeeId: "emp_301",
+    mentorEmployeeId: "emp_302",
+    joiningDate: "2025-06-01",
+    lastAccessedAt: "12 min ago",
+    status: "ACTIVE",
+  },
+  {
+    id: "emp_sr_02",
+    organizationId: "startup-team",
+    userId: "user_suryansh",
+    position: "Founding Engineer",
+    department: "Core Platform",
+    role: "MEMBER",
+    employmentType: "Part-time",
+    salary: 80000,
+    joiningDate: "2026-01-15",
+    lastAccessedAt: "27 min ago",
+    status: "ACTIVE",
+  },
+  {
+    id: "emp_ps_01",
+    organizationId: "openai-research",
+    userId: "user_priya",
+    position: "HR Manager",
+    department: "People Operations",
+    role: "ADMIN",
+    employmentType: "Full-time",
+    salary: 145000,
+    joiningDate: "2025-03-01",
+    lastAccessedAt: "1 hour ago",
+    status: "ACTIVE",
+  },
+];
+
+/**
+ * Queries the user's active organizations from PostgreSQL backend:
+ * SELECT o.*, e.position, e.department, e.last_accessed_at
+ * FROM organization_employees e
+ * JOIN organizations o ON o.id = e.organization_id
+ * WHERE e.user_id = $userId AND e.status = 'ACTIVE'
+ * ORDER BY e.last_accessed_at DESC;
+ * Falls back to in-memory store if backend is unreachable.
+ */
+export async function fetchUserOrganizations(userId: string): Promise<Organization[]> {
+  // 1. Try real PostgreSQL backend
+  try {
+    const res = await fetch(`http://localhost:5000/api/organizations/user/${userId}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.organizations)) {
+        return data.organizations.map((org: any) => {
+          const initials = org.name
+            .split(" ")
+            .map((n: string) => n[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "OR";
+
+          return {
+            id: org.id,
+            name: org.name,
+            brief: org.brief,
+            description: org.description || org.brief || "",
+            position: org.position,
+            department: org.department || "Organization",
+            lastActivity: org.lastAccessedAt ? new Date(org.lastAccessedAt).toLocaleDateString() : "Just now",
+            initials,
+            accent: "bg-indigo-500/20 text-indigo-200",
+          };
+        });
+      }
+    }
+  } catch (err) {
+    console.warn("Could not query backend for user organizations, falling back to local state:", err);
+  }
+
+  // 2. Fallback to in-memory store
+  await new Promise(resolve => setTimeout(resolve, 200));
+
+  const userMemberships = dbOrganizationEmployees.filter(
+    (emp) => emp.userId === userId && emp.status === "ACTIVE"
+  );
+
+  // If user hasn't joined any organization yet, returns an empty array
+  if (!userMemberships.length) {
+    return [];
+  }
+
+  return userMemberships
+    .map((membership) => {
+      const org = dbOrganizations.find((o) => o.id === membership.organizationId);
+      if (!org) return null;
+      return {
+        id: org.id,
+        name: org.name,
+        brief: org.brief,
+        description: org.description,
+        position: membership.position,
+        department: membership.department,
+        lastActivity: membership.lastAccessedAt,
+        initials: org.initials,
+        accent: org.accent,
+      };
+    })
+    .filter(Boolean) as Organization[];
+}
+
+/**
+ * Updates the user's last_accessed_at timestamp when entering an organization
+ */
+export async function touchOrganizationAccess(userId: string, orgId: string): Promise<void> {
+  const membership = dbOrganizationEmployees.find(
+    (emp) => emp.userId === userId && emp.organizationId === orgId
+  );
+  if (membership) {
+    membership.lastAccessedAt = "Just now";
+  }
+}
+

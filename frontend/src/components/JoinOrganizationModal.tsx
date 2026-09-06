@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { validateInvitationCode } from "../lib/mockData";
 
 interface JoinOrganizationModalProps {
   open: boolean;
@@ -11,15 +12,30 @@ function JoinOrganizationModal({
   onClose,
 }: JoinOrganizationModalProps) {
   const [inviteCode, setInviteCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   if (!open) return null;
 
-  const handleSubmit = () => {
-    navigate("/placeholderForInvitationPage", {
-      state: { inviteCode },
-    });
-    onClose();
+  const handleSubmit = async () => {
+    if (!inviteCode.trim()) return;
+    setError(null);
+    setLoading(true);
+    
+    try {
+      const response = await validateInvitationCode(inviteCode.trim());
+      if (response.isValid && response.invitationId) {
+        navigate(`/invitation-preview/${response.invitationId}`);
+        onClose();
+      } else {
+        setError("Invalid or expired invitation code.");
+      }
+    } catch (err) {
+      setError("An error occurred while validating the code.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -44,10 +60,17 @@ function JoinOrganizationModal({
 
         <input
           value={inviteCode}
-          onChange={(e) => setInviteCode(e.target.value)}
+          onChange={(e) => {
+            setInviteCode(e.target.value);
+            setError(null);
+          }}
           placeholder="Enter invite code"
           className="mt-5 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-white/30 focus:border-white/20"
         />
+
+        {error && (
+          <p className="mt-2 text-sm text-red-400">{error}</p>
+        )}
 
         <div className="mt-6 flex justify-end gap-3">
           <button
@@ -59,9 +82,10 @@ function JoinOrganizationModal({
 
           <button
             onClick={handleSubmit}
-            className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black hover:bg-white/90"
+            disabled={loading || !inviteCode.trim()}
+            className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Submit
+            {loading ? "Validating..." : "Submit"}
           </button>
         </div>
       </div>

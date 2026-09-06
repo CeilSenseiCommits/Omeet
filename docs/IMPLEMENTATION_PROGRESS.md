@@ -28,6 +28,13 @@
 - Dummy invitee data integration for invitations
 - Dummy organization selector with dependent fields (Position, Senior)
 - Mock invitation submission form and validation
+- Join organization by code UI and mock validation logic
+- Invitation notification preview entry mapping to invitationId
+- Receiver-side invitation preview page (`/invitation-preview/:invitationId`)
+- Accept/decline mock actions with dummy state tracking
+- Google OAuth Login Page (`/login`)
+- App-wide route authentication guard (`ProtectedRoute`) and session persistence
+- User profile header integration with Sign Out functionality
 
 - Dashboard shell, organization carousel, and organization-card routing
 - Shared `AppLayout` with global search, navigation rail, and utility rail
@@ -61,6 +68,11 @@
 - Database persistence for invitations
 - Invitation notifications
 - Invitation expiration handling
+- Real code/token validation (`POST /api/invitations/validate-code`)
+- Authenticated user and invitation ownership validation (`GET /api/invitations/:invitationId`)
+- Real accept/decline APIs (`POST /api/invitations/:invitationId/accept`, `POST /api/invitations/:invitationId/decline`)
+- Notification updates on acceptance/decline
+- `OrganizationEmployees` record creation upon acceptance
 
 ## Technical Debt
 

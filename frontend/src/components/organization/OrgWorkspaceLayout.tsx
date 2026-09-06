@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Calendar, Users, Folder, Sparkles } from "lucide-react";
 import {
@@ -10,7 +10,9 @@ import {
   organizationSummary,
   recentlyEndedMeetings,
   upcomingOrganizationMeetings,
+  touchOrganizationAccess,
 } from "../../lib/mockData";
+import { useAuth } from "../../context/AuthContext";
 import type { OrganizationDetails } from "../../types/organization";
 import CreateMeetingModal from "./CreateMeetingModal";
 import JoinMeetingModal from "./JoinMeetingModal";
@@ -34,6 +36,14 @@ function OrgWorkspaceLayout() {
     () => organizationDetails.find((item) => item.id === organizationId),
     [organizationId],
   );
+
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user?.id && organizationId) {
+      touchOrganizationAccess(user.id, organizationId);
+    }
+  }, [user?.id, organizationId]);
 
   if (!organization) {
     return <main className="flex min-h-screen items-center justify-center bg-[#09090b] px-6 text-white"><div className="rounded-xl border border-zinc-800 bg-[#111113] p-8 text-center"><p className="text-sm font-medium uppercase tracking-[0.26em] text-zinc-500">Unknown workspace</p><h1 className="mt-3 text-2xl font-semibold">This organization could not be loaded.</h1><button type="button" onClick={() => navigate("/")} className="mt-5 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-white">Return to dashboard</button></div></main>;

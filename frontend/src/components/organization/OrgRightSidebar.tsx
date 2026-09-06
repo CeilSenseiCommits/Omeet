@@ -28,7 +28,9 @@ function OrgRightSidebar({ organization, isCollapsed, onToggle }: OrgRightSideba
             {getInitials(organization.name)}
           </div>
           <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" title="Workspace Active" />
-          <Lock className="h-4 w-4 text-zinc-500" title="Privacy settings" />
+          <div title="Privacy settings">
+            <Lock className="h-4 w-4 text-zinc-500" />
+          </div>
         </div>
       </aside>
     );

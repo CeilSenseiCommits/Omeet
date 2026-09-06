@@ -157,7 +157,6 @@ function MeetingsTab({
             <article key={meeting.id} className="flex h-full flex-col justify-between rounded-xl border border-zinc-800/60 bg-[#151517] p-5 hover:border-zinc-700 transition">
               <div>
                 <p className="font-semibold text-white text-base truncate">{meeting.title}</p>
-                <p className="text-xs font-medium text-zinc-400 mt-1">{meeting.group}</p>
                 <p className="text-[10px] text-zinc-500 mt-1.5">Ended {meeting.duration} ago • 45 min</p>
               </div>
               <div className="mt-4 flex gap-2">
