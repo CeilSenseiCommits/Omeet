@@ -33,6 +33,8 @@ interface MeetingData {
   isHierarchical: boolean;
   scheduledAt: string;
   startedAt?: string;
+  endedAt?: string;
+  isEnded?: boolean;
   host: {
     id: string;
     name: string;
@@ -62,6 +64,12 @@ function MeetingRoomPage() {
   const [restrictedOrgName, setRestrictedOrgName] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
+  // Meeting Termination & Leaving State
+  const [isEndModalOpen, setIsEndModalOpen] = useState(false);
+  const [isEndingMeeting, setIsEndingMeeting] = useState(false);
+  const [isMeetingEnded, setIsMeetingEnded] = useState(false);
+  const [endReason, setEndReason] = useState<string>("");
+
   // Audio / Video controls
   const [isMicOn, setIsMicOn] = useState(true);
   const [isCameraOn, setIsCameraOn] = useState(true);
@@ -76,6 +84,8 @@ function MeetingRoomPage() {
   const [chatInput, setChatInput] = useState("");
   const [copiedCode, setCopiedCode] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const isHost = Boolean(meeting && user && meeting.host.id === user.id);
 
   // 1. Verify meeting & load room data
   useEffect(() => {
@@ -112,6 +122,11 @@ function MeetingRoomPage() {
         }
 
         const data = await res.json();
+        if (data.meeting?.status === "ENDED" || data.meeting?.isEnded) {
+          setIsMeetingEnded(true);
+          setEndReason("This meeting has already ended.");
+          return;
+        }
         setMeeting(data.meeting);
       } catch (err: any) {
         console.error("Error joining meeting room:", err);
@@ -122,6 +137,30 @@ function MeetingRoomPage() {
 
     verifyAndLoadMeeting();
   }, [meetingCode, user?.id]);
+
+  // Periodic Status Polling for End-for-All & Inactivity Expiration
+  useEffect(() => {
+    if (!meetingCode || isMeetingEnded || isLoading) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/meetings/${meetingCode}?userId=${user?.id || ""}`, {
+          headers: { "x-user-id": user?.id || "" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.meeting?.status === "ENDED" || data.meeting?.isEnded) {
+            setIsMeetingEnded(true);
+            setEndReason("This meeting was ended by the host.");
+          }
+        }
+      } catch {
+        // network blip, retry next interval
+      }
+    }, 6000);
+
+    return () => clearInterval(pollInterval);
+  }, [meetingCode, user?.id, isMeetingEnded, isLoading]);
 
   // Timer
   useEffect(() => {
@@ -160,11 +199,62 @@ function MeetingRoomPage() {
     setChatInput("");
   };
 
-  const handleLeaveMeeting = () => {
+  const handleRedirectOut = () => {
     if (meeting?.organization?.id) {
       navigate(`/organization/${meeting.organization.id}`);
     } else {
       navigate("/");
+    }
+  };
+
+  const handleLeaveClick = () => {
+    if (isHost) {
+      setIsEndModalOpen(true);
+    } else {
+      handleConfirmLeaveOnly();
+    }
+  };
+
+  const handleConfirmEndForAll = async () => {
+    if (!meetingCode || !user?.id) return;
+    try {
+      setIsEndingMeeting(true);
+      await fetch(`http://localhost:5000/api/meetings/${meetingCode}/end`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      setIsEndModalOpen(false);
+      handleRedirectOut();
+    } catch (err) {
+      console.error("Failed to end meeting:", err);
+      handleRedirectOut();
+    } finally {
+      setIsEndingMeeting(false);
+    }
+  };
+
+  const handleConfirmLeaveOnly = async () => {
+    if (!meetingCode) return;
+    try {
+      if (user?.id) {
+        await fetch(`http://localhost:5000/api/meetings/${meetingCode}/leave`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-id": user.id,
+          },
+          body: JSON.stringify({ userId: user.id }),
+        });
+      }
+      setIsEndModalOpen(false);
+      handleRedirectOut();
+    } catch (err) {
+      console.error("Failed to leave meeting:", err);
+      handleRedirectOut();
     }
   };
 
@@ -175,6 +265,32 @@ function MeetingRoomPage() {
         <Loader2 className="h-10 w-10 animate-spin text-fuchsia-500 mb-4" />
         <h2 className="text-lg font-semibold tracking-wide">Connecting to Meeting Room...</h2>
         <p className="mt-1 text-sm text-zinc-400 font-mono">Verifying credentials & organization permissions</p>
+      </div>
+    );
+  }
+
+  // Meeting Ended View
+  if (isMeetingEnded) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#09090b] px-4">
+        <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-[#121215] p-8 text-center shadow-2xl space-y-4">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-rose-800/50 bg-rose-950/40 text-rose-400 shadow-lg shadow-rose-950/40">
+            <PhoneOff className="h-8 w-8" />
+          </div>
+
+          <h1 className="text-2xl font-bold tracking-tight text-white">Meeting Ended</h1>
+          <p className="text-sm text-zinc-400 leading-relaxed">
+            {endReason || "This meeting has concluded."}
+          </p>
+
+          <button
+            type="button"
+            onClick={handleRedirectOut}
+            className="mt-4 w-full rounded-2xl bg-fuchsia-600 hover:bg-fuchsia-500 py-3 text-sm font-semibold text-white transition shadow-lg shadow-fuchsia-950/50"
+          >
+            Return to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
@@ -251,12 +367,12 @@ function MeetingRoomPage() {
         <div className="flex items-center gap-4 min-w-0">
           <button
             type="button"
-            onClick={handleLeaveMeeting}
+            onClick={handleLeaveClick}
             className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/90 hover:bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-300 transition"
-            title="Leave meeting"
+            title={isHost ? "End or leave meeting" : "Leave meeting"}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Leave</span>
+            <span className="hidden sm:inline">{isHost ? "Exit" : "Leave"}</span>
           </button>
 
           <div className="min-w-0">
@@ -626,15 +742,70 @@ function MeetingRoomPage() {
           {/* End Call / Leave */}
           <button
             type="button"
-            onClick={handleLeaveMeeting}
-            className="flex h-12 items-center gap-2 rounded-2xl bg-rose-600 hover:bg-rose-500 px-6 text-sm font-semibold text-white transition shadow-lg shadow-rose-950/50"
-            title="Leave meeting room"
+            onClick={handleLeaveClick}
+            className={`flex h-12 items-center gap-2 rounded-2xl px-6 text-sm font-semibold text-white transition shadow-lg ${
+              isHost
+                ? "bg-rose-600 hover:bg-rose-500 shadow-rose-950/50"
+                : "bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+            }`}
+            title={isHost ? "End meeting for all or leave" : "Leave meeting room"}
           >
             <PhoneOff className="h-5 w-5" />
-            <span className="hidden sm:inline">Leave Room</span>
+            <span className="hidden sm:inline">{isHost ? "End Meeting" : "Leave Room"}</span>
           </button>
         </div>
       </footer>
+
+      {/* End Meeting Modal for Host */}
+      {isEndModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-zinc-800 bg-[#121215] p-6 shadow-2xl space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-800/60 bg-rose-950/40 text-rose-400 shadow-lg shadow-rose-950/30">
+                <PhoneOff className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-white">End Meeting</h3>
+                <p className="text-xs text-zinc-400">Choose how to exit this room</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-300 leading-relaxed">
+              You are the meeting creator. You can choose to <strong className="text-white">End the meeting for all participants</strong> immediately, or simply <strong className="text-white">Leave</strong> and let other participants continue.
+            </p>
+
+            <div className="space-y-2.5 pt-2">
+              <button
+                type="button"
+                disabled={isEndingMeeting}
+                onClick={handleConfirmEndForAll}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 hover:bg-rose-500 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-rose-950/50 transition disabled:opacity-50"
+              >
+                {isEndingMeeting ? <Loader2 className="h-4 w-4 animate-spin" /> : <PhoneOff className="h-4 w-4" />}
+                End Meeting for All
+              </button>
+
+              <button
+                type="button"
+                disabled={isEndingMeeting}
+                onClick={handleConfirmLeaveOnly}
+                className="flex w-full items-center justify-center rounded-2xl border border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 py-3 text-xs font-semibold text-zinc-200 transition disabled:opacity-50"
+              >
+                Just Leave Meeting
+              </button>
+
+              <button
+                type="button"
+                disabled={isEndingMeeting}
+                onClick={() => setIsEndModalOpen(false)}
+                className="w-full text-center py-2 text-xs font-medium text-zinc-400 hover:text-white transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

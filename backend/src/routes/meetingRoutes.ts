@@ -4,6 +4,54 @@ import { query } from "../db";
 const router = Router();
 
 /**
+ * Helper to auto-terminate abandoned or no-show meetings per business rules:
+ * 1. Scheduled meeting with no-shows > 20 mins past scheduled_at: marked ENDED
+ * 2. Active meeting where all participants left > 10 mins ago: marked ENDED
+ */
+export async function autoCleanExpiredMeetings(organizationId?: string): Promise<void> {
+  try {
+    // 1. Scheduled meetings with no one joining 20 mins past scheduled time
+    await query(
+      `UPDATE organization_meetings m
+       SET status = 'ENDED', ended_at = NOW(), updated_at = NOW()
+       WHERE m.status IN ('SCHEDULED', 'LIVE')
+         AND ($1::uuid IS NULL OR m.organization_id = $1::uuid)
+         AND m.scheduled_at < NOW() - INTERVAL '20 minutes'
+         AND (
+           NOT EXISTS (
+             SELECT 1 FROM meeting_participants mp
+             WHERE mp.meeting_id = m.id AND mp.left_at IS NULL
+           )
+           AND (
+             SELECT COUNT(*) FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.user_id != m.host_user_id
+           ) = 0
+         );`,
+      [organizationId || null]
+    );
+
+    // 2. Active meetings where people joined and everyone left > 10 minutes ago
+    await query(
+      `UPDATE organization_meetings m
+       SET status = 'ENDED', ended_at = NOW(), updated_at = NOW()
+       WHERE m.status = 'LIVE'
+         AND ($1::uuid IS NULL OR m.organization_id = $1::uuid)
+         AND EXISTS (
+           SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM meeting_participants mp WHERE mp.meeting_id = m.id AND mp.left_at IS NULL
+         )
+         AND (
+           SELECT MAX(mp.left_at) FROM meeting_participants mp WHERE mp.meeting_id = m.id
+         ) < NOW() - INTERVAL '10 minutes';`,
+      [organizationId || null]
+    );
+  } catch (err) {
+    console.error("Error in autoCleanExpiredMeetings:", err);
+  }
+}
+
+/**
  * GET /api/meetings/:meetingCode
  * Access gate check and meeting room metadata resolution.
  * - If meeting belongs to an organization, caller MUST be an active member of that organization.
@@ -13,6 +61,9 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
   try {
     const { meetingCode } = req.params;
     const userId = (req.query.userId as string) || (req.headers["x-user-id"] as string) || "";
+
+    // Execute auto-clean rules before resolving
+    await autoCleanExpiredMeetings();
 
     const rawCode = String(meetingCode || "").toUpperCase().trim();
     let normalizedCode = rawCode;
@@ -119,6 +170,8 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
           isHierarchical: meeting.is_hierarchical,
           scheduledAt: meeting.scheduled_at,
           startedAt: meeting.started_at,
+          endedAt: meeting.ended_at,
+          isEnded: meeting.status === "ENDED",
           host: {
             id: meeting.host_user_id,
             name: meeting.host_name,
@@ -136,7 +189,7 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
     }
 
     // Non-hierarchical / Public meeting
-    if (userId) {
+    if (userId && meeting.status !== "ENDED") {
       await query(
         `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
          VALUES ($1, $2, 'LISTENER', NOW())
@@ -162,6 +215,8 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
         isHierarchical: false,
         scheduledAt: meeting.scheduled_at,
         startedAt: meeting.started_at,
+        endedAt: meeting.ended_at,
+        isEnded: meeting.status === "ENDED",
         host: {
           id: meeting.host_user_id,
           name: meeting.host_name,
@@ -175,6 +230,113 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error verifying meeting access:", error);
     return res.status(500).json({ error: "Failed to load meeting room." });
+  }
+});
+
+/**
+ * POST /api/meetings/:meetingCode/end
+ * Meeting creator / host ends the meeting for all participants.
+ */
+router.post("/:meetingCode/end", async (req: Request, res: Response) => {
+  try {
+    const { meetingCode } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Host user ID is required." });
+    }
+
+    const rawCode = String(meetingCode || "").toUpperCase().trim();
+    let normalizedCode = rawCode;
+    if (!normalizedCode.startsWith("OM-") && normalizedCode.length > 0) {
+      normalizedCode = `OM-${normalizedCode}`;
+    }
+
+    const meetingResult = await query(
+      `SELECT id, host_user_id, status FROM organization_meetings
+       WHERE meeting_code = $1 OR meeting_code = $2;`,
+      [rawCode, normalizedCode]
+    );
+
+    if (meetingResult.rows.length === 0) {
+      return res.status(404).json({ error: "Meeting not found." });
+    }
+
+    const meeting = meetingResult.rows[0];
+
+    // Verify caller is the host
+    if (meeting.host_user_id !== userId) {
+      return res.status(403).json({ error: "Only the meeting host can end the meeting for all participants." });
+    }
+
+    // Mark meeting as ENDED
+    await query(
+      `UPDATE organization_meetings
+       SET status = 'ENDED', ended_at = NOW(), updated_at = NOW()
+       WHERE id = $1;`,
+      [meeting.id]
+    );
+
+    // Mark all remaining participants as left
+    await query(
+      `UPDATE meeting_participants
+       SET left_at = NOW()
+       WHERE meeting_id = $1 AND left_at IS NULL;`,
+      [meeting.id]
+    );
+
+    return res.status(200).json({ success: true, message: "Meeting ended for all participants." });
+  } catch (error) {
+    console.error("Failed to end meeting for all:", error);
+    return res.status(500).json({ error: "Failed to end meeting." });
+  }
+});
+
+/**
+ * POST /api/meetings/:meetingCode/leave
+ * Participant leaves the meeting room (sets left_at).
+ */
+router.post("/:meetingCode/leave", async (req: Request, res: Response) => {
+  try {
+    const { meetingCode } = req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User ID is required." });
+    }
+
+    const rawCode = String(meetingCode || "").toUpperCase().trim();
+    let normalizedCode = rawCode;
+    if (!normalizedCode.startsWith("OM-") && normalizedCode.length > 0) {
+      normalizedCode = `OM-${normalizedCode}`;
+    }
+
+    const meetingResult = await query(
+      `SELECT id FROM organization_meetings
+       WHERE meeting_code = $1 OR meeting_code = $2;`,
+      [rawCode, normalizedCode]
+    );
+
+    if (meetingResult.rows.length === 0) {
+      return res.status(404).json({ error: "Meeting not found." });
+    }
+
+    const meetingId = meetingResult.rows[0].id;
+
+    await query(
+      `UPDATE meeting_participants
+       SET left_at = NOW()
+       WHERE meeting_id = $1 AND user_id = $2 AND left_at IS NULL;`,
+      [meetingId, userId]
+    );
+
+    // Run auto-clean in case all participants have left
+    await autoCleanExpiredMeetings();
+
+    return res.status(200).json({ success: true, message: "Left meeting room." });
+  } catch (error) {
+    console.error("Failed to record leaving meeting:", error);
+    return res.status(500).json({ error: "Failed to record leaving meeting." });
   }
 });
 

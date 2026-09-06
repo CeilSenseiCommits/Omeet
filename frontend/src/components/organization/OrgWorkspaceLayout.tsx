@@ -199,6 +199,37 @@ function OrgWorkspaceLayout() {
     );
   }, [membersList, memberSearchQuery]);
 
+  const handleSelectConversation = (id: string | null) => {
+    setSelectedConversationId((prev) => {
+      const next = prev === id ? null : id;
+      if (next) {
+        // Optimistically clear unread badges locally
+        setDirectMessagesList((list) =>
+          list.map((dm) => (dm.id === next ? { ...dm, unreadCount: 0 } : dm))
+        );
+        setGroupsList((list) =>
+          list.map((g) => (g.id === next ? { ...g, unreadCount: 0 } : g))
+        );
+        setChatRooms((list) =>
+          list.map((c) => (c.id === next ? { ...c, unreadCount: 0 } : c))
+        );
+
+        // Tell backend to update last_read_at
+        if (organizationId && user?.id) {
+          fetch(`http://localhost:5000/api/organizations/${organizationId}/conversations/${next}/read`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-user-id": user.id,
+            },
+            body: JSON.stringify({ userId: user.id }),
+          }).catch((err) => console.error("Failed to mark read:", err));
+        }
+      }
+      return next;
+    });
+  };
+
   if (isLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#09090b] text-white">
@@ -251,7 +282,7 @@ function OrgWorkspaceLayout() {
             groups={groupsList} 
             allMembers={membersList}
             selectedConversationId={selectedConversationId}
-            onSelectConversation={(id) => setSelectedConversationId((prev) => (prev === id ? null : id))}
+            onSelectConversation={handleSelectConversation}
             onOpenCreateGroup={() => setIsCreateGroupModalOpen(true)}
             onSelectColleague={handleStartDirectMessage}
           />

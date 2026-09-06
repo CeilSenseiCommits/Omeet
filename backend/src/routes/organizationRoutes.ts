@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { pool, query } from "../db";
+import { autoCleanExpiredMeetings } from "./meetingRoutes";
 
 const router = Router();
 
@@ -280,7 +281,17 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
     // 1. Fetch channels user is participant of OR public channels
     const channelsResult = await query(
       `SELECT c.id, c.name, c.type, c.topic, c.is_private,
-              COALESCE(cp.last_read_at, NOW()) AS last_read_at
+              COALESCE(cp.last_read_at, NOW()) AS last_read_at,
+              COALESCE(
+                (
+                  SELECT COUNT(*)::int
+                  FROM messages m
+                  WHERE m.conversation_id = c.id
+                    AND ($2::uuid IS NULL OR m.sender_id != $2::uuid)
+                    AND m.created_at > COALESCE(cp.last_read_at, '1970-01-01'::timestamptz)
+                ),
+                0
+              ) AS unread_count
        FROM conversations c
        LEFT JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = $2
        WHERE c.organization_id = $1 AND c.type = 'CHANNEL' AND (c.is_private = FALSE OR cp.user_id IS NOT NULL)
@@ -291,27 +302,38 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
     const chatRooms = channelsResult.rows.map((row) => ({
       id: row.id,
       name: row.name,
-      unreadCount: 0,
+      unreadCount: Number(row.unread_count || 0),
       active: true,
     }));
 
-    // 2. Fetch groups
+    // 2. Fetch groups with live unread counts
     const groupsResult = await query(
-      `SELECT c.id, c.name, c.topic
+      `SELECT c.id, c.name, c.topic,
+              COALESCE(
+                (
+                  SELECT COUNT(*)::int
+                  FROM messages m
+                  JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = $2
+                  WHERE m.conversation_id = c.id
+                    AND ($2::uuid IS NULL OR m.sender_id != $2::uuid)
+                    AND m.created_at > cp.last_read_at
+                ),
+                0
+              ) AS unread_count
        FROM conversations c
        WHERE c.organization_id = $1 AND c.type = 'GROUP'
        ORDER BY c.created_at ASC;`,
-      [orgId]
+      [orgId, userId || null]
     );
 
     const groups = groupsResult.rows.map((row) => ({
       id: row.id,
       name: row.name,
-      unreadCount: 0,
+      unreadCount: Number(row.unread_count || 0),
       active: true,
     }));
 
-    // 3. Fetch direct conversations with conversation history (most recently talked sorted)
+    // 3. Fetch direct conversations with live unread count (most recently talked sorted)
     let directMessages: any[] = [];
     if (userId) {
       const dmResult = await query(
@@ -322,7 +344,17 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
            u_other.name AS other_user_name,
            u_other.avatar_url,
            oe.position,
-           oe.last_accessed_at
+           oe.last_accessed_at,
+           COALESCE(
+             (
+               SELECT COUNT(*)::int
+               FROM messages m
+               WHERE m.conversation_id = c.id
+                 AND m.sender_id = u_other.id
+                 AND m.created_at > cp_me.last_read_at
+             ),
+             0
+           ) AS unread_count
          FROM conversations c
          JOIN conversation_participants cp_me ON cp_me.conversation_id = c.id AND cp_me.user_id = $2
          JOIN conversation_participants cp_other ON cp_other.conversation_id = c.id AND cp_other.user_id != $2
@@ -342,7 +374,7 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
           avatarUrl: row.avatar_url,
           role: row.position || "Member",
           lastSeen: isRecent ? "Active now" : "Offline",
-          unreadCount: 0,
+          unreadCount: Number(row.unread_count || 0),
           active: !!isRecent,
         };
       });
@@ -388,13 +420,44 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/organizations/:id/conversations/:convId/read
+ * Marks a conversation as read by updating caller's last_read_at in conversation_participants
+ */
+router.post("/:id/conversations/:convId/read", async (req: Request, res: Response) => {
+  try {
+    const { convId } = req.params;
+    const userId = (req.headers["x-user-id"] as string) || req.body.userId;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User ID required." });
+    }
+
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_id, last_read_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (conversation_id, user_id) 
+       DO UPDATE SET last_read_at = NOW();`,
+      [convId, userId]
+    );
+
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Failed to mark conversation as read:", error);
+    return res.status(500).json({ error: "Failed to mark as read." });
+  }
+});
+
+/**
  * GET /api/organizations/:id/meetings
  * Returns ongoing, upcoming, and recently ended meetings for MeetingsTab
  */
 router.get("/:id/meetings", async (req: Request, res: Response) => {
   try {
-    const orgId = req.params.id;
+    const orgId = String(req.params.id || "");
     const userId = (req.query.userId as string) || (req.headers["x-user-id"] as string) || "";
+
+    // Run auto-clean rules for expired/abandoned meetings
+    await autoCleanExpiredMeetings(orgId);
 
     const meetingsResult = await query(
       `SELECT 
@@ -403,6 +466,7 @@ router.get("/:id/meetings", async (req: Request, res: Response) => {
          m.title,
          m.status,
          m.scope,
+         m.is_hierarchical,
          m.scheduled_at,
          m.started_at,
          m.ended_at,
@@ -450,6 +514,7 @@ router.get("/:id/meetings", async (req: Request, res: Response) => {
           group: m.channel_name ? `#${m.channel_name}` : "Workspace Sync",
           participants: participantNames,
           meetingCode: m.meeting_code,
+          isHierarchical: m.is_hierarchical,
         };
       });
 
@@ -470,21 +535,45 @@ router.get("/:id/meetings", async (req: Request, res: Response) => {
           status: "Scheduled",
           meetingCode: m.meeting_code,
           participants: participantNames,
+          isHierarchical: m.is_hierarchical,
         };
       });
 
     const recentlyEndedMeetings = meetingsResult.rows
       .filter((m) => m.status === "ENDED")
+      .sort((a, b) => new Date(b.ended_at || b.scheduled_at).getTime() - new Date(a.ended_at || a.scheduled_at).getTime())
+      .slice(0, 10)
       .map((m) => {
-        let duration = "30m";
+        let duration = "15m";
         if (m.started_at && m.ended_at) {
-          const mins = Math.round((new Date(m.ended_at).getTime() - new Date(m.started_at).getTime()) / 60000);
+          const mins = Math.max(1, Math.round((new Date(m.ended_at).getTime() - new Date(m.started_at).getTime()) / 60000));
           duration = `${mins}m`;
         }
+        let timeAgo = "Just now";
+        if (m.ended_at) {
+          const diffMins = Math.round((Date.now() - new Date(m.ended_at).getTime()) / 60000);
+          if (diffMins < 1) timeAgo = "Just now";
+          else if (diffMins < 60) timeAgo = `${diffMins}m ago`;
+          else {
+            const hrs = Math.round(diffMins / 60);
+            timeAgo = `${hrs}h ago`;
+          }
+        }
+        const participantNames = Array.isArray(m.participants_data) && m.participants_data.length > 0
+          ? m.participants_data.map((p: any) => p.name)
+          : [m.host_name];
+
         return {
           id: m.id,
           title: m.title,
+          meetingCode: m.meeting_code,
           duration,
+          timeAgo,
+          endedAt: m.ended_at,
+          isHierarchical: m.is_hierarchical,
+          hostName: m.host_name,
+          participants: participantNames,
+          participantsCount: participantNames.length,
           recordingAvailable: m.has_recording,
           aiSummaryAvailable: m.has_ai_summary,
         };

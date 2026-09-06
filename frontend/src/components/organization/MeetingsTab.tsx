@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { OngoingMeeting, RecentlyEndedMeeting, UpcomingMeeting } from "../../types/organization";
 import Carousel from "./Carousel";
-import { Video, LogIn, ChevronRight, MoreVertical, Shield } from "lucide-react";
+import { Video, LogIn, ChevronRight, MoreVertical, Shield, Clock } from "lucide-react";
 
 interface MeetingsTabProps {
   ongoingMeetings: OngoingMeeting[];
@@ -154,43 +154,71 @@ function MeetingsTab({
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold text-white">Recently Ended</h2>
-            <span className="text-xs text-zinc-500">Your recently completed meetings</span>
+            <span className="text-xs text-zinc-500">Your recently completed or archived meetings</span>
           </div>
           <button type="button" className="rounded-full bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-800 transition">View all</button>
         </div>
-        <Carousel cardWidth={340}>
-          {recentlyEndedMeetings.map((meeting) => (
-            <article key={meeting.id} className="flex h-full flex-col justify-between rounded-xl border border-zinc-800/60 bg-[#151517] p-5 hover:border-zinc-700 transition">
-              <div>
-                <p className="font-semibold text-white text-base truncate">{meeting.title}</p>
-                <p className="text-[10px] text-zinc-500 mt-1.5">Ended {meeting.duration} ago • 45 min</p>
-              </div>
-              <div className="mt-4 flex gap-2">
-                <span className="flex items-center gap-1 rounded bg-fuchsia-950/40 px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-400 border border-fuchsia-900/40">
-                  <Video className="h-3 w-3" /> Recording
-                </span>
-                <span className="flex items-center gap-1 rounded bg-emerald-950/40 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-900/40">
-                  <Shield className="h-3 w-3" /> AI Summary
-                </span>
-              </div>
-              <div className="mt-6 flex items-center justify-between">
-                <div className="flex -space-x-1.5">
-                  {["Alice", "Bob", "Charlie", "David"].slice(0, 4).map((p, i) => (
-                    <div key={i} className="flex h-6 w-6 items-center justify-center rounded-full border border-[#151517] bg-zinc-700 text-[8px] font-bold text-white shadow-sm">
-                      {getInitials(p)}
-                    </div>
-                  ))}
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full border border-[#151517] bg-zinc-800 text-[8px] font-bold text-zinc-400 shadow-sm">
-                    +6
+        {recentlyEndedMeetings.length > 0 ? (
+          <Carousel cardWidth={340}>
+            {recentlyEndedMeetings.map((meeting) => (
+              <article key={meeting.id} className="flex h-full flex-col justify-between rounded-xl border border-zinc-800/60 bg-[#151517] p-5 hover:border-zinc-700 transition">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-white text-base truncate">{meeting.title}</p>
+                    {meeting.isHierarchical && (
+                      <span className="flex items-center gap-1 rounded bg-zinc-800 px-1.5 py-0.5 text-[9px] font-semibold text-fuchsia-300 border border-zinc-700 shrink-0">
+                        <Shield className="h-2.5 w-2.5 text-fuchsia-400" /> Hierarchy
+                      </span>
+                    )}
                   </div>
+                  <p className="text-[11px] text-zinc-400 mt-1.5">
+                    Ended {meeting.timeAgo || meeting.duration + " ago"} • Duration: {meeting.duration}
+                  </p>
+                  {meeting.hostName && (
+                    <p className="text-[10px] text-zinc-500 mt-0.5">Host: {meeting.hostName}</p>
+                  )}
                 </div>
-                <button type="button" className="rounded-lg border border-zinc-700 bg-transparent px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition hover:bg-zinc-800 hover:text-white">
-                  Details
-                </button>
-              </div>
-            </article>
-          ))}
-        </Carousel>
+
+                <div className="mt-4 flex gap-2">
+                  <span className="flex items-center gap-1 rounded bg-fuchsia-950/40 px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-400 border border-fuchsia-900/40">
+                    <Video className="h-3 w-3" /> Recording
+                  </span>
+                  <span className="flex items-center gap-1 rounded bg-emerald-950/40 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-900/40">
+                    <Shield className="h-3 w-3" /> AI Summary
+                  </span>
+                </div>
+
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex -space-x-1.5">
+                    {(meeting.participants || ["Participant"]).slice(0, 4).map((p, i) => (
+                      <div key={i} className="flex h-6 w-6 items-center justify-center rounded-full border border-[#151517] bg-zinc-700 text-[8px] font-bold text-white shadow-sm" title={p}>
+                        {getInitials(p)}
+                      </div>
+                    ))}
+                    {(meeting.participantsCount || meeting.participants?.length || 1) > 4 && (
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full border border-[#151517] bg-zinc-800 text-[8px] font-bold text-zinc-400 shadow-sm">
+                        +{(meeting.participantsCount || meeting.participants?.length || 1) - 4}
+                      </div>
+                    )}
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => meeting.meetingCode && navigate(`/meeting/${meeting.meetingCode}`)}
+                    className="rounded-lg border border-zinc-700 bg-transparent px-3 py-1.5 text-[11px] font-semibold text-zinc-300 transition hover:bg-zinc-800 hover:text-white"
+                  >
+                    Details
+                  </button>
+                </div>
+              </article>
+            ))}
+          </Carousel>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-zinc-800 p-8 text-center bg-zinc-950/30">
+            <Clock className="mx-auto h-8 w-8 text-zinc-600 mb-2" />
+            <p className="text-sm font-medium text-zinc-400">No recently ended meetings</p>
+            <p className="text-xs text-zinc-600 mt-1">Completed meetings and archived summaries will automatically appear here.</p>
+          </div>
+        )}
       </section>
     </div>
   );

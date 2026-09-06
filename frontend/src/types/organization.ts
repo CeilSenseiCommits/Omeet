@@ -67,9 +67,16 @@ export interface UpcomingMeeting {
 export interface RecentlyEndedMeeting {
   id: string;
   title: string;
+  meetingCode?: string;
   duration: string;
-  recordingAvailable: boolean;
-  aiSummaryAvailable: boolean;
+  timeAgo?: string;
+  endedAt?: string;
+  isHierarchical?: boolean;
+  hostName?: string;
+  participants?: string[];
+  participantsCount?: number;
+  recordingAvailable?: boolean;
+  aiSummaryAvailable?: boolean;
 }
 
 export interface OrganizationMeeting {

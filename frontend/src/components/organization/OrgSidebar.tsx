@@ -148,8 +148,8 @@ function OrgSidebar({
                             </span>
                           </span>
                           {dm.unreadCount > 0 && (
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
-                              {dm.unreadCount}
+                            <span className="flex h-5 min-w-[20px] px-1.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black shadow-sm">
+                              {dm.unreadCount > 99 ? "99+" : dm.unreadCount}
                             </span>
                           )}
                         </button>
@@ -275,8 +275,8 @@ function OrgSidebar({
                           <span className="truncate font-medium">{group.name}</span>
                         </span>
                         {group.unreadCount > 0 && (
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
-                            {group.unreadCount}
+                          <span className="flex h-5 min-w-[20px] px-1.5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black shadow-sm">
+                            {group.unreadCount > 99 ? "99+" : group.unreadCount}
                           </span>
                         )}
                       </button>
