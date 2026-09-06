@@ -17,8 +17,19 @@ All notable changes to this project will be documented in this file.
   - Provisioned database tables supporting scheduled, live, and concluded organization meetings with branded meeting codes (`OM-XXXXXX`).
   - Connected `CreateMeetingModal.tsx` to `POST /api/organizations/:id/meetings` with instant state refresh.
   - Connected `MeetingsTab.tsx` to live ongoing, upcoming, and recently ended meetings.
-- **Live Organization Member Roster**:
-  - Replaced Members tab placeholder with dynamic employee table showing avatar, display name, `@username`, title, reporting manager, and role badges (`OWNER`, `ADMIN`, `MEMBER`).
+- **Live Organization Member Roster & Interactive Profile**:
+  - Dynamic employee table showing avatar, display name, `@username`, title, department, reporting manager, and role badges (`OWNER`, `ADMIN`, `MEMBER`).
+  - Added live search bar filtering employees across name, handle, role, department, and direct senior.
+  - Clicking any member opens `OrgEmployeeProfileModal` with contact info reveal ("See Info"), 1-on-1 direct message trigger, and meeting invitation action.
+- **Organization Sidebar Reordering & Direct Message Prefix Search**:
+  - Reordered sidebar sections: **Direct Messages** on top, **Groups** second (with `+` group creation action), and **Chat Rooms** third.
+  - Direct messages only show actual conversations sorted by most recent activity.
+  - Searching direct messages dynamically queries all organization colleagues with matching prefix.
+- **Team Group Creation Modal**:
+  - Added `CreateGroupModal` connected to `POST /api/organizations/:id/groups` for creating team/department channels with automated participant enrollment.
+- **Permission-Gated Organization Invitations Tab**:
+  - Added `Invitations` tab in workspace center navigation visible only to users with invitation permissions (`hasPermission = true` or `role = 'OWNER'/'ADMIN'`).
+  - Provides metrics cards (Total, Pending, Accepted, Declined) and audit table of invitations with copyable codes (`OM-XXXXXX`) and candidate metadata (`GET /api/organizations/:id/invitations/logs`).
 
 - **Live Search Bar Integration**:
   - Connected `SearchBar.tsx` to live backend search (`GET /api/users/search?q=...`) querying Neon PostgreSQL.

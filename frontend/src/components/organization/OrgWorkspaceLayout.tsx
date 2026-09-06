@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Calendar, Users, Folder, Sparkles, Loader2, ShieldCheck, UserCheck } from "lucide-react";
+import { Calendar, Users, Folder, Sparkles, Loader2, ShieldCheck, UserCheck, Mail, Search } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import type {
   DirectMessage,
@@ -13,6 +13,9 @@ import type {
 } from "../../types/organization";
 import CreateMeetingModal from "./CreateMeetingModal";
 import JoinMeetingModal from "./JoinMeetingModal";
+import CreateGroupModal from "./CreateGroupModal";
+import OrgEmployeeProfileModal from "./OrgEmployeeProfileModal";
+import OrgInvitationsTab from "./OrgInvitationsTab";
 import MeetingsTab from "./MeetingsTab";
 import OrgHeader from "./OrgHeader";
 import OrgSidebar from "./OrgSidebar";
@@ -27,11 +30,15 @@ function OrgWorkspaceLayout() {
   const [activeTab, setActiveTab] = useState("Meetings");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
+  const [selectedEmployeeForModal, setSelectedEmployeeForModal] = useState<any | null>(null);
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
   // Live Data State
   const [organization, setOrganization] = useState<OrganizationDetails | null>(null);
+  const [userMembership, setUserMembership] = useState<any | null>(null);
   const [chatRooms, setChatRooms] = useState<OrganizationChatRoom[]>([]);
   const [directMessagesList, setDirectMessagesList] = useState<DirectMessage[]>([]);
   const [groupsList, setGroupsList] = useState<OrganizationGroup[]>([]);
@@ -65,6 +72,7 @@ function OrgWorkspaceLayout() {
 
       const orgData = await orgRes.json();
       setOrganization(orgData.organization);
+      setUserMembership(orgData.userMembership || null);
 
       // 2. Fetch conversations (channels, groups, DMs)
       const convRes = await fetch(
@@ -118,6 +126,54 @@ function OrgWorkspaceLayout() {
     fetchWorkspaceData();
   }, [fetchWorkspaceData]);
 
+  const handleStartDirectMessage = async (colleague: any) => {
+    if (!user?.id || !organization?.id) return;
+    try {
+      const targetId = colleague.userId || colleague.id;
+      const res = await fetch(`http://localhost:5000/api/organizations/${organization.id}/conversations/direct`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user.id,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          targetUserId: targetId,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedConversationId(data.conversation?.id || data.conversationId);
+        fetchWorkspaceData();
+      }
+    } catch (err) {
+      console.error("Failed to start direct conversation:", err);
+    }
+  };
+
+  const canViewInvitations = userMembership?.hasPermission || userMembership?.isOwner;
+
+  const centerTabs = useMemo(() => [
+    { name: 'Meetings', icon: Calendar }, 
+    { name: 'Members', icon: Users }, 
+    ...(canViewInvitations ? [{ name: 'Invitations', icon: Mail }] : []),
+    { name: 'Files', icon: Folder }, 
+    { name: 'AI', icon: Sparkles }
+  ], [canViewInvitations]);
+
+  const filteredMembers = useMemo(() => {
+    if (!memberSearchQuery.trim()) return membersList;
+    const q = memberSearchQuery.toLowerCase();
+    return membersList.filter(
+      (m) =>
+        m.name?.toLowerCase().includes(q) ||
+        m.username?.toLowerCase().includes(q) ||
+        m.position?.toLowerCase().includes(q) ||
+        m.department?.toLowerCase().includes(q) ||
+        m.managerName?.toLowerCase().includes(q)
+    );
+  }, [membersList, memberSearchQuery]);
+
   if (isLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#09090b] text-white">
@@ -168,7 +224,10 @@ function OrgWorkspaceLayout() {
             chatRooms={chatRooms} 
             directMessages={directMessagesList} 
             groups={groupsList} 
+            allMembers={membersList}
             onSelectConversation={setSelectedConversationId}
+            onOpenCreateGroup={() => setIsCreateGroupModalOpen(true)}
+            onSelectColleague={handleStartDirectMessage}
           />
         </div>
 
@@ -177,12 +236,7 @@ function OrgWorkspaceLayout() {
           {/* Navigation Bar at the top of the center content */}
           <div className="sticky top-0 z-20 border-b border-zinc-800/60 bg-[#111113]/95 backdrop-blur-md px-8 pt-4">
             <div className="flex gap-8">
-              {[
-                { name: 'Meetings', icon: Calendar }, 
-                { name: 'Members', icon: Users }, 
-                { name: 'Files', icon: Folder }, 
-                { name: 'AI', icon: Sparkles }
-              ].map((tab) => {
+              {centerTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
@@ -225,11 +279,23 @@ function OrgWorkspaceLayout() {
                 )}
                 {activeTab === "Members" && (
                   <section className="py-6">
-                    <div className="mb-6 flex items-center justify-between">
+                    <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div>
                         <h2 className="text-lg font-semibold text-white">Organization Members</h2>
                         <p className="text-xs text-zinc-400">Total active team members: {membersList.length}</p>
                       </div>
+                    </div>
+
+                    {/* Member Search Bar */}
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                      <input
+                        type="text"
+                        placeholder="Search organization employees by name, title, username, or department..."
+                        value={memberSearchQuery}
+                        onChange={(e) => setMemberSearchQuery(e.target.value)}
+                        className="w-full rounded-xl border border-zinc-800 bg-zinc-950/60 pl-10 pr-4 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-fuchsia-600 transition"
+                      />
                     </div>
 
                     <div className="overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-950/40">
@@ -244,46 +310,62 @@ function OrgWorkspaceLayout() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-800/40">
-                          {membersList.map((m) => (
-                            <tr key={m.id} className="hover:bg-zinc-900/40 transition">
-                              <td className="px-5 py-3.5 flex items-center gap-3">
-                                <img
-                                  src={m.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=2563eb&color=ffffff`}
-                                  alt={m.name}
-                                  className="h-8 w-8 rounded-full border border-zinc-800 object-cover"
-                                />
-                                <div>
-                                  <p className="font-medium text-white">{m.name}</p>
-                                  <p className="text-xs text-zinc-500">@{m.username}</p>
-                                </div>
-                              </td>
-                              <td className="px-5 py-3.5 text-zinc-300">
-                                {m.position || "Member"}
-                              </td>
-                              <td className="px-5 py-3.5 text-zinc-400 text-xs">
-                                {m.managerName ? `Reports to ${m.managerName}` : "— (Top Level)"}
-                              </td>
-                              <td className="px-5 py-3.5">
-                                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
-                                  m.role === "OWNER"
-                                    ? "bg-fuchsia-950/80 text-fuchsia-300 border border-fuchsia-800/60"
-                                    : m.role === "ADMIN"
-                                    ? "bg-indigo-950/80 text-indigo-300 border border-indigo-800/60"
-                                    : "bg-zinc-800 text-zinc-300"
-                                }`}>
-                                  {m.role === "OWNER" ? <ShieldCheck className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
-                                  {m.role}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3.5 text-right text-xs text-zinc-500">
-                                {m.joiningDate ? new Date(m.joiningDate).toLocaleDateString() : "Recent"}
+                          {filteredMembers.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="px-5 py-8 text-center text-xs text-zinc-500">
+                                No members found matching "{memberSearchQuery}".
                               </td>
                             </tr>
-                          ))}
+                          ) : (
+                            filteredMembers.map((m) => (
+                              <tr 
+                                key={m.id} 
+                                onClick={() => setSelectedEmployeeForModal(m)}
+                                className="hover:bg-zinc-900/60 transition cursor-pointer group"
+                              >
+                                <td className="px-5 py-3.5 flex items-center gap-3">
+                                  <img
+                                    src={m.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=2563eb&color=ffffff`}
+                                    alt={m.name}
+                                    className="h-8 w-8 rounded-full border border-zinc-800 object-cover group-hover:border-fuchsia-500 transition"
+                                  />
+                                  <div>
+                                    <p className="font-medium text-white group-hover:text-fuchsia-300 transition">{m.name}</p>
+                                    <p className="text-xs text-zinc-500">@{m.username}</p>
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3.5 text-zinc-300">
+                                  <p className="font-medium text-white">{m.position || "Member"}</p>
+                                  {m.department && <p className="text-xs text-zinc-500">{m.department}</p>}
+                                </td>
+                                <td className="px-5 py-3.5 text-zinc-400 text-xs">
+                                  {m.managerName ? `Reports to ${m.managerName}` : "— (Top Level)"}
+                                </td>
+                                <td className="px-5 py-3.5">
+                                  <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                                    m.role === "OWNER"
+                                      ? "bg-fuchsia-950/80 text-fuchsia-300 border border-fuchsia-800/60"
+                                      : m.role === "ADMIN"
+                                      ? "bg-indigo-950/80 text-indigo-300 border border-indigo-800/60"
+                                      : "bg-zinc-800 text-zinc-300"
+                                  }`}>
+                                    {m.role === "OWNER" ? <ShieldCheck className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+                                    {m.role}
+                                  </span>
+                                </td>
+                                <td className="px-5 py-3.5 text-right text-xs text-zinc-500">
+                                  {m.joiningDate ? new Date(m.joiningDate).toLocaleDateString() : "Recent"}
+                                </td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
                   </section>
+                )}
+                {activeTab === "Invitations" && canViewInvitations && (
+                  <OrgInvitationsTab organizationId={organization.id} />
                 )}
                 {activeTab === "Files" && (
                   <WorkspacePlaceholder 
@@ -332,6 +414,22 @@ function OrgWorkspaceLayout() {
         isOpen={isJoinModalOpen}
         onClose={() => setIsJoinModalOpen(false)}
         organizationId={organization.id}
+      />
+      <CreateGroupModal
+        isOpen={isCreateGroupModalOpen}
+        onClose={() => setIsCreateGroupModalOpen(false)}
+        organizationId={organization.id}
+        onGroupCreated={fetchWorkspaceData}
+      />
+      <OrgEmployeeProfileModal
+        isOpen={!!selectedEmployeeForModal}
+        onClose={() => setSelectedEmployeeForModal(null)}
+        employee={selectedEmployeeForModal}
+        onMessage={handleStartDirectMessage}
+        onInviteMeeting={() => {
+          setSelectedEmployeeForModal(null);
+          setIsCreateModalOpen(true);
+        }}
       />
     </main>
   );

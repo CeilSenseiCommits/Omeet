@@ -268,6 +268,10 @@ router.get("/:id", async (req: Request, res: Response) => {
  * GET /api/organizations/:id/conversations
  * Returns channels, direct messages, and groups for OrgSidebar
  */
+/**
+ * GET /api/organizations/:id/conversations
+ * Returns channels, direct messages, and groups for OrgSidebar
+ */
 router.get("/:id/conversations", async (req: Request, res: Response) => {
   try {
     const orgId = req.params.id;
@@ -296,7 +300,7 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
       `SELECT c.id, c.name, c.topic
        FROM conversations c
        WHERE c.organization_id = $1 AND c.type = 'GROUP'
-       ORDER BY c.name ASC;`,
+       ORDER BY c.created_at ASC;`,
       [orgId]
     );
 
@@ -307,23 +311,64 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
       active: true,
     }));
 
-    // 3. Fetch direct messages (other active employees in this org)
-    const employeesResult = await query(
-      `SELECT u.id, u.name, u.avatar_url, oe.position, oe.last_accessed_at
+    // 3. Fetch direct conversations with conversation history (most recently talked sorted)
+    let directMessages: any[] = [];
+    if (userId) {
+      const dmResult = await query(
+        `SELECT 
+           c.id AS conversation_id,
+           c.updated_at,
+           u_other.id AS other_user_id,
+           u_other.name AS other_user_name,
+           u_other.avatar_url,
+           oe.position,
+           oe.last_accessed_at
+         FROM conversations c
+         JOIN conversation_participants cp_me ON cp_me.conversation_id = c.id AND cp_me.user_id = $2
+         JOIN conversation_participants cp_other ON cp_other.conversation_id = c.id AND cp_other.user_id != $2
+         JOIN users u_other ON u_other.id = cp_other.user_id
+         JOIN organization_employees oe ON oe.user_id = u_other.id AND oe.organization_id = $1 AND oe.status = 'ACTIVE'
+         WHERE c.organization_id = $1 AND c.type = 'DIRECT'
+         ORDER BY c.updated_at DESC;`,
+        [orgId, userId]
+      );
+
+      directMessages = dmResult.rows.map((row) => {
+        const isRecent = row.last_accessed_at && (Date.now() - new Date(row.last_accessed_at).getTime() < 15 * 60 * 1000);
+        return {
+          id: row.conversation_id,
+          userId: row.other_user_id,
+          name: row.other_user_name,
+          avatarUrl: row.avatar_url,
+          role: row.position || "Member",
+          lastSeen: isRecent ? "Active now" : "Offline",
+          unreadCount: 0,
+          active: !!isRecent,
+        };
+      });
+    }
+
+    // 4. Fetch all organization members for DM prefix search
+    const allMembersResult = await query(
+      `SELECT u.id, u.name, u.username, u.avatar_url, oe.position, oe.department, oe.last_accessed_at
        FROM organization_employees oe
        JOIN users u ON u.id = oe.user_id
        WHERE oe.organization_id = $1 AND oe.status = 'ACTIVE'
          AND ($2::uuid IS NULL OR u.id != $2::uuid)
-       ORDER BY oe.last_accessed_at DESC;`,
+       ORDER BY u.name ASC;`,
       [orgId, userId || null]
     );
 
-    const directMessages = employeesResult.rows.map((emp) => {
+    const allMembers = allMembersResult.rows.map((emp) => {
       const isRecent = emp.last_accessed_at && (Date.now() - new Date(emp.last_accessed_at).getTime() < 15 * 60 * 1000);
       return {
         id: `dm-${emp.id}`,
+        userId: emp.id,
         name: emp.name,
+        username: emp.username,
+        avatarUrl: emp.avatar_url,
         role: emp.position || "Member",
+        department: emp.department,
         lastSeen: isRecent ? "Active now" : "Offline",
         unreadCount: 0,
         active: !!isRecent,
@@ -334,6 +379,7 @@ router.get("/:id/conversations", async (req: Request, res: Response) => {
       chatRooms,
       groups,
       directMessages,
+      allMembers,
     });
   } catch (error) {
     console.error("Failed to fetch organization conversations:", error);
@@ -496,8 +542,182 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/organizations/:id/groups
+ * Creates a new team group in the organization
+ */
+router.post("/:id/groups", async (req: Request, res: Response) => {
+  try {
+    const orgId = req.params.id;
+    const { name, topic, userId } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "Group name is required." });
+    }
+
+    const groupResult = await query(
+      `INSERT INTO conversations (organization_id, type, name, topic, is_private, created_by)
+       VALUES ($1, 'GROUP', $2, $3, FALSE, $4)
+       RETURNING *;`,
+      [orgId, name.trim(), topic ? topic.trim() : null, userId || null]
+    );
+
+    const newGroup = groupResult.rows[0];
+
+    // Add creator as owner participant if userId provided
+    if (userId) {
+      await query(
+        `INSERT INTO conversation_participants (conversation_id, user_id, role)
+         VALUES ($1, $2, 'OWNER')
+         ON CONFLICT (conversation_id, user_id) DO NOTHING;`,
+        [newGroup.id, userId]
+      );
+    }
+
+    return res.status(201).json({
+      success: true,
+      group: {
+        id: newGroup.id,
+        name: newGroup.name,
+        topic: newGroup.topic,
+        unreadCount: 0,
+        active: true,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to create group in PostgreSQL:", error);
+    return res.status(500).json({ error: "Failed to create group." });
+  }
+});
+
+/**
+ * POST /api/organizations/:id/conversations/direct
+ * Gets or creates a 1-on-1 direct conversation with another member
+ */
+router.post("/:id/conversations/direct", async (req: Request, res: Response) => {
+  const client = await pool.connect();
+  try {
+    const orgId = req.params.id;
+    const { userId, targetUserId } = req.body;
+
+    if (!userId || !targetUserId) {
+      return res.status(400).json({ error: "Both user ID and target user ID are required." });
+    }
+
+    // 1. Check if direct conversation already exists between these 2 users in this org
+    const existingResult = await client.query(
+      `SELECT c.id 
+       FROM conversations c
+       JOIN conversation_participants cp1 ON cp1.conversation_id = c.id AND cp1.user_id = $2
+       JOIN conversation_participants cp2 ON cp2.conversation_id = c.id AND cp2.user_id = $3
+       WHERE c.organization_id = $1 AND c.type = 'DIRECT'
+       LIMIT 1;`,
+      [orgId, userId, targetUserId]
+    );
+
+    if (existingResult.rows.length > 0) {
+      return res.status(200).json({
+        success: true,
+        conversationId: existingResult.rows[0].id,
+      });
+    }
+
+    // 2. Otherwise, create a new direct conversation atomically
+    await client.query("BEGIN;");
+
+    const convResult = await client.query(
+      `INSERT INTO conversations (organization_id, type, is_private, created_by)
+       VALUES ($1, 'DIRECT', TRUE, $2)
+       RETURNING id;`,
+      [orgId, userId]
+    );
+
+    const convId = convResult.rows[0].id;
+
+    await client.query(
+      `INSERT INTO conversation_participants (conversation_id, user_id, role)
+       VALUES ($1, $2, 'MEMBER'), ($1, $3, 'MEMBER');`,
+      [convId, userId, targetUserId]
+    );
+
+    await client.query("COMMIT;");
+
+    return res.status(201).json({
+      success: true,
+      conversationId: convId,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK;");
+    console.error("Failed to start direct conversation:", error);
+    return res.status(500).json({ error: "Failed to initialize direct conversation." });
+  } finally {
+    client.release();
+  }
+});
+
+/**
+ * GET /api/organizations/:id/invitations/logs
+ * Returns invitation history/logs sent for this organization
+ */
+router.get("/:id/invitations/logs", async (req: Request, res: Response) => {
+  try {
+    const orgId = req.params.id;
+    const userId = (req.headers["x-user-id"] as string) || (req.query.userId as string);
+
+    const result = await query(
+      `SELECT 
+         oi.id,
+         oi.invite_code,
+         oi.position,
+         oi.department,
+         oi.role,
+         oi.salary,
+         oi.status,
+         oi.created_at,
+         oi.expires_at,
+         u_invitee.id AS invitee_id,
+         u_invitee.name AS invitee_name,
+         u_invitee.username AS invitee_username,
+         u_invitee.avatar_url AS invitee_avatar_url,
+         u_manager.name AS manager_name,
+         oe_manager.position AS manager_position
+       FROM organization_invitations oi
+       JOIN users u_invitee ON u_invitee.id = oi.invitee_user_id
+       LEFT JOIN organization_employees oe_manager ON oe_manager.id = oi.manager_employee_id
+       LEFT JOIN users u_manager ON u_manager.id = oe_manager.user_id
+       WHERE oi.organization_id = $1
+         AND ($2::uuid IS NULL OR oi.inviter_user_id = $2)
+       ORDER BY oi.created_at DESC;`,
+      [orgId, userId || null]
+    );
+
+    const logs = result.rows.map((row) => ({
+      id: row.id,
+      inviteCode: row.invite_code,
+      position: row.position,
+      department: row.department,
+      role: row.role,
+      salary: row.salary,
+      status: row.status,
+      createdAt: row.created_at,
+      expiresAt: row.expires_at,
+      inviteeId: row.invitee_id,
+      inviteeName: row.invitee_name,
+      inviteeUsername: row.invitee_username,
+      inviteeAvatarUrl: row.invitee_avatar_url,
+      managerName: row.manager_name,
+      managerPosition: row.manager_position,
+    }));
+
+    return res.status(200).json({ logs });
+  } catch (error) {
+    console.error("Failed to query invitation logs:", error);
+    return res.status(500).json({ error: "Failed to fetch invitation logs." });
+  }
+});
+
+/**
  * GET /api/organizations/:id/members
- * Returns employee roster for Members tab and right panel
+ * Returns employee roster for Members tab and right panel (including email and phone for See Info)
  */
 router.get("/:id/members", async (req: Request, res: Response) => {
   try {
@@ -516,6 +736,8 @@ router.get("/:id/members", async (req: Request, res: Response) => {
          u.name,
          u.username,
          u.avatar_url,
+         u.email,
+         u.phone,
          u.bio,
          u.timezone,
          u_manager.name AS manager_name
@@ -536,6 +758,10 @@ router.get("/:id/members", async (req: Request, res: Response) => {
       name: row.name,
       username: row.username,
       avatarUrl: row.avatar_url,
+      email: row.email,
+      phone: row.phone,
+      bio: row.bio,
+      timezone: row.timezone,
       position: row.position,
       role: row.role,
       department: row.department,
@@ -553,4 +779,5 @@ router.get("/:id/members", async (req: Request, res: Response) => {
 });
 
 export default router;
+
 

@@ -56,10 +56,16 @@
 - Live Member Roster table in the `Members` tab with employee profile, manager hierarchy, and role badges
 - Subordinate tree query (`GET /api/organizations/:organizationId/invitation-options`) enforcing strict hierarchy assignment
 - Receiver-side invitation preview page (`/invitation-preview/:invitationId`)
+- Reordered Organization Workspace sidebar: Direct Messages on top, Team Groups second (with `+` creation action), and Chat Rooms third
+- Direct Messages with recent conversation sorting and real-time organization colleague prefix search
+- Team Group creation modal (`CreateGroupModal`) integrated with `POST /api/organizations/:id/groups`
+- Permission-gated `Invitations` tab (`OrgInvitationsTab`) showing metrics and invitation audit logs with status badges and copyable codes
+- Interactive Member Directory search bar with live filtering and organization employee profile modal (`OrgEmployeeProfileModal`) with contact details, direct message trigger, and meeting invite actions
 
 ## In Progress
 
-- Realtime chat messaging engine over WebSockets/SSE for `# general`, channels, groups, and direct messages.
+- Real-time chat messaging stream for channels, groups, and direct messages
+- Audio/Video meeting room connection within organization meetings
 - Meeting room interface and audio/video WebRTC integration.
 - Organization files repository and meeting recording storage.
 
