@@ -45,33 +45,33 @@
 - Master System Documentation (`docs/DOCUMENTATION.md`) and Database Schema Specification (`docs/DATABASE_SCHEMA.md`)
 - Dashboard shell, organization carousel, and organization-card routing
 - Shared `AppLayout` with global search, navigation rail, and utility rail
-- Organization workspace shell on `/organization/:organizationId`
-- Workspace header, dashboard back action, organization identity/status, and meeting actions
-- Meetings, Members, Files, and AI navigation; Meetings is the default tab
-- Organization communication sidebar with mock chat rooms, direct messages, groups, unread indicators, and people filtering
-- Organization meeting create/join modals
-- Ongoing, upcoming, and recently ended organization meeting mock surfaces
-- Mock data and TypeScript contracts for organization communication and meeting data
-- Documented future organization workspace API contracts
+- Organization workspace route and shell on `/organization/:organizationId` connected to live PostgreSQL backend data
+- Dynamic workspace loading by UUID (eliminating "Unknown workspace" error)
+- Provisioned `conversations` and `conversation_participants` database tables
+- Auto-provisioning of `# general` and `# random` public channels for organizations
+- Organization communication sidebar (`OrgSidebar`) connected to live channels, team groups, and employee direct messages
+- Provisioned `organization_meetings` and `meeting_participants` database tables
+- Organization meetings tab connected to live ongoing, upcoming, and recently ended meetings
+- Create Organization Meeting modal connected to `POST /api/organizations/:id/meetings`
+- Live Member Roster table in the `Members` tab with employee profile, manager hierarchy, and role badges
+- Subordinate tree query (`GET /api/organizations/:organizationId/invitation-options`) enforcing strict hierarchy assignment
+- Receiver-side invitation preview page (`/invitation-preview/:invitationId`)
 
 ## In Progress
 
-- Organization Workspace dynamic backend migration:
-  - Designing and creating `conversations` (channels, groups, DMs) and `conversation_participants` tables in PostgreSQL.
-  - Designing and creating `organization_meetings` table in PostgreSQL.
-  - Updating `OrgWorkspaceLayout.tsx` and child components to fetch real organization workspace data by UUID instead of mock arrays.
-- Member roster and files live database sources.
-- Meeting room interactions and realtime meeting state.
+- Realtime chat messaging engine over WebSockets/SSE for `# general`, channels, groups, and direct messages.
+- Meeting room interface and audio/video WebRTC integration.
+- Organization files repository and meeting recording storage.
 
 ## Planned Next
 
-- Realtime chat and communication backend using PostgreSQL `conversations` & `conversation_participants`.
-- Meeting creation and joining linked to real `organization_meetings`.
-- Audio/Video WebRTC integration for organization meetings.
+- Realtime typing indicators, read receipts, and participant online presence.
+- Meeting creation and joining linked to WebRTC media rooms.
+- Hierarchical broadcast and speaking permission controls (`DIRECT_REPORTS`, `DEPTH_2`, `ORG_WIDE`).
 
 ## Technical Debt / Next Refactors
 
-- Connect `OrgWorkspaceLayout.tsx` to live backend data to eliminate "Unknown workspace" on real organization UUIDs.
-- Connect workspace communication sidebar (Channels, Groups, Direct Messages) to live conversation endpoints.
-- Wire meeting modal triggers to live meeting persistence API.
+- Chat layout message composer and message stream UI (`feature/org-chat-layout`).
+- WebRTC signaling server integration for active meetings.
+
 

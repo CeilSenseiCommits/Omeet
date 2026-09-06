@@ -691,6 +691,16 @@ router.post("/:id/respond", async (req: Request, res: Response) => {
       ]
     );
 
+    // 4. Enroll new employee into public organization channels (e.g. general, random)
+    await client.query(
+      `INSERT INTO conversation_participants (conversation_id, user_id, role)
+       SELECT id, $1, 'MEMBER'
+       FROM conversations
+       WHERE organization_id = $2 AND is_private = FALSE
+       ON CONFLICT (conversation_id, user_id) DO NOTHING;`,
+      [invite.invitee_user_id, invite.organization_id]
+    );
+
     await client.query("COMMIT;");
 
     return res.status(200).json({

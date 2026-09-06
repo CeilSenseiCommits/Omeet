@@ -1,19 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Calendar, Users, Folder, Sparkles } from "lucide-react";
-import {
-  directMessages,
-  ongoingOrganizationMeetings,
-  organizationChatRooms,
-  organizationDetails,
-  organizationGroups,
-  organizationSummary,
-  recentlyEndedMeetings,
-  upcomingOrganizationMeetings,
-  touchOrganizationAccess,
-} from "../../lib/mockData";
+import { Calendar, Users, Folder, Sparkles, Loader2, ShieldCheck, UserCheck } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import type { OrganizationDetails } from "../../types/organization";
+import type {
+  DirectMessage,
+  OngoingMeeting,
+  OrganizationChatRoom,
+  OrganizationDetails,
+  OrganizationGroup,
+  RecentlyEndedMeeting,
+  UpcomingMeeting,
+} from "../../types/organization";
 import CreateMeetingModal from "./CreateMeetingModal";
 import JoinMeetingModal from "./JoinMeetingModal";
 import MeetingsTab from "./MeetingsTab";
@@ -24,6 +21,7 @@ import OrgRightSidebar from "./OrgRightSidebar";
 function OrgWorkspaceLayout() {
   const navigate = useNavigate();
   const { organizationId } = useParams();
+  const { user } = useAuth();
   
   // State
   const [activeTab, setActiveTab] = useState("Meetings");
@@ -32,21 +30,121 @@ function OrgWorkspaceLayout() {
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
 
-  const organization = useMemo<OrganizationDetails | undefined>(
-    () => organizationDetails.find((item) => item.id === organizationId),
-    [organizationId],
-  );
+  // Live Data State
+  const [organization, setOrganization] = useState<OrganizationDetails | null>(null);
+  const [chatRooms, setChatRooms] = useState<OrganizationChatRoom[]>([]);
+  const [directMessagesList, setDirectMessagesList] = useState<DirectMessage[]>([]);
+  const [groupsList, setGroupsList] = useState<OrganizationGroup[]>([]);
+  const [ongoingMeetingsList, setOngoingMeetingsList] = useState<OngoingMeeting[]>([]);
+  const [upcomingMeetingsList, setUpcomingMeetingsList] = useState<UpcomingMeeting[]>([]);
+  const [recentlyEndedMeetingsList, setRecentlyEndedMeetingsList] = useState<RecentlyEndedMeeting[]>([]);
+  const [membersList, setMembersList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const { user } = useAuth();
+  const fetchWorkspaceData = useCallback(async () => {
+    if (!organizationId) return;
+
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+
+      // 1. Fetch organization details
+      const orgRes = await fetch(
+        `http://localhost:5000/api/organizations/${organizationId}?userId=${user?.id || ""}`,
+        {
+          headers: {
+            "x-user-id": user?.id || "",
+          },
+        }
+      );
+
+      if (!orgRes.ok) {
+        throw new Error("Organization not found or you do not have permission to view it.");
+      }
+
+      const orgData = await orgRes.json();
+      setOrganization(orgData.organization);
+
+      // 2. Fetch conversations (channels, groups, DMs)
+      const convRes = await fetch(
+        `http://localhost:5000/api/organizations/${organizationId}/conversations?userId=${user?.id || ""}`,
+        {
+          headers: {
+            "x-user-id": user?.id || "",
+          },
+        }
+      );
+      if (convRes.ok) {
+        const convData = await convRes.json();
+        setChatRooms(convData.chatRooms || []);
+        setGroupsList(convData.groups || []);
+        setDirectMessagesList(convData.directMessages || []);
+      }
+
+      // 3. Fetch meetings
+      const meetRes = await fetch(
+        `http://localhost:5000/api/organizations/${organizationId}/meetings`,
+        {
+          headers: {
+            "x-user-id": user?.id || "",
+          },
+        }
+      );
+      if (meetRes.ok) {
+        const meetData = await meetRes.json();
+        setOngoingMeetingsList(meetData.ongoingMeetings || []);
+        setUpcomingMeetingsList(meetData.upcomingMeetings || []);
+        setRecentlyEndedMeetingsList(meetData.recentlyEndedMeetings || []);
+      }
+
+      // 4. Fetch members
+      const membersRes = await fetch(
+        `http://localhost:5000/api/organizations/${organizationId}/members`
+      );
+      if (membersRes.ok) {
+        const membersData = await membersRes.json();
+        setMembersList(membersData.members || []);
+      }
+    } catch (err: any) {
+      console.error("Failed to load organization workspace:", err);
+      setLoadError(err.message || "Unable to load organization workspace.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [organizationId, user?.id]);
 
   useEffect(() => {
-    if (user?.id && organizationId) {
-      touchOrganizationAccess(user.id, organizationId);
-    }
-  }, [user?.id, organizationId]);
+    fetchWorkspaceData();
+  }, [fetchWorkspaceData]);
 
-  if (!organization) {
-    return <main className="flex min-h-screen items-center justify-center bg-[#09090b] px-6 text-white"><div className="rounded-xl border border-zinc-800 bg-[#111113] p-8 text-center"><p className="text-sm font-medium uppercase tracking-[0.26em] text-zinc-500">Unknown workspace</p><h1 className="mt-3 text-2xl font-semibold">This organization could not be loaded.</h1><button type="button" onClick={() => navigate("/")} className="mt-5 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-white">Return to dashboard</button></div></main>;
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#09090b] text-white">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-fuchsia-500" />
+          <p className="text-sm font-medium tracking-wider text-zinc-400">Loading workspace...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (loadError || !organization) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#09090b] px-6 text-white">
+        <div className="rounded-2xl border border-zinc-800 bg-[#111113] p-8 text-center max-w-md shadow-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.26em] text-rose-400">Workspace Unavailable</p>
+          <h1 className="mt-3 text-xl font-semibold">{loadError || "This organization could not be loaded."}</h1>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="mt-6 rounded-xl bg-zinc-800 hover:bg-zinc-700 px-5 py-2.5 text-sm font-medium text-white transition"
+          >
+            Return to dashboard
+          </button>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -67,9 +165,9 @@ function OrgWorkspaceLayout() {
         {/* Column A: Left Sidebar */}
         <div className="flex h-full w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border border-zinc-800/60 bg-[#111113]">
           <OrgSidebar 
-            chatRooms={organizationChatRooms} 
-            directMessages={directMessages} 
-            groups={organizationGroups} 
+            chatRooms={chatRooms} 
+            directMessages={directMessagesList} 
+            groups={groupsList} 
             onSelectConversation={setSelectedConversationId}
           />
         </div>
@@ -112,33 +210,104 @@ function OrgWorkspaceLayout() {
             {selectedConversationId ? (
               <WorkspacePlaceholder 
                 title={selectedConversationId} 
-                description="Chat layout will be implemented in feature/org-chat-layout. Do not implement chat messages in this branch." 
+                description="Chat layout will be connected to real-time conversation messaging." 
               />
             ) : (
               <>
                 {activeTab === "Meetings" && (
                   <MeetingsTab 
-                    ongoingMeetings={ongoingOrganizationMeetings} 
-                    upcomingMeetings={upcomingOrganizationMeetings} 
-                    recentlyEndedMeetings={recentlyEndedMeetings} 
+                    ongoingMeetings={ongoingMeetingsList} 
+                    upcomingMeetings={upcomingMeetingsList} 
+                    recentlyEndedMeetings={recentlyEndedMeetingsList} 
                     onCreateMeeting={() => setIsCreateModalOpen(true)} 
                     onJoinMeeting={() => setIsJoinModalOpen(true)} 
                   />
                 )}
                 {activeTab === "Members" && (
-                  <WorkspacePlaceholder 
-                    title="Members" 
-                    description="The member roster will show organization roles, availability, and group membership here." 
-                  />
+                  <section className="py-6">
+                    <div className="mb-6 flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-semibold text-white">Organization Members</h2>
+                        <p className="text-xs text-zinc-400">Total active team members: {membersList.length}</p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-950/40">
+                      <table className="w-full text-left text-sm">
+                        <thead className="border-b border-zinc-800/60 bg-zinc-900/50 text-xs text-zinc-400 uppercase tracking-wider">
+                          <tr>
+                            <th className="px-5 py-3">Member</th>
+                            <th className="px-5 py-3">Position</th>
+                            <th className="px-5 py-3">Reporting Senior</th>
+                            <th className="px-5 py-3">Role</th>
+                            <th className="px-5 py-3 text-right">Joined</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-800/40">
+                          {membersList.map((m) => (
+                            <tr key={m.id} className="hover:bg-zinc-900/40 transition">
+                              <td className="px-5 py-3.5 flex items-center gap-3">
+                                <img
+                                  src={m.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=2563eb&color=ffffff`}
+                                  alt={m.name}
+                                  className="h-8 w-8 rounded-full border border-zinc-800 object-cover"
+                                />
+                                <div>
+                                  <p className="font-medium text-white">{m.name}</p>
+                                  <p className="text-xs text-zinc-500">@{m.username}</p>
+                                </div>
+                              </td>
+                              <td className="px-5 py-3.5 text-zinc-300">
+                                {m.position || "Member"}
+                              </td>
+                              <td className="px-5 py-3.5 text-zinc-400 text-xs">
+                                {m.managerName ? `Reports to ${m.managerName}` : "— (Top Level)"}
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
+                                  m.role === "OWNER"
+                                    ? "bg-fuchsia-950/80 text-fuchsia-300 border border-fuchsia-800/60"
+                                    : m.role === "ADMIN"
+                                    ? "bg-indigo-950/80 text-indigo-300 border border-indigo-800/60"
+                                    : "bg-zinc-800 text-zinc-300"
+                                }`}>
+                                  {m.role === "OWNER" ? <ShieldCheck className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
+                                  {m.role}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5 text-right text-xs text-zinc-500">
+                                {m.joiningDate ? new Date(m.joiningDate).toLocaleDateString() : "Recent"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
                 )}
                 {activeTab === "Files" && (
                   <WorkspacePlaceholder 
-                    title="Files" 
+                    title="Organization Files" 
                     description="Organization files, approved recordings, and shared meeting assets will appear here." 
                   />
                 )}
                 {activeTab === "AI" && (
-                  <section className="py-8"><h2 className="text-xl font-semibold text-white">Organization AI</h2><p className="mt-1 text-sm text-zinc-400">AI assistance is scoped to this organization’s approved context.</p><div className="mt-6 space-y-4">{organizationSummary.map((item) => <div key={item.id} className="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5"><p className="text-sm font-medium text-white">{item.label}</p><p className="mt-2 text-sm text-zinc-400">{item.value}</p></div>)}</div></section>
+                  <section className="py-8">
+                    <h2 className="text-xl font-semibold text-white">Organization AI</h2>
+                    <p className="mt-1 text-sm text-zinc-400">AI assistance is scoped to this organization’s approved context.</p>
+                    <div className="mt-6 space-y-4">
+                      <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5">
+                        <p className="text-sm font-medium text-white">Workspace Overview</p>
+                        <p className="mt-2 text-sm text-zinc-400">{organization.aiSummary}</p>
+                      </div>
+                      <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/30 p-5">
+                        <p className="text-sm font-medium text-white">Executive Tree</p>
+                        <p className="mt-2 text-sm text-zinc-400">
+                          {organization.hierarchy?.manager} manages {organization.hierarchy?.members} active members in this workspace.
+                        </p>
+                      </div>
+                    </div>
+                  </section>
                 )}
               </>
             )}
@@ -153,11 +322,21 @@ function OrgWorkspaceLayout() {
         />
       </div>
 
-      <CreateMeetingModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-      <JoinMeetingModal isOpen={isJoinModalOpen} onClose={() => setIsJoinModalOpen(false)} />
+      <CreateMeetingModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        organizationId={organization.id}
+        onMeetingCreated={fetchWorkspaceData}
+      />
+      <JoinMeetingModal
+        isOpen={isJoinModalOpen}
+        onClose={() => setIsJoinModalOpen(false)}
+        organizationId={organization.id}
+      />
     </main>
   );
 }
+
 
 function WorkspacePlaceholder({ title, description }: { title: string; description: string }) {
   return (

@@ -84,9 +84,10 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_org_employees_manager ON organization_employees(manager_employee_id);
     `);
 
-    console.log("Applying schema migrations for organization_employees (has_permission)...");
+    console.log("Applying schema migrations for organization_employees (has_permission, department)...");
     await client.query(`
       ALTER TABLE organization_employees ADD COLUMN IF NOT EXISTS has_permission BOOLEAN NOT NULL DEFAULT FALSE;
+      ALTER TABLE organization_employees ADD COLUMN IF NOT EXISTS department VARCHAR(100) NULL;
       UPDATE organization_employees SET has_permission = TRUE WHERE role = 'OWNER';
     `);
 
@@ -122,6 +123,134 @@ export async function initializeDatabase() {
       ALTER TABLE organization_invitations ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days');
       CREATE UNIQUE INDEX IF NOT EXISTS idx_invitations_code ON organization_invitations(invite_code);
     `);
+
+    console.log("Creating 'conversations' table if not exists...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        type VARCHAR(20) NOT NULL,
+        name VARCHAR(100) NULL,
+        topic VARCHAR(255) NULL,
+        is_private BOOLEAN NOT NULL DEFAULT FALSE,
+        created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_conversations_org ON conversations(organization_id);
+      CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type);
+    `);
+
+    console.log("Creating 'conversation_participants' table if not exists...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS conversation_participants (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(20) NOT NULL DEFAULT 'MEMBER',
+        last_read_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT uq_conversation_user UNIQUE (conversation_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_conv_participants_user ON conversation_participants(user_id);
+      CREATE INDEX IF NOT EXISTS idx_conv_participants_conv ON conversation_participants(conversation_id);
+    `);
+
+    console.log("Creating 'organization_meetings' table if not exists...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS organization_meetings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        conversation_id UUID NULL REFERENCES conversations(id) ON DELETE SET NULL,
+        meeting_code VARCHAR(20) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        host_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED',
+        scope VARCHAR(50) NOT NULL DEFAULT 'ORG_WIDE',
+        scheduled_at TIMESTAMPTZ NOT NULL,
+        started_at TIMESTAMPTZ NULL,
+        ended_at TIMESTAMPTZ NULL,
+        has_recording BOOLEAN NOT NULL DEFAULT FALSE,
+        has_ai_summary BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_org_meetings_org ON organization_meetings(organization_id);
+      CREATE INDEX IF NOT EXISTS idx_org_meetings_status ON organization_meetings(status);
+      CREATE INDEX IF NOT EXISTS idx_org_meetings_scheduled ON organization_meetings(scheduled_at);
+    `);
+
+    console.log("Creating 'meeting_participants' table if not exists...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS meeting_participants (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        meeting_id UUID NOT NULL REFERENCES organization_meetings(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(20) NOT NULL DEFAULT 'LISTENER',
+        joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        left_at TIMESTAMPTZ NULL,
+        CONSTRAINT uq_meeting_participant UNIQUE (meeting_id, user_id)
+      );
+    `);
+
+    console.log("Provisioning default channels (# general, # random) for all organizations...");
+    const orgs = await client.query("SELECT id, owner_id FROM organizations;");
+    for (const org of orgs.rows) {
+      // 1. Ensure general channel
+      let generalChan = await client.query(
+        "SELECT id FROM conversations WHERE organization_id = $1 AND name = 'general' AND type = 'CHANNEL' LIMIT 1;",
+        [org.id]
+      );
+      if (generalChan.rows.length === 0) {
+        const insertGen = await client.query(
+          `INSERT INTO conversations (organization_id, type, name, topic, is_private, created_by)
+           VALUES ($1, 'CHANNEL', 'general', 'Company-wide announcements and general discussion', FALSE, $2)
+           RETURNING id;`,
+          [org.id, org.owner_id]
+        );
+        generalChan = insertGen;
+      }
+
+      // 2. Ensure random channel
+      let randomChan = await client.query(
+        "SELECT id FROM conversations WHERE organization_id = $1 AND name = 'random' AND type = 'CHANNEL' LIMIT 1;",
+        [org.id]
+      );
+      if (randomChan.rows.length === 0) {
+        const insertRand = await client.query(
+          `INSERT INTO conversations (organization_id, type, name, topic, is_private, created_by)
+           VALUES ($1, 'CHANNEL', 'random', 'Casual discussions, fun banter, and watercooler chat', FALSE, $2)
+           RETURNING id;`,
+          [org.id, org.owner_id]
+        );
+        randomChan = insertRand;
+      }
+
+      // Enroll all active employees into general and random
+      const employees = await client.query(
+        "SELECT user_id, role FROM organization_employees WHERE organization_id = $1 AND status = 'ACTIVE';",
+        [org.id]
+      );
+      for (const emp of employees.rows) {
+        if (generalChan.rows[0]?.id) {
+          await client.query(
+            `INSERT INTO conversation_participants (conversation_id, user_id, role)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (conversation_id, user_id) DO NOTHING;`,
+            [generalChan.rows[0].id, emp.user_id, emp.role === "OWNER" ? "OWNER" : "MEMBER"]
+          );
+        }
+        if (randomChan.rows[0]?.id) {
+          await client.query(
+            `INSERT INTO conversation_participants (conversation_id, user_id, role)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (conversation_id, user_id) DO NOTHING;`,
+            [randomChan.rows[0].id, emp.user_id, emp.role === "OWNER" ? "OWNER" : "MEMBER"]
+          );
+        }
+      }
+    }
+
 
     // Check if initial demo users exist; if not, seed them
     const existingCheck = await client.query(
