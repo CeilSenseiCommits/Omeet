@@ -22,8 +22,8 @@ function OrgTree({ node, level = 0, onSelect, selectedId }: OrgTreeProps) {
           }
           onSelect?.(node);
         }}
-        className={`flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-left transition ${
-          isSelected ? "bg-zinc-800 text-white" : "text-zinc-300 hover:bg-zinc-800/70 hover:text-white"
+        className={`flex w-full items-center gap-2 rounded-[4px] px-2.5 py-1.5 text-left transition ${
+          isSelected ? "bg-[#252932] text-[#F3F3EE]" : "text-[#A9ACB4] hover:bg-[#252932]/70 hover:text-[#F3F3EE]"
         }`}
         style={{ paddingLeft: `${level * 16 + 12}px` }}
       >

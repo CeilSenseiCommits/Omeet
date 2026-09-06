@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { 
   Users, 
@@ -9,11 +9,8 @@ import {
   Search, 
   MessageSquare, 
   ExternalLink, 
-  Check, 
-  Loader2, 
-  Sparkles,
-  Smile,
-  Paperclip
+  Loader2,
+  X
 } from "lucide-react";
 import CreatePublicMeetingModal from "../CreatePublicMeetingModal";
 
@@ -71,6 +68,9 @@ export default function HomePeopleView() {
   // Meeting modal for "Invite to Meet"
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
 
+  const [searchParams] = useSearchParams();
+  const targetFriendId = searchParams.get("friendId");
+
   // Load Friends
   const fetchFriends = useCallback(async () => {
     if (!user?.id) return;
@@ -81,9 +81,15 @@ export default function HomePeopleView() {
       });
       if (res.ok) {
         const data = await res.json();
-        setFriends(data.friends || []);
-        if (data.friends && data.friends.length > 0 && !selectedFriend) {
-          handleSelectFriend(data.friends[0]);
+        const friendList = data.friends || [];
+        setFriends(friendList);
+        if (friendList.length > 0) {
+          const matched = targetFriendId ? friendList.find((f: Friend) => f.id === targetFriendId) : null;
+          if (matched) {
+            handleSelectFriend(matched);
+          } else if (!selectedFriend) {
+            handleSelectFriend(friendList[0]);
+          }
         }
       }
     } catch (err) {
@@ -91,7 +97,7 @@ export default function HomePeopleView() {
     } finally {
       setIsLoadingFriends(false);
     }
-  }, [user?.id]);
+  }, [user?.id, targetFriendId]);
 
   useEffect(() => {
     fetchFriends();
@@ -225,53 +231,54 @@ export default function HomePeopleView() {
   );
 
   return (
-    <div className="flex h-[750px] overflow-hidden rounded-3xl border border-zinc-800 bg-[#121215] shadow-2xl">
+    <div className="flex h-[680px] overflow-hidden rounded-[6px] border border-[#D8D4CB] bg-[#FAF9F6] shadow-xs">
       {/* Left Column: Friends Roster */}
-      <div className="flex w-72 flex-col border-r border-zinc-800 bg-zinc-950/60 shrink-0">
+      <div className="flex w-68 flex-col border-r border-[#D8D4CB] bg-white shrink-0">
         {/* Header */}
-        <div className="p-4 border-b border-zinc-800 space-y-3">
+        <div className="p-3.5 border-b border-[#D8D4CB] space-y-2.5">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Users className="h-4 w-4 text-emerald-400" /> Friends ({friends.length})
+            <h3 className="text-xs font-bold text-[#242427] flex items-center gap-1.5">
+              <Users className="h-3.5 w-3.5 text-[#4963C8]" />
+              <span>Friends ({friends.length})</span>
             </h3>
             <button
               type="button"
               onClick={() => setIsAddFriendOpen(true)}
-              className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-white transition shadow-sm"
+              className="flex items-center gap-1 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-2 py-1 text-[11px] font-medium text-white transition-colors"
               title="Add Friend"
             >
-              <UserPlus className="h-3.5 w-3.5" />
+              <UserPlus className="h-3 w-3" />
               <span>Add</span>
             </button>
           </div>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#7E7C77]" />
             <input
               type="text"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
               placeholder="Search friends..."
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-900/90 pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500 transition"
+              className="w-full rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] pl-8 pr-2.5 py-1 text-xs text-[#242427] placeholder:text-[#A6A49F] outline-none focus:border-[#4963C8] transition-colors"
             />
           </div>
         </div>
 
         {/* Friends List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
           {isLoadingFriends ? (
             <div className="flex items-center justify-center py-10">
-              <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+              <Loader2 className="h-4 w-4 animate-spin text-[#7E7C77]" />
             </div>
           ) : filteredFriends.length === 0 ? (
-            <div className="py-12 text-center p-4">
-              <Users className="mx-auto h-8 w-8 text-zinc-600 mb-2" />
-              <p className="text-xs font-medium text-zinc-400">No friends yet</p>
-              <p className="text-[11px] text-zinc-500 mt-1">Send friend requests to start personal chatting.</p>
+            <div className="py-10 text-center p-4">
+              <Users className="mx-auto h-6 w-6 text-[#A6A49F] mb-1.5" />
+              <p className="text-xs font-medium text-[#242427]">No friends yet</p>
+              <p className="text-[11px] text-[#7E7C77] mt-0.5">Connect with team members to chat.</p>
               <button
                 type="button"
                 onClick={() => setIsAddFriendOpen(true)}
-                className="mt-3 rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 transition"
+                className="mt-2.5 rounded-[5px] border border-[#D8D4CB] bg-white px-2.5 py-1 text-xs font-medium text-[#242427] hover:bg-[#EFECE4] transition-colors"
               >
                 Find People
               </button>
@@ -284,25 +291,25 @@ export default function HomePeopleView() {
                   key={f.id}
                   type="button"
                   onClick={() => handleSelectFriend(f)}
-                  className={`flex w-full items-center gap-3 rounded-2xl p-2.5 text-left transition ${
+                  className={`flex w-full items-center gap-2.5 rounded-[5px] p-2 text-left transition-colors ${
                     isSelected
-                      ? "bg-zinc-800 text-white shadow-sm ring-1 ring-emerald-500/30"
-                      : "text-zinc-400 hover:bg-zinc-900 hover:text-white"
+                      ? "border border-[#CBD5E1] bg-[#EEF2FF] text-[#242427]"
+                      : "border border-transparent hover:border-[#D8D4CB] hover:bg-[#FAF9F6] text-[#585754]"
                   }`}
                 >
                   <div className="relative shrink-0">
                     <img
                       src={f.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(f.name)}`}
                       alt={f.name}
-                      className="h-10 w-10 rounded-full object-cover border border-zinc-700"
+                      className="h-8 w-8 rounded-[5px] object-cover border border-[#D8D4CB]"
                     />
-                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-zinc-950" />
+                    <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-white" />
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-xs text-white truncate">{f.name}</p>
-                    <p className="text-[10px] text-zinc-400 truncate">
-                      @{f.username} {f.primaryAffiliation ? `• ${f.primaryAffiliation.name}` : ""}
+                    <p className="font-semibold text-xs text-[#242427] truncate">{f.name}</p>
+                    <p className="text-[10px] text-[#7E7C77] truncate">
+                      @{f.username} {f.primaryAffiliation ? `· ${f.primaryAffiliation.name}` : ""}
                     </p>
                   </div>
                 </button>
@@ -313,30 +320,30 @@ export default function HomePeopleView() {
       </div>
 
       {/* Center/Right: Personal Chat Screen */}
-      <div className="flex flex-1 flex-col bg-[#121215]">
+      <div className="flex flex-1 flex-col bg-[#FAF9F6]">
         {selectedFriend ? (
           <>
             {/* Chat Header */}
-            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-3.5 bg-zinc-950/40">
-              <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center justify-between border-b border-[#D8D4CB] px-5 py-3 bg-white">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <img
                   src={selectedFriend.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedFriend.name)}`}
                   alt={selectedFriend.name}
-                  className="h-10 w-10 rounded-full object-cover border border-zinc-700"
+                  className="h-8 w-8 rounded-[5px] object-cover border border-[#D8D4CB]"
                 />
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-white truncate">{selectedFriend.name}</h3>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="text-xs font-bold text-[#242427] truncate">{selectedFriend.name}</h3>
                     <Link
                       to={`/profile/${selectedFriend.id}`}
-                      className="text-zinc-500 hover:text-blue-400"
+                      className="text-[#7E7C77] hover:text-[#4963C8]"
                       title="View public profile"
                     >
                       <ExternalLink className="h-3 w-3" />
                     </Link>
                   </div>
-                  <p className="text-[11px] text-emerald-400 font-medium">
-                    Personal Space • @{selectedFriend.username}
+                  <p className="text-[10px] text-[#7E7C77] font-medium">
+                    Personal Space · @{selectedFriend.username}
                   </p>
                 </div>
               </div>
@@ -345,27 +352,27 @@ export default function HomePeopleView() {
               <button
                 type="button"
                 onClick={() => setIsMeetingModalOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-950/50 transition"
+                className="inline-flex items-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors shadow-xs"
               >
-                <Video className="h-4 w-4" />
+                <Video className="h-3.5 w-3.5" />
                 <span>Invite to Meet</span>
               </button>
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-5 space-y-3">
               {isLoadingMessages ? (
                 <div className="flex h-full items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+                  <Loader2 className="h-5 w-5 animate-spin text-[#7E7C77]" />
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center text-center space-y-2 text-zinc-500">
-                  <MessageSquare className="h-10 w-10 text-zinc-600" />
-                  <p className="text-xs font-medium text-zinc-400">
-                    This is the start of your direct conversation with {selectedFriend.name}.
+                <div className="flex h-full flex-col items-center justify-center text-center space-y-1.5 text-[#7E7C77]">
+                  <MessageSquare className="h-8 w-8 text-[#A6A49F]" />
+                  <p className="text-xs font-medium text-[#242427]">
+                    Direct conversation with {selectedFriend.name}.
                   </p>
-                  <p className="text-[11px] max-w-xs text-zinc-600">
-                    Send a message or invite them to an open video meeting.
+                  <p className="text-[11px] max-w-xs text-[#7E7C77]">
+                    Send a message or invite them to a video meeting.
                   </p>
                 </div>
               ) : (
@@ -379,7 +386,7 @@ export default function HomePeopleView() {
                   return (
                     <div
                       key={msg.id}
-                      className={`flex gap-3 max-w-[80%] ${isMe ? "ml-auto flex-row-reverse" : ""}`}
+                      className={`flex gap-2.5 max-w-[80%] ${isMe ? "ml-auto flex-row-reverse" : ""}`}
                     >
                       <img
                         src={
@@ -387,20 +394,20 @@ export default function HomePeopleView() {
                           `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.senderName || "U")}`
                         }
                         alt={msg.senderName}
-                        className="h-8 w-8 rounded-full object-cover shrink-0 border border-zinc-800"
+                        className="h-7 w-7 rounded-[5px] object-cover shrink-0 border border-[#D8D4CB]"
                       />
 
-                      <div className="space-y-1">
+                      <div className="space-y-0.5">
                         <div
-                          className={`rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
+                          className={`rounded-[5px] px-3.5 py-2 text-xs leading-relaxed shadow-xs ${
                             isMe
-                              ? "bg-emerald-600 text-white shadow-md rounded-tr-none"
-                              : "border border-zinc-800 bg-zinc-900 text-zinc-200 rounded-tl-none"
+                              ? "bg-[#4963C8] text-white"
+                              : "border border-[#D8D4CB] bg-white text-[#242427]"
                           }`}
                         >
                           {msg.content}
                         </div>
-                        <p className={`text-[10px] text-zinc-500 ${isMe ? "text-right" : ""}`}>{time}</p>
+                        <p className={`text-[10px] text-[#7E7C77] ${isMe ? "text-right" : ""}`}>{time}</p>
                       </div>
                     </div>
                   );
@@ -410,30 +417,30 @@ export default function HomePeopleView() {
             </div>
 
             {/* Chat Input */}
-            <form onSubmit={handleSendMessage} className="border-t border-zinc-800 p-4 bg-zinc-950/60">
-              <div className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-4 py-2">
+            <form onSubmit={handleSendMessage} className="border-t border-[#D8D4CB] p-3 bg-white">
+              <div className="flex items-center gap-2 rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] px-3 py-1.5 focus-within:border-[#4963C8]">
                 <input
                   type="text"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder={`Message @${selectedFriend.username}...`}
-                  className="flex-1 bg-transparent text-xs text-white placeholder:text-zinc-500 outline-none"
+                  className="flex-1 bg-transparent text-xs text-[#242427] placeholder:text-[#A6A49F] outline-none"
                 />
                 <button
                   type="submit"
                   disabled={!messageInput.trim() || isSending}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-600 text-white transition hover:bg-emerald-500 disabled:opacity-40"
+                  className="flex h-7 w-7 items-center justify-center rounded-[4px] bg-[#4963C8] text-white transition hover:bg-[#3E56B5] disabled:opacity-40"
                 >
-                  <Send className="h-3.5 w-3.5" />
+                  <Send className="h-3 w-3" />
                 </button>
               </div>
             </form>
           </>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center p-8 text-center text-zinc-500 space-y-3">
-            <Users className="h-12 w-12 text-zinc-700" />
-            <h3 className="text-base font-semibold text-white">Your Personal People Space</h3>
-            <p className="text-xs max-w-sm text-zinc-400">
+          <div className="flex h-full flex-col items-center justify-center p-8 text-center text-[#7E7C77] space-y-2">
+            <Users className="h-10 w-10 text-[#A6A49F]" />
+            <h3 className="text-sm font-semibold text-[#242427]">Personal People Space</h3>
+            <p className="text-xs max-w-sm text-[#7E7C77]">
               Select a friend from the left sidebar to start chatting, or add new friends across OMeet.
             </p>
           </div>
@@ -442,11 +449,12 @@ export default function HomePeopleView() {
 
       {/* Add Friend Modal */}
       {isAddFriendOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-[#121215] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-emerald-400" /> Add Friend
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-[8px] border border-[#383D47] bg-[#1D2026] p-5 shadow-2xl space-y-3.5 text-[#F3F3EE]">
+            <div className="flex items-center justify-between border-b border-[#383D47] pb-3">
+              <h3 className="text-xs font-bold text-[#F3F3EE] flex items-center gap-1.5">
+                <UserPlus className="h-4 w-4 text-[#8FA0EB]" />
+                <span>Add Friend</span>
               </h3>
               <button
                 type="button"
@@ -456,32 +464,32 @@ export default function HomePeopleView() {
                   setUserSearchResults([]);
                   setAddFriendStatus(null);
                 }}
-                className="text-zinc-400 hover:text-white"
+                className="text-[#A9ACB4] hover:text-white"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#717684]" />
               <input
                 type="text"
                 value={userSearchQuery}
                 onChange={(e) => setUserSearchQuery(e.target.value)}
                 placeholder="Search by name, handle (@username), or email..."
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 pl-9 pr-4 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500 transition"
+                className="w-full rounded-[5px] border border-[#383D47] bg-[#252932] pl-8 pr-3 py-1.5 text-xs text-[#F3F3EE] placeholder:text-[#717684] outline-none focus:border-[#4963C8] transition-colors"
                 autoFocus
               />
             </div>
 
             {addFriendStatus && (
-              <p className="text-xs text-emerald-400">{addFriendStatus}</p>
+              <p className="text-xs text-[#8FA0EB]">{addFriendStatus}</p>
             )}
 
-            <div className="max-h-60 overflow-y-auto space-y-2">
+            <div className="max-h-56 overflow-y-auto space-y-1.5">
               {isSearchingUsers ? (
-                <div className="flex items-center justify-center py-6">
-                  <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+                <div className="flex items-center justify-center py-5">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#717684]" />
                 </div>
               ) : userSearchResults.length > 0 ? (
                 userSearchResults.map((u) => {
@@ -489,17 +497,17 @@ export default function HomePeopleView() {
                   return (
                     <div
                       key={u.id}
-                      className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3 text-xs"
+                      className="flex items-center justify-between rounded-[5px] border border-[#383D47] bg-[#252932] p-2.5 text-xs"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         <img
                           src={u.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}`}
                           alt={u.name}
-                          className="h-8 w-8 rounded-full object-cover shrink-0"
+                          className="h-7 w-7 rounded-[4px] object-cover shrink-0 border border-[#383D47]"
                         />
                         <div className="min-w-0">
-                          <p className="font-semibold text-white truncate">{u.name}</p>
-                          <p className="text-[10px] text-zinc-400 truncate">@{u.username}</p>
+                          <p className="font-semibold text-[#F3F3EE] truncate">{u.name}</p>
+                          <p className="text-[10px] text-[#A9ACB4] truncate">@{u.username}</p>
                         </div>
                       </div>
 
@@ -507,7 +515,7 @@ export default function HomePeopleView() {
                         type="button"
                         onClick={() => handleSendFriendRequest(u.id)}
                         disabled={isSent}
-                        className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-500 px-3 py-1.5 text-xs font-semibold text-white transition shrink-0"
+                        className="flex items-center gap-1 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] disabled:bg-[#383D47] disabled:text-[#717684] px-2.5 py-1 text-[11px] font-medium text-white transition-colors shrink-0"
                       >
                         {isSent ? "Sent" : "Add Friend"}
                       </button>
@@ -515,7 +523,7 @@ export default function HomePeopleView() {
                   );
                 })
               ) : userSearchQuery.trim() ? (
-                <p className="text-center text-xs text-zinc-500 py-4">No users found</p>
+                <p className="text-center text-xs text-[#717684] py-3">No users found</p>
               ) : null}
             </div>
           </div>

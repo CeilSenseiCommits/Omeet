@@ -404,6 +404,44 @@ router.get("/profile/:userId", async (req: Request, res: Response) => {
 
     const primaryOrg = orgsResult.rows[0];
 
+    // Check friendship status if callerUserId is provided
+    const callerUserId = ((req.headers["x-user-id"] as string) || (req.query.currentUserId as string) || "").trim();
+    let friendshipStatus: "SELF" | "FRIENDS" | "REQUEST_SENT" | "REQUEST_RECEIVED" | "NONE" = "NONE";
+    let friendshipId: string | null = null;
+
+    const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+    if (callerUserId && isUUID(callerUserId) && isUUID(u.id)) {
+      if (callerUserId === u.id) {
+        friendshipStatus = "SELF";
+      } else {
+        const friendResult = await query(
+          `SELECT id, status, sender_user_id, receiver_user_id
+           FROM friendships
+           WHERE (sender_user_id = $1 AND receiver_user_id = $2)
+              OR (sender_user_id = $2 AND receiver_user_id = $1)
+           LIMIT 1;`,
+          [callerUserId, u.id]
+        );
+
+        if (friendResult.rows.length > 0) {
+          const fRow = friendResult.rows[0];
+          friendshipId = fRow.id;
+          if (fRow.status === "ACCEPTED") {
+            friendshipStatus = "FRIENDS";
+          } else if (fRow.status === "PENDING") {
+            if (fRow.sender_user_id === callerUserId) {
+              friendshipStatus = "REQUEST_SENT";
+            } else {
+              friendshipStatus = "REQUEST_RECEIVED";
+            }
+          } else {
+            friendshipStatus = "NONE";
+          }
+        }
+      }
+    }
+
     return res.status(200).json({
       user: {
         id: u.id,
@@ -424,11 +462,152 @@ router.get("/profile/:userId", async (req: Request, res: Response) => {
         organization: primaryOrg?.organization_name || "OMeet Network",
         organizations: orgsResult.rows.map((r: any) => r.organization_name),
         skills: ["Collaboration", "Real-Time Comms", "Team Productivity"],
+        friendshipStatus,
+        friendshipId,
       },
     });
   } catch (error) {
     console.error("Profile fetch error in PostgreSQL:", error);
     return res.status(500).json({ error: "Failed to load user profile" });
+  }
+});
+
+/**
+ * Helper to compute human-readable relative time
+ */
+function formatTimeAgo(dateInput: string | Date): string {
+  const diffMs = Date.now() - new Date(dateInput).getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} min${diffMins === 1 ? "" : "s"} ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
+/**
+ * GET /api/users/:userId/activity
+ * Fetches real activity stream from PostgreSQL (meetings, new team members, invitations)
+ */
+router.get("/:userId/activity", async (req: Request, res: Response) => {
+  try {
+    const rawId = (req.params.userId as string || "").trim();
+    if (!rawId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
+    const activities: Array<{
+      id: string;
+      organization: string;
+      description: string;
+      timestamp: string;
+      dotClass?: string;
+      rawTime: Date;
+    }> = [];
+
+    // 1. Fetch recent meetings from organization_meetings
+    const meetingsRes = await query(
+      `SELECT 
+         m.id, 
+         m.title, 
+         m.status, 
+         m.created_at, 
+         COALESCE(o.name, 'Open Meeting') AS organization_name
+       FROM organization_meetings m
+       LEFT JOIN organizations o ON o.id = m.organization_id
+       WHERE m.host_user_id = $1::uuid
+          OR m.organization_id IN (
+            SELECT organization_id FROM organization_employees WHERE user_id = $1::uuid AND status = 'ACTIVE'
+          )
+       ORDER BY m.created_at DESC
+       LIMIT 6;`,
+      [rawId]
+    );
+
+    for (const m of meetingsRes.rows) {
+      activities.push({
+        id: `meet-${m.id}`,
+        organization: m.organization_name,
+        description: `Meeting "${m.title}" is ${m.status.toLowerCase()}`,
+        timestamp: formatTimeAgo(m.created_at),
+        dotClass: "bg-[#4963C8]",
+        rawTime: new Date(m.created_at),
+      });
+    }
+
+    // 2. Fetch new members who joined user's organizations
+    const membersRes = await query(
+      `SELECT 
+         oe.id, 
+         oe.position,
+         oe.created_at, 
+         u.name AS user_name,
+         o.name AS organization_name
+       FROM organization_employees oe
+       JOIN users u ON u.id = oe.user_id
+       JOIN organizations o ON o.id = oe.organization_id
+       WHERE oe.organization_id IN (
+         SELECT organization_id FROM organization_employees WHERE user_id = $1::uuid AND status = 'ACTIVE'
+       )
+       ORDER BY oe.created_at DESC
+       LIMIT 6;`,
+      [rawId]
+    );
+
+    for (const emp of membersRes.rows) {
+      activities.push({
+        id: `emp-${emp.id}`,
+        organization: emp.organization_name,
+        description: `${emp.user_name} joined as ${emp.position}`,
+        timestamp: formatTimeAgo(emp.created_at),
+        dotClass: "bg-[#10B981]",
+        rawTime: new Date(emp.created_at),
+      });
+    }
+
+    // 3. Fetch recent invitations involving this user
+    const invitesRes = await query(
+      `SELECT 
+         oi.id, 
+         oi.position, 
+         oi.status, 
+         oi.created_at, 
+         o.name AS organization_name
+       FROM organization_invitations oi
+       JOIN organizations o ON o.id = oi.organization_id
+       WHERE oi.invitee_user_id = $1::uuid OR oi.inviter_user_id = $1::uuid
+       ORDER BY oi.created_at DESC
+       LIMIT 6;`,
+      [rawId]
+    );
+
+    for (const inv of invitesRes.rows) {
+      activities.push({
+        id: `inv-${inv.id}`,
+        organization: inv.organization_name,
+        description: `Invitation for ${inv.position} (${inv.status.toLowerCase()})`,
+        timestamp: formatTimeAgo(inv.created_at),
+        dotClass: "bg-[#D97706]",
+        rawTime: new Date(inv.created_at),
+      });
+    }
+
+    // Sort descending by rawTime
+    activities.sort((a, b) => b.rawTime.getTime() - a.rawTime.getTime());
+
+    const result = activities.slice(0, 8).map(({ id, organization, description, timestamp, dotClass }) => ({
+      id,
+      organization,
+      description,
+      timestamp,
+      dotClass,
+    }));
+
+    return res.status(200).json({ activities: result });
+  } catch (error) {
+    console.error("Activity fetch error in PostgreSQL:", error);
+    return res.status(500).json({ error: "Failed to load user activity" });
   }
 });
 

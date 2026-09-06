@@ -638,6 +638,15 @@ Accepts or declines a friend request (`action: "ACCEPT" | "DECLINE"`).
 ### POST /api/friends/chat/:friendUserId
 Finds or creates a personal 1-on-1 direct conversation (`type = 'DIRECT'`, `organization_id = NULL`) with a friend and returns `conversationId`.
 
+### DELETE /api/friends/:friendshipId
+Cancels a pending sent friend request or removes/unfriends an accepted friendship. Requires `x-user-id` authentication header.
+
+### GET /api/users/profile/:userId
+Returns public profile for a user:
+- Accepts `x-user-id` header to resolve caller relationship.
+- Returns `friendshipStatus`: `'SELF' | 'FRIENDS' | 'REQUEST_SENT' | 'REQUEST_RECEIVED' | 'NONE'` and `friendshipId`.
+- Includes affiliation, position, organization, skills, and bio.
+
 ---
 
 ## Personal Chat & Personal Groups APIs

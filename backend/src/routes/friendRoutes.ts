@@ -267,4 +267,35 @@ router.post("/chat/:friendUserId", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * DELETE /api/friends/:friendshipId
+ * Cancels a sent request or removes a friendship
+ */
+router.delete("/:friendshipId", async (req: Request, res: Response) => {
+  try {
+    const userId = (req.headers["x-user-id"] as string) || req.body.userId;
+    const { friendshipId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: "User ID required." });
+    }
+
+    const delRes = await query(
+      `DELETE FROM friendships
+       WHERE id = $1 AND (sender_user_id = $2 OR receiver_user_id = $2)
+       RETURNING id;`,
+      [friendshipId, userId]
+    );
+
+    if (delRes.rows.length === 0) {
+      return res.status(404).json({ error: "Friendship not found or unauthorized." });
+    }
+
+    return res.status(200).json({ success: true, message: "Friendship removed/cancelled." });
+  } catch (err) {
+    console.error("Failed to cancel/remove friendship:", err);
+    return res.status(500).json({ error: "Failed to remove friendship." });
+  }
+});
+
 export default router;

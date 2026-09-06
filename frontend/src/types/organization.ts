@@ -1,3 +1,27 @@
+export interface Organization {
+  id: string;
+  name: string;
+  brief?: string;
+  description?: string;
+  position?: string;
+  department?: string;
+  lastActivity?: string;
+  initials: string;
+  accent: string;
+  avatarUrl?: string;
+  role?: string;
+  size?: string;
+  employeeCount?: number;
+}
+
+export interface ActivityItem {
+  id: string;
+  organization: string;
+  description: string;
+  timestamp: string;
+  dotClass?: string;
+}
+
 export interface DepartmentNode {
   id: string;
   name: string;

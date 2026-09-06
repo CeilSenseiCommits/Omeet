@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Public User Profile Friend Request System**:
+  - Added friend request management directly on public user profile pages (`/profile/:userId`).
+  - Added dynamic status resolution (`NONE`, `REQUEST_SENT`, `REQUEST_RECEIVED`, `FRIENDS`, or `SELF`) via `GET /api/users/profile/:userId`.
+  - Added "Add Friend", "Friend Request Sent", "Accept Friend Request", and "Message" (routing directly to 1-on-1 chat in People workspace) actions.
+  - Added `DELETE /api/friends/:friendshipId` for canceling pending requests and unfriending.
+- **Organization Public Profile ("More Info") Backend Implementation**:
+  - Implemented `GET /api/organizations/:id/public` in `organizationRoutes.ts`.
+  - Serves organization overview, owner profile, active metrics, public channels, and team member previews for the `/org-profile/:id` page.
+  - Accurately computes caller membership status (`isMember`).
+- **Database Hygiene & Dummy User Removal**:
+  - Completely purged dummy users `priya_ml` and `suryansh_dev` from the database.
+  - Removed demo user seed logic from `init.ts` to prevent test data re-insertion.
+- **Activity Feed & Unread Notification Scoping**:
+  - Activity feed limits to 4 items with a "Show More" expandable scroll container.
+  - Scope-aware unread notifications distinguishing between organization dashboard alerts and global notifications.
 - **Home Page Multi-Workspace System**:
   - Implemented 6 dedicated workspaces accessible via the Left Navigation Rail: **Dashboard**, **Organizations**, **Meetings**, **People**, **Groups**, and **Notifications**.
   - **Exclusive View Switching**: Selecting an item removes others and renders that view exclusively; clicking the active item keeps it selected with no default fallback.

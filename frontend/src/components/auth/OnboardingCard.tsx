@@ -66,7 +66,7 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
     const cleanName = name.trim() || "OMeet User";
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(
       cleanName
-    )}&background=2563eb&color=ffffff&bold=true&size=128`;
+    )}&background=252932&color=F3F3EE&bold=true&size=128`;
   }, [name]);
 
   const googleAvatarUrl = user?.avatarUrl || initialsAvatarUrl;
@@ -177,55 +177,55 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
   };
 
   return (
-    <div className="w-full max-w-xl rounded-[32px] border border-zinc-800 bg-zinc-950/90 p-8 shadow-2xl backdrop-blur-2xl">
+    <div className="w-full max-w-xl rounded-[6px] border border-[#D8D4CB] bg-white p-7 text-[#242427] shadow-xs">
       {/* Header */}
       <div className="text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3.5 py-1 text-xs font-medium text-blue-400">
-          <Sparkles className="h-3.5 w-3.5" />
-          Step 2 of 2 • Profile Setup
+        <div className="inline-flex items-center gap-1.5 rounded-[3px] border border-[#CBD5E1] bg-[#EEF2FF] px-2.5 py-0.5 text-[10px] font-semibold text-[#4963C8]">
+          <Sparkles className="h-3 w-3" />
+          <span>Profile Setup · Step 2 of 2</span>
         </div>
-        <h2 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        <h2 className="mt-2 text-xl font-bold tracking-tight text-[#242427]">
           Complete Your Profile
         </h2>
-        <p className="mt-1.5 text-xs text-zinc-400">
-          Personalize your identity so team members can find and connect with you.
+        <p className="mt-0.5 text-xs text-[#585754]">
+          Personalize your identity so team members can discover and connect with you.
         </p>
       </div>
 
       {/* Verified Google Account Banner */}
-      <div className="mt-6 flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3.5">
-        <div className="flex items-center gap-3">
+      <div className="mt-5 flex items-center justify-between rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] p-3">
+        <div className="flex items-center gap-2.5">
           <img
             src={activeAvatarUrl}
             alt={name}
-            className="h-10 w-10 rounded-full border border-zinc-700 object-cover shadow-sm"
+            className="h-8 w-8 rounded-[4px] border border-[#D8D4CB] object-cover"
           />
           <div>
             <div className="flex items-center gap-1.5">
-              <p className="text-xs font-semibold text-white">{name}</p>
-              <span className="flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400 border border-emerald-500/20">
-                <ShieldCheck className="h-3 w-3" /> Verified Google
+              <p className="text-xs font-semibold text-[#242427]">{name}</p>
+              <span className="flex items-center gap-1 rounded-[3px] bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 border border-emerald-200">
+                <ShieldCheck className="h-3 w-3" /> Verified
               </span>
             </div>
-            <p className="text-xs text-zinc-400">{user?.email || "verified@gmail.com"}</p>
+            <p className="text-[11px] text-[#7E7C77]">{user?.email || "verified@gmail.com"}</p>
           </div>
         </div>
-        <span className="text-[10px] font-mono text-zinc-500">Locked</span>
+        <span className="text-[10px] font-mono text-[#7E7C77]">Locked</span>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+      <form onSubmit={handleSubmit} className="mt-5 space-y-4">
         {/* Full Name Field */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-            <User className="h-3.5 w-3.5 text-zinc-400" />
-            Full Display Name <span className="text-red-400">*</span>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-[#242427]">
+            <User className="h-3.5 w-3.5 text-[#7E7C77]" />
+            Full Display Name <span className="text-[#B44A4A]">*</span>
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Suryansh Rao"
-            className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-black/60 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 transition focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Enter your full name"
+            className="mt-1 w-full rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] px-3 py-2 text-xs text-[#242427] placeholder-[#A6A49F] transition focus:border-[#4963C8] focus:bg-white focus:outline-none"
             required
           />
         </div>
@@ -233,56 +233,54 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
         {/* Username Field with Red / Green Validation */}
         <div>
           <div className="flex items-center justify-between">
-            <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-              <span className="font-mono text-blue-400">@</span>
-              Unique Username <span className="text-red-400">*</span>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-[#242427]">
+              <span className="font-mono text-[#4963C8]">@</span>
+              Unique Username <span className="text-[#B44A4A]">*</span>
             </label>
-            <span className="text-[10px] text-zinc-500">Used for @mentions & invites</span>
+            <span className="text-[10px] text-[#7E7C77]">For mentions & invites</span>
           </div>
 
-          <div className="relative mt-1.5">
-            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 font-mono text-sm text-zinc-500">
+          <div className="relative mt-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-[#7E7C77]">
               @
             </span>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ""))}
-              placeholder="choose_username"
-              className={`w-full rounded-xl border pl-8 pr-10 py-2.5 text-sm font-mono text-white placeholder-zinc-600 transition focus:outline-none ${
+              placeholder="username"
+              className={`w-full rounded-[5px] border pl-7 pr-8 py-2 text-xs font-mono text-[#242427] placeholder-[#A6A49F] transition focus:outline-none ${
                 usernameValidation.state === "error"
-                  ? "border-red-500 bg-red-950/20 text-red-200 focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  ? "border-[#B44A4A] bg-[#FDF2F2] focus:border-[#B44A4A]"
                   : usernameValidation.state === "success"
-                  ? "border-emerald-500 bg-emerald-950/20 text-emerald-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-                  : "border-zinc-700 bg-black/60 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  ? "border-emerald-500 bg-emerald-50/50 focus:border-emerald-500"
+                  : "border-[#D8D4CB] bg-[#FAF9F6] focus:border-[#4963C8] focus:bg-white"
               }`}
               required
             />
 
-            {/* Validation Icon */}
-            <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2">
+            <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
               {usernameValidation.state === "error" && (
-                <XCircle className="h-4 w-4 text-red-500" />
+                <XCircle className="h-3.5 w-3.5 text-[#B44A4A]" />
               )}
               {usernameValidation.state === "success" && (
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
               )}
             </div>
           </div>
 
-          {/* Real-Time Helper Text */}
           {usernameValidation.state === "error" && (
-            <p className="mt-1 text-xs font-medium text-red-400">
+            <p className="mt-1 text-[11px] font-medium text-[#B44A4A]">
               {usernameValidation.message}
             </p>
           )}
           {usernameValidation.state === "success" && (
-            <p className="mt-1 text-xs font-medium text-emerald-400">
+            <p className="mt-1 text-[11px] font-medium text-emerald-700">
               {usernameValidation.message}
             </p>
           )}
           {usernameValidation.state === "empty" && (
-            <p className="mt-1 text-[11px] text-zinc-500">
+            <p className="mt-1 text-[10px] text-[#7E7C77]">
               Letters, numbers, and underscores. Min 3 characters.
             </p>
           )}
@@ -290,59 +288,56 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
 
         {/* Profile Photo Selector */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-            <Camera className="h-3.5 w-3.5 text-zinc-400" />
+          <label className="flex items-center gap-1.5 text-xs font-medium text-[#242427]">
+            <Camera className="h-3.5 w-3.5 text-[#7E7C77]" />
             Profile Avatar Style
           </label>
 
-          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {/* Option 1: Google Photo */}
+          <div className="mt-1.5 grid grid-cols-2 gap-2 sm:grid-cols-3">
             <button
               type="button"
               onClick={() => setAvatarType("google")}
-              className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition ${
+              className={`flex flex-col items-center gap-1.5 rounded-[5px] border p-2.5 text-center transition-colors ${
                 avatarType === "google"
-                  ? "border-blue-500 bg-blue-500/10 text-white shadow-lg shadow-blue-500/10"
-                  : "border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                  ? "border-[#4963C8] bg-[#EEF2FF] text-[#242427]"
+                  : "border-[#D8D4CB] bg-[#FAF9F6] text-[#585754] hover:bg-white"
               }`}
             >
               <img
                 src={googleAvatarUrl}
                 alt="Google"
-                className="h-10 w-10 rounded-full border border-zinc-700 object-cover"
+                className="h-8 w-8 rounded-[4px] border border-[#D8D4CB] object-cover"
               />
               <span className="text-[11px] font-medium">Google Photo</span>
             </button>
 
-            {/* Option 2: Alphabet Initials Badge */}
             <button
               type="button"
               onClick={() => setAvatarType("initials")}
-              className={`flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition ${
+              className={`flex flex-col items-center gap-1.5 rounded-[5px] border p-2.5 text-center transition-colors ${
                 avatarType === "initials"
-                  ? "border-blue-500 bg-blue-500/10 text-white shadow-lg shadow-blue-500/10"
-                  : "border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                  ? "border-[#4963C8] bg-[#EEF2FF] text-[#242427]"
+                  : "border-[#D8D4CB] bg-[#FAF9F6] text-[#585754] hover:bg-white"
               }`}
             >
               <img
                 src={initialsAvatarUrl}
                 alt="Initials"
-                className="h-10 w-10 rounded-full border border-zinc-700 object-cover"
+                className="h-8 w-8 rounded-[4px] border border-[#D8D4CB] object-cover"
               />
               <span className="text-[11px] font-medium">Initial Badge</span>
             </button>
 
-            {/* Option 3: Custom URL */}
             <button
               type="button"
               onClick={() => setAvatarType("custom")}
-              className={`col-span-2 flex flex-col items-center gap-2 rounded-xl border p-3 text-center transition sm:col-span-1 ${
+              className={`col-span-2 flex flex-col items-center gap-1.5 rounded-[5px] border p-2.5 text-center transition-colors sm:col-span-1 ${
                 avatarType === "custom"
-                  ? "border-blue-500 bg-blue-500/10 text-white shadow-lg shadow-blue-500/10"
-                  : "border-zinc-800 bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                  ? "border-[#4963C8] bg-[#EEF2FF] text-[#242427]"
+                  : "border-[#D8D4CB] bg-[#FAF9F6] text-[#585754] hover:bg-white"
               }`}
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-zinc-400">
+              <div className="flex h-8 w-8 items-center justify-center rounded-[4px] border border-[#D8D4CB] bg-white text-[#7E7C77]">
                 <Globe className="h-4 w-4" />
               </div>
               <span className="text-[11px] font-medium">Custom URL</span>
@@ -355,18 +350,18 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
               value={customAvatarUrl}
               onChange={(e) => setCustomAvatarUrl(e.target.value)}
               placeholder="https://example.com/avatar.jpg"
-              className="mt-2 w-full rounded-xl border border-zinc-700 bg-black/60 px-3.5 py-2 text-xs text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none"
+              className="mt-1.5 w-full rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] px-3 py-1.5 text-xs text-[#242427] placeholder-[#A6A49F] focus:border-[#4963C8] focus:outline-none"
             />
           )}
         </div>
 
-        {/* Gender Selection (3 options: Male / Female / Others) */}
+        {/* Gender Selection */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-            <Users2 className="h-3.5 w-3.5 text-zinc-400" />
-            Gender <span className="text-red-400">*</span>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-[#242427]">
+            <Users2 className="h-3.5 w-3.5 text-[#7E7C77]" />
+            Gender <span className="text-[#B44A4A]">*</span>
           </label>
-          <div className="mt-1.5 grid grid-cols-3 gap-2">
+          <div className="mt-1 grid grid-cols-3 gap-2">
             {(
               [
                 { id: "male", label: "Male" },
@@ -378,10 +373,10 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
                 key={opt.id}
                 type="button"
                 onClick={() => setGender(opt.id)}
-                className={`rounded-xl border py-2.5 text-xs font-medium transition ${
+                className={`rounded-[5px] border py-2 text-xs font-medium transition-colors ${
                   gender === opt.id
-                    ? "border-blue-500 bg-blue-500/15 text-white shadow-sm shadow-blue-500/20 ring-1 ring-blue-500"
-                    : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-white"
+                    ? "border-[#4963C8] bg-[#EEF2FF] text-[#4963C8] font-semibold"
+                    : "border-[#D8D4CB] bg-[#FAF9F6] text-[#585754] hover:bg-white"
                 }`}
               >
                 {opt.label}
@@ -390,20 +385,20 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
           </div>
         </div>
 
-        {/* Phone Number (Optional) */}
+        {/* Phone Number */}
         <div>
-          <label className="flex items-center justify-between text-xs font-medium text-zinc-300">
+          <label className="flex items-center justify-between text-xs font-medium text-[#242427]">
             <span className="flex items-center gap-1.5">
-              <Phone className="h-3.5 w-3.5 text-zinc-400" />
+              <Phone className="h-3.5 w-3.5 text-[#7E7C77]" />
               Phone Number
             </span>
-            <span className="text-[10px] text-zinc-500">Optional</span>
+            <span className="text-[10px] text-[#7E7C77]">Optional</span>
           </label>
-          <div className="mt-1.5 flex gap-2">
+          <div className="mt-1 flex gap-2">
             <select
               value={countryCode}
               onChange={(e) => setCountryCode(e.target.value)}
-              className="rounded-xl border border-zinc-700 bg-black/60 px-2.5 py-2.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+              className="rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] px-2 py-1.5 text-xs text-[#242427] focus:border-[#4963C8] focus:outline-none"
             >
               <option value="+91">+91 (IN)</option>
               <option value="+1">+1 (US)</option>
@@ -417,39 +412,39 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="98765 43210"
-              className="w-full rounded-xl border border-zinc-700 bg-black/60 px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 transition focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] px-3 py-1.5 text-xs text-[#242427] placeholder-[#A6A49F] transition focus:border-[#4963C8] focus:outline-none"
             />
           </div>
         </div>
 
-        {/* Brief Intro / Bio (Optional) */}
+        {/* Bio */}
         <div>
           <div className="flex items-center justify-between">
-            <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-              <FileText className="h-3.5 w-3.5 text-zinc-400" />
+            <label className="flex items-center gap-1.5 text-xs font-medium text-[#242427]">
+              <FileText className="h-3.5 w-3.5 text-[#7E7C77]" />
               Brief Intro / Bio
             </label>
-            <span className="text-[10px] text-zinc-500">{bio.length}/255</span>
+            <span className="text-[10px] text-[#7E7C77]">{bio.length}/255</span>
           </div>
           <textarea
             value={bio}
             onChange={(e) => setBio(e.target.value.slice(0, 255))}
             placeholder="Tell your teammates what you work on or your role..."
             rows={2}
-            className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-black/60 px-3.5 py-2 text-xs text-white placeholder-zinc-500 transition focus:border-blue-500 focus:outline-none"
+            className="mt-1 w-full rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] px-3 py-1.5 text-xs text-[#242427] placeholder-[#A6A49F] transition focus:border-[#4963C8] focus:outline-none"
           />
         </div>
 
-        {/* Timezone Dropdown (Auto-detected) */}
+        {/* Timezone Dropdown */}
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-300">
-            <Globe className="h-3.5 w-3.5 text-zinc-400" />
+          <label className="flex items-center gap-1.5 text-xs font-medium text-[#242427]">
+            <Globe className="h-3.5 w-3.5 text-[#7E7C77]" />
             Timezone (Auto-Detected)
           </label>
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-black/60 px-3.5 py-2.5 text-xs text-white focus:border-blue-500 focus:outline-none"
+            className="mt-1 w-full rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] px-3 py-1.5 text-xs text-[#242427] focus:border-[#4963C8] focus:outline-none"
           >
             {COMMON_TIMEZONES.includes(timezone) ? null : (
               <option value={timezone}>{timezone} (Detected)</option>
@@ -466,14 +461,14 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
         <button
           type="submit"
           disabled={!isFormValid || isSubmitting}
-          className="group relative mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-3.5 text-sm font-semibold text-black transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-4 py-2.5 text-xs font-semibold text-white transition shadow-xs disabled:cursor-not-allowed disabled:opacity-40"
         >
           {isSubmitting ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           ) : (
             <>
-              <span>Complete Setup & Enter OMeet</span>
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              <span>Complete Setup & Enter Workspace</span>
+              <ArrowRight className="h-3.5 w-3.5" />
             </>
           )}
         </button>

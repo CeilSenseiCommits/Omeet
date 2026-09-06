@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import type { Organization } from "../lib/mockData";
+import type { Organization } from "../types/organization";
 import { Clock } from "lucide-react";
 
 interface OrganizationCardProps {
@@ -17,27 +17,29 @@ function OrganizationCard({ organization, onSelect }: OrganizationCardProps) {
         onSelect?.(organization);
         navigate(`/organization/${organization.id}`);
       }}
-      className="group flex w-[320px] shrink-0 flex-col justify-between rounded-[28px] border border-zinc-800 bg-zinc-900/90 p-6 text-left shadow-[0_24px_80px_-32px_rgba(0,0,0,0.75)] transition duration-200 hover:-translate-y-1 hover:border-zinc-700 hover:bg-zinc-800/90 hover:shadow-[0_26px_60px_-24px_rgba(0,0,0,0.8)]"
+      className="group flex w-72 shrink-0 flex-col justify-between rounded-[8px] border border-[#E2E8F0] bg-white p-4 text-left shadow-xs transition-all hover:border-[#0D9488]/60 hover:shadow-md"
     >
       <div>
-        <div className="flex items-center gap-3.5">
-          <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${organization.accent} text-sm font-bold`}
-          >
-            {organization.initials}
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] border border-[#E2E8F0] bg-[#F8FAFC] text-xs font-bold text-[#1E293B] shadow-2xs">
+            {organization.avatarUrl ? (
+              <img src={organization.avatarUrl} alt={organization.name} className="h-full w-full rounded-[6px] object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              organization.initials || organization.name.slice(0, 2).toUpperCase()
+            )}
           </div>
 
           <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold text-white group-hover:text-zinc-100">
+            <h3 className="truncate text-sm font-semibold text-[#1E293B] group-hover:text-[#0D9488] transition-colors">
               {organization.name}
             </h3>
             {organization.position ? (
-              <p className="truncate text-xs font-medium text-zinc-400 mt-0.5">
+              <p className="truncate text-xs text-[#64748B] mt-0.5">
                 {organization.position}
-                {organization.department ? ` • ${organization.department}` : ""}
+                {organization.department ? ` · ${organization.department}` : ""}
               </p>
             ) : (
-              <p className="truncate text-xs text-zinc-400 mt-0.5">
+              <p className="truncate text-xs text-[#64748B] mt-0.5">
                 {organization.description || "Workspace"}
               </p>
             )}
@@ -45,19 +47,19 @@ function OrganizationCard({ organization, onSelect }: OrganizationCardProps) {
         </div>
 
         {(organization.brief || organization.description) && (
-          <p className="mt-4 line-clamp-2 text-xs leading-relaxed text-zinc-400">
+          <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-[#475569]">
             {organization.brief || organization.description}
           </p>
         )}
       </div>
 
-      <div className="mt-6 border-t border-zinc-800/80 pt-3.5">
-        <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <Clock className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
-          <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-            Last activity:
+      <div className="mt-4 border-t border-[#F1F5F9] pt-2.5">
+        <div className="flex items-center gap-1.5 text-[11px] text-[#64748B]">
+          <Clock className="h-3 w-3 text-[#94A3B8] shrink-0" />
+          <span className="uppercase tracking-wider text-[10px]">
+            Activity:
           </span>
-          <span className="text-zinc-300 font-medium">{organization.lastActivity}</span>
+          <span className="text-[#475569] font-medium">{organization.lastActivity || "Recently active"}</span>
         </div>
       </div>
     </button>

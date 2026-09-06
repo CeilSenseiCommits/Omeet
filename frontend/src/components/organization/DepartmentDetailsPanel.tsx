@@ -15,39 +15,39 @@ function DepartmentDetailsPanel({ organization, selectedDepartment }: Department
   ];
 
   return (
-    <div className="flex h-full flex-col rounded-[28px] border border-zinc-800 bg-zinc-950/70 p-6">
+    <div className="flex h-full flex-col rounded-[6px] border border-[#383D47] bg-[#252932] p-5 text-[#F3F3EE]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-medium uppercase tracking-[0.26em] text-zinc-500">Department Insights</p>
-          <h2 className="mt-2 text-xl font-semibold text-white">{department.name}</h2>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#A9ACB4]">Department Insights</p>
+          <h2 className="mt-1 text-base font-semibold text-[#F3F3EE]">{department.name}</h2>
         </div>
-        <span className="rounded-full border border-zinc-700 px-3 py-1 text-xs uppercase tracking-[0.24em] text-zinc-400">
+        <span className="rounded-[3px] border border-[#383D47] bg-[#1D2026] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#A9ACB4]">
           {organization.status}
         </span>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-3">
-            <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">{stat.label}</p>
-            <p className="mt-2 text-sm font-semibold text-white">{stat.value}</p>
+          <div key={stat.label} className="rounded-[5px] border border-[#383D47] bg-[#1D2026] p-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#7E7C77]">{stat.label}</p>
+            <p className="mt-1 text-xs font-semibold text-[#F3F3EE]">{stat.value}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
-        <p className="text-sm leading-6 text-zinc-400">{department.description}</p>
+      <div className="mt-4 rounded-[5px] border border-[#383D47] bg-[#1D2026] p-3">
+        <p className="text-xs leading-relaxed text-[#C8C6C0]">{department.description}</p>
       </div>
 
-      <div className="mt-6 space-y-3">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
-          <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">Recent activity</p>
-          <p className="mt-2 text-sm text-zinc-300">{department.recentActivity}</p>
+      <div className="mt-4 space-y-2.5">
+        <div className="rounded-[5px] border border-[#383D47] bg-[#1D2026] p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#7E7C77]">Recent activity</p>
+          <p className="mt-1 text-xs text-[#C8C6C0]">{department.recentActivity}</p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-4">
-          <p className="text-[11px] font-medium uppercase tracking-[0.24em] text-zinc-500">AI summary</p>
-          <p className="mt-2 text-sm text-zinc-300">{organization.aiSummary}</p>
+        <div className="rounded-[5px] border border-[#383D47] bg-[#1D2026] p-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[#7E7C77]">AI summary</p>
+          <p className="mt-1 text-xs text-[#C8C6C0]">{organization.aiSummary}</p>
         </div>
       </div>
     </div>

@@ -200,7 +200,7 @@ function CreateMeetingModal({
 
       // If instant meeting, jump directly into the meeting room!
       if (meetingType === "INSTANT" && data.meeting?.meetingCode) {
-        navigate(`/meeting/${data.meeting.meetingCode}`);
+        navigate(`/meeting/${data.meeting.meetingCode}`, { state: { fromOrgId: organizationId, fromTab: "Meetings" } });
       }
     } catch (err: any) {
       setError(err.message || "Failed to create meeting.");
@@ -210,19 +210,19 @@ function CreateMeetingModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-[#121215] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-xs">
+      <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-[8px] border border-[#383D47] bg-[#1D2026] text-[#F3F3EE] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800/80 px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-fuchsia-950 border border-fuchsia-800 text-fuchsia-400">
-              <Video className="h-5 w-5" />
+        <div className="flex items-center justify-between border-b border-[#383D47] px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[5px] bg-[#252932] border border-[#383D47] text-[#4963C8]">
+              <Video className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">
+              <h3 className="text-sm font-bold text-white tracking-tight">
                 {meetingType === "INSTANT" ? "Start Instant Meeting" : "Schedule Organization Meeting"}
               </h3>
-              <p className="text-xs text-zinc-400">
+              <p className="text-[11px] text-[#A9ACB4]">
                 {initialType === "DIRECT" 
                   ? "1-on-1 meeting with colleague" 
                   : initialType === "GROUP" 
@@ -234,16 +234,16 @@ function CreateMeetingModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
+            className="rounded-[5px] border border-[#383D47] bg-[#252932] p-1.5 text-[#A9ACB4] hover:bg-[#2C3039] hover:text-white transition"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300">
+            <div className="flex items-center gap-2 rounded-[5px] border border-[#B44A4A]/30 bg-[#B44A4A]/10 p-3 text-xs font-semibold text-[#B44A4A]">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -251,79 +251,79 @@ function CreateMeetingModal({
 
           {/* 1. Meeting Timing Option (Instant vs Scheduled) */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
-              When should this meeting happen?
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#A9ACB4] mb-2">
+              Meeting Format
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setMeetingType("INSTANT")}
-                className={`flex flex-col items-start rounded-2xl border p-3.5 transition text-left ${
+                className={`flex flex-col items-start rounded-[5px] border p-3.5 transition text-left ${
                   meetingType === "INSTANT"
-                    ? "border-emerald-500/60 bg-emerald-950/30 text-emerald-200 ring-1 ring-emerald-500/30"
-                    : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                    ? "border-[#4963C8] bg-[#4963C8]/10 text-white"
+                    : "border-[#383D47] bg-[#252932] text-[#A9ACB4] hover:border-[#4B5160] hover:text-white"
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-semibold text-white">
-                  <Zap className="h-4 w-4 text-emerald-400" />
-                  Instant Meeting
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                  <Zap className="h-3.5 w-3.5 text-[#CBEA57]" />
+                  Instant Room
                 </div>
-                <p className="mt-1 text-xs text-zinc-400">Start now and enter video conference immediately</p>
+                <p className="mt-1 text-[11px] text-[#A9ACB4]">Launch and enter video session immediately</p>
               </button>
 
               <button
                 type="button"
                 onClick={() => setMeetingType("SCHEDULED")}
-                className={`flex flex-col items-start rounded-2xl border p-3.5 transition text-left ${
+                className={`flex flex-col items-start rounded-[5px] border p-3.5 transition text-left ${
                   meetingType === "SCHEDULED"
-                    ? "border-fuchsia-500/60 bg-fuchsia-950/30 text-fuchsia-200 ring-1 ring-fuchsia-500/30"
-                    : "border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                    ? "border-[#4963C8] bg-[#4963C8]/10 text-white"
+                    : "border-[#383D47] bg-[#252932] text-[#A9ACB4] hover:border-[#4B5160] hover:text-white"
                 }`}
               >
-                <div className="flex items-center gap-1.5 font-semibold text-white">
-                  <Calendar className="h-4 w-4 text-fuchsia-400" />
-                  Schedule Later
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white">
+                  <Calendar className="h-3.5 w-3.5 text-[#4963C8]" />
+                  Scheduled Session
                 </div>
-                <p className="mt-1 text-xs text-zinc-400">Set a future time & notify participants in advance</p>
+                <p className="mt-1 text-[11px] text-[#A9ACB4]">Set future calendar slot & notify attendees</p>
               </button>
             </div>
           </div>
 
           {/* 2. Meeting Title */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#A9ACB4] mb-1.5">
               Meeting Title *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Q3 Architecture Review, Sprint Standup"
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-fuchsia-600 transition"
+              placeholder="e.g. Sprint Architecture Review"
+              className="w-full rounded-[5px] border border-[#383D47] bg-[#252932] px-3.5 py-2 text-xs text-white placeholder-[#717684] outline-none focus:border-[#4963C8] transition"
               required
             />
           </div>
 
           {/* 3. Date & Time picker (if SCHEDULED) */}
           {meetingType === "SCHEDULED" && (
-            <div className="grid grid-cols-2 gap-3 rounded-2xl border border-zinc-800/80 bg-zinc-900/40 p-4">
+            <div className="grid grid-cols-2 gap-3 rounded-[5px] border border-[#383D47] bg-[#252932] p-3.5">
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">Date</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#A9ACB4] mb-1">Date</label>
                 <input
                   type="date"
                   value={scheduledDate}
                   onChange={(e) => setScheduledDate(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-white outline-none focus:border-fuchsia-600 transition"
+                  className="w-full rounded-[4px] border border-[#383D47] bg-[#1D2026] px-3 py-1.5 text-xs text-white outline-none focus:border-[#4963C8] transition"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-zinc-300 mb-1">Time</label>
+                <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#A9ACB4] mb-1">Time</label>
                 <input
                   type="time"
                   value={scheduledTime}
                   onChange={(e) => setScheduledTime(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-white outline-none focus:border-fuchsia-600 transition"
+                  className="w-full rounded-[4px] border border-[#383D47] bg-[#1D2026] px-3 py-1.5 text-xs text-white outline-none focus:border-[#4963C8] transition"
                   required
                 />
               </div>
@@ -331,28 +331,28 @@ function CreateMeetingModal({
           )}
 
           {/* 4. Hierarchy Mode Toggle (Default: OFF) */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 transition hover:border-zinc-700/70">
+          <div className="rounded-[5px] border border-[#383D47] bg-[#252932] p-3.5">
             <div className="flex items-center justify-between gap-4">
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <Shield className={`h-4 w-4 ${isHierarchical ? "text-fuchsia-400" : "text-zinc-400"}`} />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-white">
-                    Organization Hierarchy
+                  <Shield className={`h-3.5 w-3.5 ${isHierarchical ? "text-[#4963C8]" : "text-[#717684]"}`} />
+                  <span className="text-xs font-semibold text-white">
+                    Governed Hierarchy Mode
                   </span>
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded-[3px] border ${
                       isHierarchical
-                        ? "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30"
-                        : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                        ? "bg-[#4963C8]/15 text-[#9BB1FA] border-[#4963C8]/30"
+                        : "bg-[#1D2026] text-[#717684] border-[#383D47]"
                     }`}
                   >
-                    {isHierarchical ? "ON (STRUCTURED)" : "OFF (DEFAULT)"}
+                    {isHierarchical ? "ACTIVE" : "FLAT COLLAB"}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <p className="text-[11px] text-[#A9ACB4] leading-relaxed">
                   {isHierarchical
-                    ? "Role hierarchy active: Director > Lead > Senior > Member speaking queues and moderation controls."
-                    : "Hierarchy disabled: All participants join as equals with flat speaking and collaboration permissions."}
+                    ? "Structured queues: Director > Lead > Senior moderation order."
+                    : "Standard flat room: All participants have equal open speaking permissions."}
                 </p>
               </div>
 
@@ -362,14 +362,14 @@ function CreateMeetingModal({
                 role="switch"
                 aria-checked={isHierarchical}
                 onClick={() => setIsHierarchical((prev) => !prev)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isHierarchical ? "bg-fuchsia-600" : "bg-zinc-800"
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isHierarchical ? "bg-[#4963C8]" : "bg-[#383D47]"
                 }`}
               >
                 <span
                   aria-hidden="true"
-                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                    isHierarchical ? "translate-x-5" : "translate-x-0"
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                    isHierarchical ? "translate-x-4" : "translate-x-0"
                   }`}
                 />
               </button>
@@ -377,36 +377,36 @@ function CreateMeetingModal({
           </div>
 
           {/* 5. Participants Section */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#A9ACB4]">
                 Participants ({selectedParticipants.length})
               </label>
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-[10px] text-[#717684]">
                 {initialType === "MANUAL" 
                   ? "Select colleagues below" 
-                  : "Pre-selected from chat (add more if needed)"}
+                  : "Pre-selected from context"}
               </span>
             </div>
 
             {/* Selected Participants Chips */}
             {selectedParticipants.length > 0 ? (
-              <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 rounded-xl border border-zinc-800 bg-zinc-900/40">
+              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-2 rounded-[5px] border border-[#383D47] bg-[#252932]">
                 {selectedParticipants.map((p) => (
                   <div
                     key={p.id}
-                    className="flex items-center gap-1.5 rounded-full border border-fuchsia-900/60 bg-fuchsia-950/40 px-3 py-1 text-xs text-fuchsia-200"
+                    className="flex items-center gap-1.5 rounded-[4px] border border-[#383D47] bg-[#1D2026] px-2 py-0.5 text-xs text-white"
                   >
                     <img
                       src={p.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}`}
                       alt={p.name}
-                      className="h-4 w-4 rounded-full object-cover"
+                      className="h-3.5 w-3.5 rounded-[2px] object-cover"
                     />
-                    <span className="font-medium">{p.name}</span>
+                    <span className="font-medium text-[11px]">{p.name}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveParticipant(p.id)}
-                      className="hover:text-rose-400 transition ml-0.5"
+                      className="hover:text-[#B44A4A] transition ml-0.5 text-[#717684]"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -414,53 +414,53 @@ function CreateMeetingModal({
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-500">
-                No extra participants selected. If left empty, all organization members can join.
+              <div className="rounded-[5px] border border-dashed border-[#383D47] p-3 text-center text-[11px] text-[#717684]">
+                No specific participants chosen. All organization members with access may join.
               </div>
             )}
 
             {/* Colleague Search & Add Picker */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#717684]" />
                 <input
                   type="text"
                   value={participantSearch}
                   onChange={(e) => setParticipantSearch(e.target.value)}
-                  placeholder="Search and invite more organization colleagues..."
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 pl-9 pr-4 py-2 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-fuchsia-600 transition"
+                  placeholder="Search and invite colleagues..."
+                  className="w-full rounded-[5px] border border-[#383D47] bg-[#252932] pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#717684] outline-none focus:border-[#4963C8] transition"
                 />
               </div>
 
               {/* Candidate Dropdown / List */}
               {participantSearch.trim() && (
-                <div className="max-h-40 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 p-1 divide-y divide-zinc-800/50 shadow-xl">
+                <div className="max-h-40 overflow-y-auto rounded-[5px] border border-[#383D47] bg-[#252932] p-1 divide-y divide-[#383D47] shadow-xl">
                   {filteredCandidates.length > 0 ? (
                     filteredCandidates.slice(0, 8).map((candidate) => (
                       <button
                         type="button"
                         key={candidate.id}
                         onClick={() => handleAddParticipant(candidate)}
-                        className="flex w-full items-center justify-between p-2 rounded-lg hover:bg-zinc-800 text-left transition"
+                        className="flex w-full items-center justify-between p-2 rounded-[4px] hover:bg-[#2C3039] text-left transition"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <img
                             src={candidate.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}`}
                             alt={candidate.name}
-                            className="h-6 w-6 rounded-full object-cover shrink-0"
+                            className="h-5 w-5 rounded-[2px] object-cover shrink-0"
                           />
                           <div className="min-w-0">
                             <p className="text-xs font-medium text-white truncate">{candidate.name}</p>
-                            <p className="text-[10px] text-zinc-400 truncate">@{candidate.username} · {candidate.position || "Member"}</p>
+                            <p className="text-[10px] text-[#A9ACB4] truncate">@{candidate.username} · {candidate.position || "Member"}</p>
                           </div>
                         </div>
-                        <span className="flex items-center gap-1 text-[11px] font-semibold text-fuchsia-400 shrink-0">
+                        <span className="flex items-center gap-1 text-[10px] font-semibold text-[#4963C8] shrink-0">
                           <UserPlus className="h-3 w-3" /> Add
                         </span>
                       </button>
                     ))
                   ) : (
-                    <div className="p-3 text-center text-xs text-zinc-500">
+                    <div className="p-2.5 text-center text-xs text-[#717684]">
                       No matching colleagues found
                     </div>
                   )}
@@ -470,30 +470,30 @@ function CreateMeetingModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800/80">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#383D47]">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition"
+              className="rounded-[5px] border border-[#383D47] bg-[#252932] px-4 py-2 text-xs font-semibold text-[#A9ACB4] hover:bg-[#2C3039] hover:text-white transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !title.trim()}
-              className="flex items-center gap-2 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 px-5 py-2 text-xs font-semibold text-white shadow-lg shadow-fuchsia-950/50 transition disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-5 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-40"
             >
               {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : meetingType === "INSTANT" ? (
-                <Zap className="h-4 w-4" />
+                <Zap className="h-3.5 w-3.5 text-[#CBEA57]" />
               ) : (
-                <Calendar className="h-4 w-4" />
+                <Calendar className="h-3.5 w-3.5" />
               )}
               {isSubmitting 
                 ? "Creating..." 
                 : meetingType === "INSTANT" 
-                ? "Start Meeting Now" 
+                ? "Start Session Now" 
                 : "Schedule Meeting"}
             </button>
           </div>

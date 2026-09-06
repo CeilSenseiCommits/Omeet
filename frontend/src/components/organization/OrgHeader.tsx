@@ -22,7 +22,6 @@ function OrgHeader({
   organization,
   onBack,
   onToggleRightPanel,
-  rightPanelCollapsed,
 }: OrgHeaderProps) {
   const { user } = useAuth();
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
@@ -73,32 +72,32 @@ function OrgHeader({
   }, [fetchOrgNotifications]);
 
   return (
-    <header className="flex w-full items-center justify-between">
+    <header className="flex w-full items-center justify-between text-[#1E293B]">
       {/* Left Block: Back Button aligned with Left Sidebar (280px) */}
       <div className="w-[280px] shrink-0">
         <button
           type="button"
           onClick={onBack}
-          className="flex h-11 items-center gap-2 rounded-xl border border-zinc-800/60 bg-[#111113] px-4 text-sm font-medium text-zinc-300 transition hover:bg-zinc-800/50 hover:text-white"
+          className="flex h-9 items-center gap-1.5 rounded-[6px] border border-[#E2E8F0] bg-white/90 px-3 text-xs font-medium text-[#1E293B] transition hover:bg-[#F8FAFC] shadow-2xs"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
+          <ArrowLeft className="h-3.5 w-3.5 text-[#64748B]" />
+          <span>Back to Dashboard</span>
         </button>
       </div>
 
       {/* Middle Block: Organization Info */}
-      <div className="flex flex-1 items-center gap-4 px-4 min-w-0">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-fuchsia-950 border border-fuchsia-900 text-lg font-bold text-fuchsia-200">
+      <div className="flex flex-1 items-center gap-3 px-4 min-w-0">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] border border-[#E2E8F0] bg-gradient-to-br from-[#F0FDFA] to-[#EFF6FF] text-xs font-bold text-[#0D9488] shadow-2xs">
           {getInitials(organization.name)}
         </div>
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-white truncate">{organization.name}</h1>
-          <p className="mt-0.5 text-xs text-zinc-400 truncate">{organization.description || organization.brief || "Workspace"}</p>
+          <h1 className="text-sm font-semibold tracking-tight text-[#1E293B] truncate">{organization.name}</h1>
+          <p className="text-[11px] text-[#64748B] truncate">{organization.description || organization.brief || "Workspace"}</p>
         </div>
       </div>
 
       {/* Right Block: Org Notification Bell & Right Sidebar Toggle */}
-      <div className="flex shrink-0 items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2.5">
         {/* Organization-Scoped Notification Bell */}
         <NotificationBell
           incoming={incomingInvites}
@@ -117,10 +116,10 @@ function OrgHeader({
         <button
           type="button"
           onClick={onToggleRightPanel}
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800/60 bg-[#111113] text-zinc-400 transition hover:bg-zinc-800/50 hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-[#E2E8F0] bg-white/90 text-[#64748B] transition hover:bg-[#F8FAFC] hover:text-[#1E293B] shadow-2xs"
           aria-label="Toggle right panel"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4" />
         </button>
       </div>
     </header>

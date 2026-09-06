@@ -27,12 +27,11 @@ function Carousel({ children, cardWidth = 320 }: CarouselProps) {
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const scrollAmount = cardWidth + 16; // Include gap
+      const scrollAmount = cardWidth + 14; // Include gap
       scrollRef.current.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
       });
-      // Check again after scrolling completes
       setTimeout(checkScroll, 350);
     }
   };
@@ -43,7 +42,7 @@ function Carousel({ children, cardWidth = 320 }: CarouselProps) {
         <button
           type="button"
           onClick={() => scroll("left")}
-          className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-zinc-700"
+          className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 flex h-7 w-7 items-center justify-center rounded-[5px] border border-[#D8D4CB] bg-white text-[#242427] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[#FAF9F6] shadow-xs"
           aria-label="Scroll left"
         >
           ←
@@ -52,7 +51,7 @@ function Carousel({ children, cardWidth = 320 }: CarouselProps) {
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto snap-x snap-mandatory hide-scrollbar"
+        className="flex gap-3.5 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-1"
         onScroll={checkScroll}
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
@@ -67,7 +66,7 @@ function Carousel({ children, cardWidth = 320 }: CarouselProps) {
         <button
           type="button"
           onClick={() => scroll("right")}
-          className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-zinc-700 bg-zinc-800 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-zinc-700"
+          className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 flex h-7 w-7 items-center justify-center rounded-[5px] border border-[#D8D4CB] bg-white text-[#242427] opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[#FAF9F6] shadow-xs"
           aria-label="Scroll right"
         >
           →

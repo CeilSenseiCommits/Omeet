@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { UserPlus, Users, Check, X, Search, Loader2, Clock } from "lucide-react";
+import UserAvatar from "./UserAvatar";
 import { useAuth } from "../context/AuthContext";
 
 export interface FriendRequestItem {
@@ -150,26 +151,26 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900/80 text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800 hover:text-white"
+        className="relative flex h-9 w-9 items-center justify-center rounded-[5px] border border-[#D8D4CB] bg-[#EDE9DF] text-[#585754] transition hover:border-[#4963C8] hover:bg-[#E2DDD0] hover:text-[#242427]"
         title="Friend Requests"
       >
-        <UserPlus className="h-5 w-5" />
+        <UserPlus className="h-4 w-4" />
         {pendingCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1 text-[11px] font-bold text-white shadow-lg shadow-emerald-950/50">
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-[3px] border border-white bg-[#4963C8] px-1 text-[9px] font-bold text-white shadow-xs">
             {pendingCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-3 w-96 rounded-3xl border border-zinc-800 bg-[#121215] shadow-2xl backdrop-blur-xl overflow-hidden">
+        <div className="absolute right-0 top-full z-50 mt-2 w-96 rounded-[6px] border border-[#D8D4CB] bg-[#FAF9F6] shadow-2xl overflow-hidden text-[#242427]">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-zinc-800/80 p-4">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                <Users className="h-4 w-4" />
+          <div className="flex items-center justify-between border-b border-[#D8D4CB] p-3.5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-[4px] bg-[#EDE9DF] border border-[#D8D4CB] text-[#4963C8]">
+                <Users className="h-3.5 w-3.5" />
               </div>
-              <h3 className="text-sm font-semibold text-white">Friend Requests</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-[#242427]">Friend Requests</h3>
             </div>
             <button
               type="button"
@@ -179,62 +180,58 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
                 setSearchResults([]);
                 setAddFriendError(null);
               }}
-              className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition"
+              className="flex items-center gap-1.5 rounded-[5px] border border-[#D8D4CB] bg-[#EDE9DF] px-2.5 py-1 text-xs font-medium text-[#585754] hover:bg-[#E2DDD0] hover:text-[#242427] transition"
             >
               <UserPlus className="h-3.5 w-3.5" />
-              <span>{isAddFriendOpen ? "Close Search" : "Add Friend"}</span>
+              <span>{isAddFriendOpen ? "Close" : "Add Friend"}</span>
             </button>
           </div>
 
           {/* Add Friend Sub-View */}
           {isAddFriendOpen && (
-            <div className="border-b border-zinc-800 bg-zinc-950/60 p-4 space-y-3">
+            <div className="border-b border-[#D8D4CB] bg-[#EDE9DF] p-3 space-y-2.5">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#7E7C77]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, handle, or email..."
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 pl-9 pr-4 py-2 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500 transition"
+                  placeholder="Search name, handle, or email..."
+                  className="w-full rounded-[5px] border border-[#D8D4CB] bg-white pl-8 pr-3 py-1.5 text-xs text-[#242427] placeholder:text-[#7E7C77] outline-none focus:border-[#4963C8] transition"
                   autoFocus
                 />
               </div>
 
               {addFriendError && (
-                <p className="text-[11px] text-rose-400">{addFriendError}</p>
+                <p className="text-[11px] text-[#B44A4A]">{addFriendError}</p>
               )}
 
               {isSearching ? (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+                  <Loader2 className="h-4 w-4 animate-spin text-[#7E7C77]" />
                 </div>
               ) : searchResults.length > 0 ? (
                 <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-                  {searchResults.map((user) => {
-                    const isSent = requestSentIds.includes(user.id);
+                  {searchResults.map((searchUser) => {
+                    const isSent = requestSentIds.includes(searchUser.id);
                     return (
                       <div
-                        key={user.id}
-                        className="flex items-center justify-between rounded-xl border border-zinc-800/60 bg-zinc-900/50 p-2 text-xs"
+                        key={searchUser.id}
+                        className="flex items-center justify-between rounded-[5px] border border-[#D8D4CB] bg-white p-2 text-xs"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <img
-                            src={user.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`}
-                            alt={user.name}
-                            className="h-7 w-7 rounded-full object-cover shrink-0"
-                          />
+                          <UserAvatar name={searchUser.name} avatarUrl={searchUser.avatarUrl} size="sm" />
                           <div className="min-w-0">
-                            <p className="font-semibold text-white truncate">{user.name}</p>
-                            <p className="text-[10px] text-zinc-400 truncate">@{user.username}</p>
+                            <p className="font-semibold text-[#242427] truncate">{searchUser.name}</p>
+                            <p className="text-[10px] text-[#7E7C77] truncate">@{searchUser.username}</p>
                           </div>
                         </div>
 
                         <button
                           type="button"
-                          onClick={() => handleSendFriendRequest(user.id)}
+                          onClick={() => handleSendFriendRequest(searchUser.id)}
                           disabled={isSent}
-                          className="flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:bg-zinc-800 disabled:text-zinc-500 px-2.5 py-1 text-[11px] font-semibold text-white transition shrink-0"
+                          className="flex items-center gap-1 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] disabled:bg-[#EDE9DF] disabled:text-[#7E7C77] px-2.5 py-1 text-[11px] font-semibold text-white transition shrink-0"
                         >
                           {isSent ? "Sent" : "Add"}
                         </button>
@@ -243,20 +240,20 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
                   })}
                 </div>
               ) : searchQuery.trim() ? (
-                <p className="text-center text-xs text-zinc-500 py-2">No users found</p>
+                <p className="text-center text-xs text-[#7E7C77] py-2">No users found</p>
               ) : null}
             </div>
           )}
 
           {/* Tabs */}
-          <div className="grid grid-cols-2 border-b border-zinc-800/80 bg-zinc-900/40 p-1">
+          <div className="grid grid-cols-2 border-b border-[#D8D4CB] bg-[#EDE9DF] p-1 gap-1">
             <button
               type="button"
               onClick={() => setActiveTab("incoming")}
-              className={`rounded-xl py-2 text-xs font-semibold transition ${
+              className={`rounded-[4px] py-1.5 text-xs font-semibold transition ${
                 activeTab === "incoming"
-                  ? "bg-zinc-800 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
+                  ? "bg-white text-[#242427] shadow-xs"
+                  : "text-[#7E7C77] hover:text-[#242427]"
               }`}
             >
               Received ({incoming.length})
@@ -264,10 +261,10 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
             <button
               type="button"
               onClick={() => setActiveTab("sent")}
-              className={`rounded-xl py-2 text-xs font-semibold transition ${
+              className={`rounded-[4px] py-1.5 text-xs font-semibold transition ${
                 activeTab === "sent"
-                  ? "bg-zinc-800 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
+                  ? "bg-white text-[#242427] shadow-xs"
+                  : "text-[#7E7C77] hover:text-[#242427]"
               }`}
             >
               Sent ({sent.length})
@@ -275,10 +272,10 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
           </div>
 
           {/* Content List */}
-          <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+          <div className="max-h-80 overflow-y-auto p-2.5 space-y-2">
             {activeTab === "incoming" ? (
               incoming.length === 0 ? (
-                <div className="py-8 text-center text-xs text-zinc-500">
+                <div className="py-8 text-center text-xs text-[#7E7C77]">
                   No incoming friend requests
                 </div>
               ) : (
@@ -287,20 +284,13 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
                   return (
                     <div
                       key={req.id}
-                      className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3 text-xs"
+                      className="flex items-center justify-between rounded-[5px] border border-[#D8D4CB] bg-white p-2.5 text-xs"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={
-                            req.senderAvatarUrl ||
-                            `https://ui-avatars.com/api/?name=${encodeURIComponent(req.senderName || "User")}`
-                          }
-                          alt={req.senderName}
-                          className="h-8 w-8 rounded-full object-cover shrink-0"
-                        />
+                        <UserAvatar name={req.senderName} avatarUrl={req.senderAvatarUrl} size="sm" />
                         <div className="min-w-0">
-                          <p className="font-semibold text-white truncate">{req.senderName}</p>
-                          <p className="text-[10px] text-zinc-400 truncate">
+                          <p className="font-semibold text-[#242427] truncate">{req.senderName}</p>
+                          <p className="text-[10px] text-[#7E7C77] truncate">
                             @{req.senderUsername} {req.senderPosition ? `· ${req.senderPosition}` : ""}
                           </p>
                         </div>
@@ -311,7 +301,7 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
                           type="button"
                           onClick={() => handleRespond(req.id, "ACCEPT")}
                           disabled={isBusy}
-                          className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition disabled:opacity-40"
+                          className="flex items-center gap-1 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-2.5 py-1 text-xs font-semibold text-white transition disabled:opacity-40 shadow-xs"
                           title="Accept friend request"
                         >
                           {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
@@ -321,7 +311,7 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
                           type="button"
                           onClick={() => handleRespond(req.id, "DECLINE")}
                           disabled={isBusy}
-                          className="flex items-center justify-center h-7 w-7 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-400 hover:bg-rose-950/40 hover:border-rose-800 hover:text-rose-400 transition"
+                          className="flex items-center justify-center h-6 w-6 rounded-[5px] border border-[#D8D4CB] bg-[#EDE9DF] text-[#585754] hover:bg-[#B44A4A]/10 hover:border-[#B44A4A] hover:text-[#B44A4A] transition"
                           title="Decline"
                         >
                           <X className="h-3.5 w-3.5" />
@@ -332,31 +322,24 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
                 })
               )
             ) : sent.length === 0 ? (
-              <div className="py-8 text-center text-xs text-zinc-500">
+              <div className="py-8 text-center text-xs text-[#7E7C77]">
                 No outgoing friend requests
               </div>
             ) : (
               sent.map((req) => (
                 <div
                   key={req.id}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/50 p-3 text-xs"
+                  className="flex items-center justify-between rounded-[5px] border border-[#D8D4CB] bg-white p-2.5 text-xs"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <img
-                      src={
-                        req.receiverAvatarUrl ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(req.receiverName || "User")}`
-                      }
-                      alt={req.receiverName}
-                      className="h-8 w-8 rounded-full object-cover shrink-0"
-                    />
+                    <UserAvatar name={req.receiverName} avatarUrl={req.receiverAvatarUrl} size="sm" />
                     <div className="min-w-0">
-                      <p className="font-semibold text-white truncate">{req.receiverName}</p>
-                      <p className="text-[10px] text-zinc-400 truncate">@{req.receiverUsername}</p>
+                      <p className="font-semibold text-[#242427] truncate">{req.receiverName}</p>
+                      <p className="text-[10px] text-[#7E7C77] truncate">@{req.receiverUsername}</p>
                     </div>
                   </div>
 
-                  <span className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-amber-400 shrink-0">
+                  <span className="flex items-center gap-1 rounded-[3px] border border-[#D97706]/40 bg-[#D97706]/10 px-2 py-0.5 text-[10px] font-semibold text-[#D97706] shrink-0">
                     <Clock className="h-3 w-3" /> Pending
                   </span>
                 </div>

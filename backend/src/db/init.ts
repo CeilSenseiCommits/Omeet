@@ -312,43 +312,6 @@ export async function initializeDatabase() {
     }
 
 
-    // Check if initial demo users exist; if not, seed them
-    const existingCheck = await client.query(
-      `SELECT COUNT(*) FROM users WHERE LOWER(username) IN ('suryansh_dev', 'priya_ml');`
-    );
-
-    if (parseInt(existingCheck.rows[0].count, 10) === 0) {
-      console.log("Seeding initial demo users for testing...");
-      await client.query(`
-        INSERT INTO users (google_id, email, username, name, avatar_url, phone, bio, timezone, is_onboarded)
-        VALUES 
-          (
-            'gid_104928172948201948271',
-            'suryansh@example.com',
-            'suryansh_dev',
-            'Suryansh Rao',
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
-            '+91 98765 43210',
-            'Core Systems Architect & Distributed Systems Engineer',
-            'Asia/Kolkata',
-            TRUE
-          ),
-          (
-            'gid_203948572819384729102',
-            'priya@openai-research.com',
-            'priya_ml',
-            'Priya Sharma',
-            'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100',
-            '+1 (415) 555-0199',
-            'Machine Learning Researcher',
-            'America/Los_Angeles',
-            TRUE
-          );
-      `);
-      console.log("Seeded demo users successfully!");
-    } else {
-      console.log("Demo users already present in database.");
-    }
 
     console.log("Database initialized successfully on Neon cloud!");
   } catch (error) {

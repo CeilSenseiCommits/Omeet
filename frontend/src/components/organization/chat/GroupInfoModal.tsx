@@ -64,15 +64,6 @@ interface GroupInfoModalProps {
   onMemberUpdated?: () => void;
 }
 
-function getInitials(name: string) {
-  return (name || "U")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
 function GroupInfoModal({
   isOpen,
   onClose,
@@ -99,43 +90,47 @@ function GroupInfoModal({
 
   // Fetch details
   const fetchGroupDetails = useCallback(async () => {
-    if (!isOpen || !conversationId || !organizationId) return;
-
+    if (!conversationId || !organizationId || !user?.id) return;
     try {
       setIsLoading(true);
       setError(null);
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/details?userId=${user?.id || ""}`,
+        `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/details?userId=${user.id}`,
         {
           headers: {
-            "x-user-id": user?.id || "",
+            "x-user-id": user.id,
           },
         }
       );
 
       if (!res.ok) {
-        throw new Error("Failed to load group details.");
+        const errJson = await res.json();
+        throw new Error(errJson.error || "Failed to load group details.");
       }
 
       const resData = await res.json();
       setData(resData);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Unable to fetch group details.");
+      setError(err.message || "Failed to load group details.");
     } finally {
       setIsLoading(false);
     }
-  }, [isOpen, conversationId, organizationId, user?.id]);
+  }, [conversationId, organizationId, user?.id]);
 
   useEffect(() => {
-    fetchGroupDetails();
-  }, [fetchGroupDetails]);
+    if (isOpen) {
+      fetchGroupDetails();
+      setShowDeleteConfirm(false);
+      setSelectedCandidateId("");
+    }
+  }, [isOpen, fetchGroupDetails]);
 
   if (!isOpen) return null;
 
   // Add member handler
   const handleAddMember = async () => {
-    if (!selectedCandidateId || isAdding || !user?.id) return;
+    if (!selectedCandidateId || !user?.id || isAdding) return;
 
     try {
       setIsAdding(true);
@@ -149,16 +144,14 @@ function GroupInfoModal({
             "x-user-id": user.id,
           },
           body: JSON.stringify({
-            userId: user.id,
             targetUserId: selectedCandidateId,
-            role: "MEMBER",
           }),
         }
       );
 
       if (!res.ok) {
         const errJson = await res.json();
-        throw new Error(errJson.error || "Failed to add member.");
+        throw new Error(errJson.error || "Failed to add member to group.");
       }
 
       setSelectedCandidateId("");
@@ -190,10 +183,9 @@ function GroupInfoModal({
 
       if (!res.ok) {
         const errJson = await res.json();
-        throw new Error(errJson.error || "Failed to remove member.");
+        throw new Error(errJson.error || "Failed to remove member from group.");
       }
 
-      // If user removed themselves (left group), close modal and notify
       if (targetUserId === user.id) {
         onClose();
         onGroupDeleted?.();
@@ -245,19 +237,19 @@ function GroupInfoModal({
   const isChannel = conv?.type === "CHANNEL";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-[#121214] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-[8px] border border-[#383D47] bg-[#1D2026] text-[#F3F3EE] shadow-2xl">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800/60 px-6 py-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fuchsia-950/80 border border-fuchsia-800/60 text-fuchsia-400">
-              {isChannel ? <Hash className="h-5 w-5" /> : <Users className="h-5 w-5" />}
+        <div className="flex items-center justify-between border-b border-[#383D47] px-5 py-3.5">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[4px] bg-[#252932] border border-[#383D47] text-[#8FA0EB]">
+              {isChannel ? <Hash className="h-4 w-4" /> : <Users className="h-4 w-4" />}
             </div>
             <div className="min-w-0">
-              <h3 className="text-base font-semibold text-white truncate">
+              <h3 className="text-xs font-bold text-[#F3F3EE] truncate">
                 {isChannel ? `# ${conv?.name}` : conv?.name || "Group Info"}
               </h3>
-              <p className="text-xs text-zinc-400 truncate">
+              <p className="text-[10px] text-[#A9ACB4] truncate">
                 {conv?.memberCount || 0} active members
               </p>
             </div>
@@ -266,35 +258,35 @@ function GroupInfoModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
+            className="rounded-[4px] p-1 text-[#A9ACB4] hover:bg-[#252932] hover:text-white transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {isLoading ? (
-            <div className="flex h-48 items-center justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-fuchsia-500" />
+            <div className="flex h-40 items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-[#717684]" />
             </div>
           ) : error ? (
-            <div className="rounded-xl border border-rose-500/30 bg-rose-950/40 p-4 text-xs text-rose-300 flex items-center gap-2">
+            <div className="rounded-[5px] border border-[#B44A4A]/40 bg-[#B44A4A]/10 p-3 text-xs text-[#FCA5A5] flex items-center gap-2">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           ) : (
             <>
               {/* Group Description / Topic */}
-              <div className="rounded-xl border border-zinc-800/60 bg-zinc-950/50 p-4 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <div className="rounded-[5px] border border-[#383D47] bg-[#252932] p-3 space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[#A9ACB4]">
                   Topic / Purpose
                 </p>
-                <p className="text-sm text-zinc-200">
+                <p className="text-xs text-[#F3F3EE]">
                   {conv?.topic || "No topic set for this team space."}
                 </p>
                 {conv?.creatorName && (
-                  <p className="text-[11px] text-zinc-500 pt-1">
+                  <p className="text-[10px] text-[#717684] pt-0.5">
                     Created by {conv.creatorName} (@{conv.creatorUsername})
                   </p>
                 )}
@@ -302,17 +294,17 @@ function GroupInfoModal({
 
               {/* Add Members Section (Admin only) */}
               {data?.isCallerAdmin && data.availableCandidates.length > 0 && (
-                <div className="rounded-xl border border-fuchsia-900/40 bg-fuchsia-950/10 p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-fuchsia-300">
-                    <UserPlus className="h-4 w-4" />
-                    <span>Add Organization Colleague</span>
+                <div className="rounded-[5px] border border-[#383D47] bg-[#252932] p-3 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8FA0EB]">
+                    <UserPlus className="h-3.5 w-3.5" />
+                    <span>Add Colleague</span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <select
                       value={selectedCandidateId}
                       onChange={(e) => setSelectedCandidateId(e.target.value)}
-                      className="flex-1 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-xs text-white outline-none focus:border-fuchsia-600 transition"
+                      className="flex-1 rounded-[5px] border border-[#383D47] bg-[#1D2026] px-2.5 py-1.5 text-xs text-[#F3F3EE] outline-none focus:border-[#4963C8] transition-colors"
                     >
                       <option value="">Select a colleague to add...</option>
                       {data.availableCandidates.map((c) => (
@@ -326,7 +318,7 @@ function GroupInfoModal({
                       type="button"
                       disabled={!selectedCandidateId || isAdding}
                       onClick={handleAddMember}
-                      className="rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 px-4 py-2 text-xs font-semibold text-white transition disabled:opacity-40 shrink-0"
+                      className="rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40 shrink-0"
                     >
                       {isAdding ? "Adding..." : "Add"}
                     </button>
@@ -335,19 +327,19 @@ function GroupInfoModal({
               )}
 
               {/* Members Roster */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                    Group Members ({data?.members.length})
+                  <h4 className="text-[10px] font-semibold uppercase tracking-wider text-[#A9ACB4]">
+                    Members ({data?.members.length})
                   </h4>
                   {data?.isCallerAdmin && (
-                    <span className="text-[11px] text-fuchsia-400 font-medium">
-                      You are an admin
+                    <span className="text-[10px] text-[#8FA0EB] font-medium">
+                      Admin Access
                     </span>
                   )}
                 </div>
 
-                <div className="divide-y divide-zinc-800/40 rounded-xl border border-zinc-800/60 bg-zinc-950/40 overflow-hidden">
+                <div className="divide-y divide-[#383D47] rounded-[5px] border border-[#383D47] bg-[#252932] overflow-hidden">
                   {data?.members.map((member) => {
                     const isSelf = member.userId === user?.id;
                     const isGroupOwner = member.isCreator || member.groupRole === "OWNER";
@@ -357,22 +349,22 @@ function GroupInfoModal({
                     return (
                       <div
                         key={member.userId}
-                        className="flex items-center justify-between p-3 hover:bg-zinc-900/40 transition"
+                        className="flex items-center justify-between p-2.5 hover:bg-[#2C3039] transition-colors"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <img
                             src={
                               member.avatarUrl ||
-                              `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=2563eb&color=ffffff`
+                              `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=1D2026&color=F3F3EE`
                             }
                             alt={member.name}
-                            className="h-8 w-8 rounded-full border border-zinc-700 object-cover shrink-0"
+                            className="h-7 w-7 rounded-[4px] border border-[#383D47] object-cover shrink-0"
                           />
                           <div className="min-w-0">
-                            <p className="font-medium text-xs text-white truncate flex items-center gap-1.5">
-                              {member.name} {isSelf && <span className="text-zinc-500">(You)</span>}
+                            <p className="font-semibold text-xs text-[#F3F3EE] truncate flex items-center gap-1">
+                              {member.name} {isSelf && <span className="text-[#717684]">(You)</span>}
                             </p>
-                            <p className="text-[11px] text-zinc-500 truncate">
+                            <p className="text-[10px] text-[#A9ACB4] truncate">
                               @{member.username} · {member.position || "Member"}
                             </p>
                           </div>
@@ -381,16 +373,16 @@ function GroupInfoModal({
                         <div className="flex items-center gap-2 shrink-0">
                           {/* Role Badge */}
                           {isGroupOwner ? (
-                            <span className="flex items-center gap-1 rounded-full border border-amber-800/50 bg-amber-950/60 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-                              <Crown className="h-3 w-3" /> Owner
+                            <span className="flex items-center gap-1 rounded-[3px] border border-amber-600/40 bg-amber-950/40 px-1.5 py-0.5 text-[9px] font-semibold text-amber-300">
+                              <Crown className="h-2.5 w-2.5" /> Owner
                             </span>
                           ) : member.groupRole === "ADMIN" ? (
-                            <span className="flex items-center gap-1 rounded-full border border-indigo-800/50 bg-indigo-950/60 px-2 py-0.5 text-[10px] font-semibold text-indigo-300">
-                              <ShieldCheck className="h-3 w-3" /> Admin
+                            <span className="flex items-center gap-1 rounded-[3px] border border-[#4963C8]/40 bg-[#4963C8]/20 px-1.5 py-0.5 text-[9px] font-semibold text-[#8FA0EB]">
+                              <ShieldCheck className="h-2.5 w-2.5" /> Admin
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900 px-2 py-0.5 text-[10px] font-medium text-zinc-400">
-                              <UserCheck className="h-3 w-3" /> Member
+                            <span className="flex items-center gap-1 rounded-[3px] border border-[#383D47] bg-[#1D2026] px-1.5 py-0.5 text-[9px] font-medium text-[#A9ACB4]">
+                              <UserCheck className="h-2.5 w-2.5" /> Member
                             </span>
                           )}
 
@@ -400,13 +392,13 @@ function GroupInfoModal({
                               type="button"
                               disabled={removingUserId === member.userId}
                               onClick={() => handleRemoveMember(member.userId)}
-                              className="rounded-lg p-1 text-zinc-500 hover:bg-rose-950/60 hover:text-rose-400 transition"
-                              title="Remove member from group"
+                              className="rounded-[3px] p-1 text-[#717684] hover:bg-[#B44A4A]/20 hover:text-[#B44A4A] transition-colors"
+                              title="Remove member"
                             >
                               {removingUserId === member.userId ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-rose-400" />
+                                <Loader2 className="h-3 w-3 animate-spin text-[#B44A4A]" />
                               ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
+                                <Trash2 className="h-3 w-3" />
                               )}
                             </button>
                           )}
@@ -418,14 +410,14 @@ function GroupInfoModal({
               </div>
 
               {/* Danger Zone: Delete Group or Leave */}
-              <div className="pt-2 border-t border-zinc-800/60 space-y-3">
+              <div className="pt-2 border-t border-[#383D47] space-y-2">
                 {/* Delete Group Section for Creator / Admin */}
                 {data?.canDeleteGroup && !isChannel && (
-                  <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-4 flex items-center justify-between gap-4">
+                  <div className="rounded-[5px] border border-[#B44A4A]/30 bg-[#B44A4A]/10 p-3 flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-xs font-semibold text-rose-300">Delete Team Group</p>
-                      <p className="text-[11px] text-zinc-400">
-                        Permanently delete this group and all its conversation history.
+                      <p className="text-xs font-semibold text-[#FCA5A5]">Delete Team Group</p>
+                      <p className="text-[10px] text-[#A9ACB4]">
+                        Permanently delete this group and history.
                       </p>
                     </div>
 
@@ -433,16 +425,16 @@ function GroupInfoModal({
                       <button
                         type="button"
                         onClick={() => setShowDeleteConfirm(true)}
-                        className="rounded-xl border border-rose-700/60 bg-rose-900/30 hover:bg-rose-900/60 px-3.5 py-1.5 text-xs font-semibold text-rose-200 transition shrink-0"
+                        className="rounded-[5px] border border-[#B44A4A] bg-[#B44A4A]/20 hover:bg-[#B44A4A]/40 px-3 py-1 text-xs font-medium text-[#FCA5A5] transition-colors shrink-0"
                       >
-                        Delete Group
+                        Delete
                       </button>
                     ) : (
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => setShowDeleteConfirm(false)}
-                          className="rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-700 transition"
+                          className="rounded-[5px] border border-[#383D47] bg-[#252932] px-2.5 py-1 text-xs text-[#A9ACB4] hover:bg-[#2C3039] transition"
                         >
                           Cancel
                         </button>
@@ -450,9 +442,9 @@ function GroupInfoModal({
                           type="button"
                           disabled={isDeleting}
                           onClick={handleDeleteGroup}
-                          className="rounded-xl bg-rose-600 hover:bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white transition disabled:opacity-50"
+                          className="rounded-[5px] bg-[#B44A4A] hover:bg-[#9E3D3D] px-2.5 py-1 text-xs font-medium text-white transition-colors disabled:opacity-50"
                         >
-                          {isDeleting ? "Deleting..." : "Confirm Delete"}
+                          {isDeleting ? "Deleting..." : "Confirm"}
                         </button>
                       </div>
                     )}
@@ -465,10 +457,10 @@ function GroupInfoModal({
                     <button
                       type="button"
                       onClick={() => user?.id && handleRemoveMember(user.id)}
-                      className="flex items-center gap-1.5 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-rose-950/60 hover:border-rose-700 hover:text-rose-300 px-4 py-2 text-xs font-semibold text-zinc-300 transition"
+                      className="flex items-center gap-1 rounded-[5px] border border-[#383D47] bg-[#252932] hover:bg-[#B44A4A]/20 hover:border-[#B44A4A] hover:text-[#B44A4A] px-3 py-1.5 text-xs font-medium text-[#A9ACB4] transition-colors"
                     >
                       <LogOut className="h-3.5 w-3.5" />
-                      Leave Group
+                      <span>Leave Group</span>
                     </button>
                   </div>
                 )}

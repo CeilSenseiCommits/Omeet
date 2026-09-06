@@ -164,6 +164,507 @@ router.get("/user/:userId", async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/organizations/:id/public
+ * Returns public organization profile: overview, owner info, active metrics, public channels, and team preview
+ */
+router.get("/:id/public", async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    const callerUserId = String((req.headers["x-user-id"] as string) || (req.query.userId as string) || "").trim();
+
+    const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+    if (!id || !isUUID(id)) {
+      return res.status(404).json({ error: "Organization not found." });
+    }
+
+    // 1. Fetch organization and owner
+    const orgResult = await query(
+      `SELECT 
+         o.id,
+         o.name,
+         o.brief,
+         o.description,
+         o.size,
+         o.employee_count,
+         o.created_at,
+         u.id AS owner_id,
+         u.name AS owner_name,
+         u.username AS owner_username,
+         u.avatar_url AS owner_avatar_url
+       FROM organizations o
+       LEFT JOIN users u ON u.id = o.owner_id
+       WHERE o.id = $1
+       LIMIT 1;`,
+      [id]
+    );
+
+    if (orgResult.rows.length === 0) {
+      return res.status(404).json({ error: "Organization not found." });
+    }
+
+    const orgRow = orgResult.rows[0];
+
+    // 2. Check if caller is an active member
+    let isMember = false;
+    if (callerUserId && isUUID(callerUserId)) {
+      const memberCheck = await query(
+        `SELECT id FROM organization_employees
+         WHERE organization_id = $1 AND user_id = $2 AND status = 'ACTIVE'
+         LIMIT 1;`,
+        [id, callerUserId]
+      );
+      isMember = memberCheck.rows.length > 0;
+    }
+
+    // 3. Count active meetings
+    let activeMeetings = 0;
+    try {
+      const meetingsCount = await query(
+        `SELECT COUNT(*) FROM organization_meetings
+         WHERE organization_id = $1 AND status = 'ACTIVE';`,
+        [id]
+      );
+      activeMeetings = parseInt(meetingsCount.rows[0]?.count || "0", 10);
+    } catch {
+      activeMeetings = 0;
+    }
+
+    // 4. Fetch top team members
+    const membersResult = await query(
+      `SELECT 
+         u.id,
+         u.name,
+         u.username,
+         u.avatar_url AS "avatarUrl",
+         oe.position,
+         oe.role
+       FROM organization_employees oe
+       JOIN users u ON u.id = oe.user_id
+       WHERE oe.organization_id = $1 AND oe.status = 'ACTIVE'
+       ORDER BY 
+         CASE WHEN oe.role = 'OWNER' THEN 1 WHEN oe.role = 'ADMIN' THEN 2 ELSE 3 END ASC,
+         oe.created_at ASC
+       LIMIT 8;`,
+      [id]
+    );
+
+    // 5. Fetch public channels
+    let channels: any[] = [];
+    try {
+      const channelsResult = await query(
+        `SELECT name, topic 
+         FROM conversations
+         WHERE organization_id = $1 AND type = 'CHANNEL' AND is_private = FALSE
+         ORDER BY name ASC
+         LIMIT 6;`,
+        [id]
+      );
+      channels = channelsResult.rows;
+    } catch {
+      channels = [];
+    }
+
+    if (channels.length === 0) {
+      channels = [
+        { name: "general", topic: "Company-wide announcements and discussion" },
+        { name: "random", topic: "Non-work banter and fun watercooler chats" },
+      ];
+    }
+
+    return res.status(200).json({
+      organization: {
+        id: orgRow.id,
+        name: orgRow.name,
+        brief: orgRow.brief,
+        description: orgRow.description,
+        size: orgRow.size,
+        employeeCount: parseInt(orgRow.employee_count, 10) || membersResult.rows.length || 1,
+        avatarUrl: null,
+        activeMeetings,
+        createdAt: orgRow.created_at,
+        isMember,
+        owner: orgRow.owner_id
+          ? {
+              id: orgRow.owner_id,
+              name: orgRow.owner_name,
+              username: orgRow.owner_username,
+              avatarUrl: orgRow.owner_avatar_url,
+            }
+          : null,
+        channels,
+        topMembers: membersResult.rows,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to load public organization profile:", error);
+    return res.status(500).json({ error: "Failed to load organization profile." });
+  }
+});
+
+/**
+ * GET /api/organizations/:id/workspace
+ * Returns unified workspace dataset: organization, userMembership, chatRooms, directMessages, groups, meetings, and members
+ */
+router.get("/:id/workspace", async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id || "");
+    const userId = String((req.headers["x-user-id"] as string) || (req.query.userId as string) || "");
+
+    // 1. Fetch organization
+    const orgResult = await query("SELECT * FROM organizations WHERE id = $1 LIMIT 1;", [id]);
+    if (orgResult.rows.length === 0) {
+      return res.status(404).json({ error: "Organization not found." });
+    }
+
+    const org = orgResult.rows[0];
+
+    // 2. Count active live meetings
+    const liveMeetingsResult = await query(
+      `SELECT COUNT(*) FROM organization_meetings WHERE organization_id = $1 AND status = 'LIVE';`,
+      [id]
+    );
+    const activeMeetingsCount = parseInt(liveMeetingsResult.rows[0]?.count || "0", 10);
+
+    // 3. Check membership
+    let membership = null;
+    if (userId) {
+      const memberCheck = await query(
+        `SELECT oe.*, u.name, u.avatar_url 
+         FROM organization_employees oe
+         JOIN users u ON u.id = oe.user_id
+         WHERE oe.organization_id = $1 AND oe.user_id = $2 AND oe.status = 'ACTIVE' 
+         LIMIT 1;`,
+        [id, userId]
+      );
+      if (memberCheck.rows.length > 0) {
+        membership = memberCheck.rows[0];
+      } else if (org.owner_id === userId) {
+        // Self-heal: If creator row was missing, restore owner membership
+        const restoreRes = await query(
+          `INSERT INTO organization_employees (organization_id, user_id, position, role, status, has_permission, joining_date, last_accessed_at)
+           VALUES ($1, $2, 'Owner', 'OWNER', 'ACTIVE', TRUE, CURRENT_DATE, NOW())
+           ON CONFLICT (organization_id, user_id) DO UPDATE SET status = 'ACTIVE', role = 'OWNER', has_permission = TRUE
+           RETURNING *;`,
+          [id, userId]
+        );
+        membership = restoreRes.rows[0];
+      }
+    }
+
+    // 4. Fetch leadership / hierarchy root
+    const ownerResult = await query(
+      `SELECT u.id, u.name, oe.position, oe.role 
+       FROM organization_employees oe
+       JOIN users u ON u.id = oe.user_id
+       WHERE oe.organization_id = $1 AND (oe.role = 'OWNER' OR oe.manager_employee_id IS NULL)
+       LIMIT 1;`,
+      [id]
+    );
+    const owner = ownerResult.rows[0];
+
+    const initials = (org.name || "Org")
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+
+    const hierarchy = {
+      id: "root-leadership",
+      name: "Executive Leadership",
+      manager: owner ? `${owner.name} (${owner.position || "Owner"})` : "Founding Team",
+      members: org.employee_count,
+      activeMeetings: activeMeetingsCount,
+      description: org.brief || org.description || "Core organizational leadership.",
+      recentActivity: "Active organizational workspace.",
+    };
+
+    const organizationData = {
+      id: org.id,
+      name: org.name,
+      initials,
+      accent: "#4963C8",
+      brief: org.brief,
+      description: org.description || org.brief || "No description provided.",
+      size: org.size,
+      employeeCount: org.employee_count,
+      memberCount: org.employee_count,
+      activeMeetings: activeMeetingsCount,
+      status: "Active",
+      ownerId: org.owner_id,
+      createdAt: org.created_at,
+      hierarchy,
+      aiSummary: `${org.name} currently has ${org.employee_count} active team member(s) collaborating in this workspace.`,
+    };
+
+    const userMembershipData = membership
+      ? {
+          id: membership.id,
+          role: membership.role,
+          position: membership.position,
+          status: membership.status,
+          hasPermission: membership.has_permission || membership.role === "OWNER",
+          isOwner: membership.role === "OWNER" || org.owner_id === userId,
+          department: membership.department,
+        }
+      : null;
+
+    // 5. Channels / Chat rooms
+    const channelsResult = await query(
+      `SELECT c.id, c.name, c.type, c.topic, c.is_private,
+              COALESCE(
+                (
+                  SELECT COUNT(*)::int
+                  FROM messages m
+                  WHERE m.conversation_id = c.id
+                    AND ($2::varchar = '' OR m.sender_id != $2::uuid)
+                    AND m.created_at > COALESCE(cp.last_read_at, '1970-01-01'::timestamptz)
+                ),
+                0
+              ) AS unread_count
+       FROM conversations c
+       LEFT JOIN conversation_participants cp ON cp.conversation_id = c.id AND ($2::varchar = '' OR cp.user_id = $2::uuid)
+       WHERE c.organization_id = $1 AND c.type = 'CHANNEL' AND (c.is_private = FALSE OR cp.user_id IS NOT NULL)
+       ORDER BY c.name ASC;`,
+      [id, userId || ""]
+    );
+
+    const chatRooms = channelsResult.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      unreadCount: Number(row.unread_count || 0),
+      active: true,
+    }));
+
+    // 6. Groups
+    const groupsResult = await query(
+      `SELECT c.id, c.name, c.topic,
+              COALESCE(
+                (
+                  SELECT COUNT(*)::int
+                  FROM messages m
+                  JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = $2::uuid
+                  WHERE m.conversation_id = c.id
+                    AND m.sender_id != $2::uuid
+                    AND m.created_at > cp.last_read_at
+                ),
+                0
+              ) AS unread_count
+       FROM conversations c
+       WHERE c.organization_id = $1 AND c.type = 'GROUP'
+       ORDER BY c.created_at ASC;`,
+      [id, userId || "00000000-0000-0000-0000-000000000000"]
+    );
+
+    const groups = groupsResult.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      unreadCount: Number(row.unread_count || 0),
+      active: true,
+    }));
+
+    // 7. Direct messages
+    let directMessages: any[] = [];
+    if (userId) {
+      const dmResult = await query(
+        `SELECT 
+           c.id AS conversation_id,
+           c.updated_at,
+           u_other.id AS other_user_id,
+           u_other.name AS other_user_name,
+           u_other.avatar_url,
+           oe.position,
+           oe.last_accessed_at,
+           COALESCE(
+             (
+               SELECT COUNT(*)::int
+               FROM messages m
+               WHERE m.conversation_id = c.id
+                 AND m.sender_id = u_other.id
+                 AND m.created_at > cp_me.last_read_at
+             ),
+             0
+           ) AS unread_count
+         FROM conversations c
+         JOIN conversation_participants cp_me ON cp_me.conversation_id = c.id AND cp_me.user_id = $2
+         JOIN conversation_participants cp_other ON cp_other.conversation_id = c.id AND cp_other.user_id != $2
+         JOIN users u_other ON u_other.id = cp_other.user_id
+         JOIN organization_employees oe ON oe.user_id = u_other.id AND oe.organization_id = $1 AND oe.status = 'ACTIVE'
+         WHERE c.organization_id = $1 AND c.type = 'DIRECT'
+         ORDER BY c.updated_at DESC;`,
+        [id, userId]
+      );
+
+      directMessages = dmResult.rows.map((row) => {
+        const isRecent = row.last_accessed_at && (Date.now() - new Date(row.last_accessed_at).getTime() < 15 * 60 * 1000);
+        return {
+          id: row.conversation_id,
+          userId: row.other_user_id,
+          name: row.other_user_name,
+          avatarUrl: row.avatar_url,
+          role: row.position || "Member",
+          lastSeen: isRecent ? "Active now" : "Offline",
+          unreadCount: Number(row.unread_count || 0),
+          active: !!isRecent,
+        };
+      });
+    }
+
+    // 8. Meetings
+    await autoCleanExpiredMeetings(id);
+
+    const meetingsResult = await query(
+      `SELECT 
+         m.id,
+         m.meeting_code,
+         m.title,
+         m.status,
+         m.scope,
+         m.is_hierarchical,
+         m.scheduled_at,
+         m.started_at,
+         m.ended_at,
+         m.has_recording,
+         m.has_ai_summary,
+         m.host_user_id,
+         u.name AS host_name,
+         u.avatar_url AS host_avatar_url,
+         c.name AS channel_name,
+         COALESCE(
+           (
+             SELECT json_agg(json_build_object('id', pu.id, 'name', pu.name, 'avatarUrl', pu.avatar_url, 'role', mp.role))
+             FROM meeting_participants mp
+             JOIN users pu ON pu.id = mp.user_id
+             WHERE mp.meeting_id = m.id
+           ),
+           '[]'::json
+         ) AS participants_data
+       FROM organization_meetings m
+       JOIN users u ON u.id = m.host_user_id
+       LEFT JOIN conversations c ON c.id = m.conversation_id
+       WHERE m.organization_id = $1
+         AND (
+           m.status = 'LIVE' 
+           OR m.status = 'ENDED'
+           OR ($2::varchar = '' OR m.scope = 'ORG_WIDE' OR m.host_user_id = $2::uuid OR EXISTS (
+             SELECT 1 FROM meeting_participants mp2 WHERE mp2.meeting_id = m.id AND mp2.user_id = $2::uuid
+           ) OR EXISTS (
+             SELECT 1 FROM meeting_invitations mi2 WHERE mi2.meeting_id = m.id AND mi2.invitee_user_id = $2::uuid
+           ))
+         )
+       ORDER BY m.scheduled_at ASC;`,
+      [id, userId || "00000000-0000-0000-0000-000000000000"]
+    );
+
+    const ongoingMeetings = meetingsResult.rows
+      .filter((m) => m.status === "LIVE")
+      .map((m) => {
+        const participantNames = Array.isArray(m.participants_data) && m.participants_data.length > 0
+          ? m.participants_data.map((p: any) => p.name)
+          : [m.host_name];
+        return {
+          id: m.id,
+          title: m.title,
+          group: m.channel_name ? `#${m.channel_name}` : "Workspace Sync",
+          participants: participantNames,
+          meetingCode: m.meeting_code,
+          isHierarchical: m.is_hierarchical,
+        };
+      });
+
+    const upcomingMeetings = meetingsResult.rows
+      .filter((m) => m.status === "SCHEDULED")
+      .map((m) => {
+        const d = new Date(m.scheduled_at);
+        const participantNames = Array.isArray(m.participants_data) && m.participants_data.length > 0
+          ? m.participants_data.map((p: any) => p.name)
+          : [m.host_name];
+        return {
+          id: m.id,
+          title: m.title,
+          date: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          time: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+          organizer: m.host_name,
+          group: m.channel_name ? `#${m.channel_name}` : "Workspace Sync",
+          status: "Scheduled",
+          meetingCode: m.meeting_code,
+          participants: participantNames,
+          isHierarchical: m.is_hierarchical,
+        };
+      });
+
+    const recentlyEndedMeetings = meetingsResult.rows
+      .filter((m) => m.status === "ENDED")
+      .sort((a, b) => new Date(b.ended_at || b.scheduled_at).getTime() - new Date(a.ended_at || a.scheduled_at).getTime())
+      .slice(0, 10)
+      .map((m) => {
+        let duration = "15m";
+        if (m.started_at && m.ended_at) {
+          const mins = Math.max(1, Math.round((new Date(m.ended_at).getTime() - new Date(m.started_at).getTime()) / 60000));
+          duration = `${mins}m`;
+        }
+        let timeAgo = "Just now";
+        if (m.ended_at) {
+          const diffMins = Math.round((Date.now() - new Date(m.ended_at).getTime()) / 60000);
+          if (diffMins < 1) timeAgo = "Just now";
+          else if (diffMins < 60) timeAgo = `${diffMins}m ago`;
+          else {
+            const hrs = Math.round(diffMins / 60);
+            timeAgo = `${hrs}h ago`;
+          }
+        }
+        const participantNames = Array.isArray(m.participants_data) && m.participants_data.length > 0
+          ? m.participants_data.map((p: any) => p.name)
+          : [m.host_name];
+
+        return {
+          id: m.id,
+          title: m.title,
+          meetingCode: m.meeting_code,
+          duration,
+          timeAgo,
+          endedAt: m.ended_at,
+          isHierarchical: m.is_hierarchical,
+          hostName: m.host_name,
+          participants: participantNames,
+          participantsCount: participantNames.length,
+          recordingAvailable: m.has_recording,
+          aiSummaryAvailable: m.has_ai_summary,
+        };
+      });
+
+    // 9. Members list
+    const membersResult = await query(
+      `SELECT oe.id, oe.user_id AS "userId", u.name, u.username, u.email, u.avatar_url AS "avatarUrl",
+              oe.position, oe.department, oe.role, oe.status, oe.has_permission AS "hasPermission",
+              oe.joining_date AS "joiningDate", oe.manager_employee_id AS "managerEmployeeId",
+              oe.last_accessed_at AS "lastAccessedAt"
+       FROM organization_employees oe
+       JOIN users u ON u.id = oe.user_id
+       WHERE oe.organization_id = $1 AND oe.status = 'ACTIVE'
+       ORDER BY CASE WHEN oe.role = 'OWNER' THEN 1 WHEN oe.role = 'ADMIN' THEN 2 ELSE 3 END, u.name ASC;`,
+      [id]
+    );
+
+    return res.status(200).json({
+      organization: organizationData,
+      userMembership: userMembershipData,
+      chatRooms,
+      groups,
+      directMessages,
+      ongoingMeetings,
+      upcomingMeetings,
+      recentlyEndedMeetings,
+      members: membersResult.rows,
+    });
+  } catch (error) {
+    console.error("Failed to fetch workspace dataset:", error);
+    return res.status(500).json({ error: "Database error fetching workspace data." });
+  }
+});
+
+/**
  * GET /api/organizations/:id
  * Fetches single organization details for the workspace layout
  */
@@ -852,15 +1353,32 @@ router.post("/:id/groups", async (req: Request, res: Response) => {
  * POST /api/organizations/:id/conversations/direct
  * Gets or creates a 1-on-1 direct conversation with another member
  */
-router.post("/:id/conversations/direct", async (req: Request, res: Response) => {
+router.post(["/:id/conversations/direct", "/:id/conversations/dm"], async (req: Request, res: Response) => {
   const client = await pool.connect();
   try {
     const orgId = req.params.id;
-    const { userId, targetUserId } = req.body;
+    const userId = req.body.userId || (req.headers["x-user-id"] as string);
+    let targetUserId = req.body.targetUserId || req.body.recipientUserId;
 
     if (!userId || !targetUserId) {
       return res.status(400).json({ error: "Both user ID and target user ID are required." });
     }
+
+    // Resolve targetUserId if an employee ID was passed instead of user_id
+    const empCheck = await client.query(
+      "SELECT user_id FROM organization_employees WHERE id = $1 AND organization_id = $2 LIMIT 1;",
+      [targetUserId, orgId]
+    );
+    if (empCheck.rows.length > 0) {
+      targetUserId = empCheck.rows[0].user_id;
+    }
+
+    // Also resolve userId if an employee ID was passed for current user
+    const userEmpCheck = await client.query(
+      "SELECT user_id FROM organization_employees WHERE id = $1 AND organization_id = $2 LIMIT 1;",
+      [userId, orgId]
+    );
+    const resolvedUserId = userEmpCheck.rows.length > 0 ? userEmpCheck.rows[0].user_id : userId;
 
     // 1. Check if direct conversation already exists between these 2 users in this org
     const existingResult = await client.query(
@@ -870,7 +1388,7 @@ router.post("/:id/conversations/direct", async (req: Request, res: Response) => 
        JOIN conversation_participants cp2 ON cp2.conversation_id = c.id AND cp2.user_id = $3
        WHERE c.organization_id = $1 AND c.type = 'DIRECT'
        LIMIT 1;`,
-      [orgId, userId, targetUserId]
+      [orgId, resolvedUserId, targetUserId]
     );
 
     if (existingResult.rows.length > 0) {
@@ -887,7 +1405,7 @@ router.post("/:id/conversations/direct", async (req: Request, res: Response) => 
       `INSERT INTO conversations (organization_id, type, is_private, created_by)
        VALUES ($1, 'DIRECT', TRUE, $2)
        RETURNING id;`,
-      [orgId, userId]
+      [orgId, resolvedUserId]
     );
 
     const convId = convResult.rows[0].id;
@@ -895,7 +1413,7 @@ router.post("/:id/conversations/direct", async (req: Request, res: Response) => 
     await client.query(
       `INSERT INTO conversation_participants (conversation_id, user_id, role)
        VALUES ($1, $2, 'MEMBER'), ($1, $3, 'MEMBER');`,
-      [convId, userId, targetUserId]
+      [convId, resolvedUserId, targetUserId]
     );
 
     await client.query("COMMIT;");

@@ -39,58 +39,18 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const STORAGE_KEY = "omeet_auth_user";
 
-// Pre-existing taken usernames to simulate collision checks
+// Reserved system usernames that cannot be registered
 const TAKEN_USERNAMES = new Set([
-  "suryansh_dev",
-  "priya_ml",
   "admin",
+  "administrator",
   "system",
   "root",
   "omeet",
-  "alex_m",
-  "sarah_c",
-  "john_doe",
+  "support",
+  "help",
 ]);
 
-export const defaultGoogleAccounts: AuthUser[] = [
-  {
-    id: "user_suryansh",
-    googleId: "gid_104928172948201948271",
-    name: "Suryansh Rao",
-    email: "suryansh@example.com",
-    username: "suryansh_dev",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80",
-    initials: "SR",
-    phone: "+91 98765 43210",
-    bio: "Core Systems Architect & Distributed Systems Engineer",
-    timezone: "Asia/Kolkata",
-    isOnboarded: true,
-  },
-  {
-    id: "user_priya",
-    googleId: "gid_203948572819384729102",
-    name: "Priya Sharma",
-    email: "priya@openai-research.com",
-    username: "priya_ml",
-    avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80",
-    initials: "PS",
-    phone: "+1 (415) 555-0199",
-    bio: "Machine Learning Researcher working on frontier model evaluations",
-    timezone: "America/Los_Angeles",
-    isOnboarded: true,
-  },
-  {
-    id: "user_new_candidate",
-    googleId: "gid_304958291039485729103",
-    name: "Dev Patel",
-    email: "dev.patel@gmail.com",
-    username: "",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80",
-    initials: "DP",
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    isOnboarded: false,
-  },
-];
+export const defaultGoogleAccounts: AuthUser[] = [];
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);

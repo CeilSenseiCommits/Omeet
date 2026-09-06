@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeft,
@@ -50,9 +50,22 @@ interface UserSearchResult {
 export default function InviteToOrganization() {
   const { organizationId } = useParams<{ organizationId: string }>();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const candidateId = searchParams.get("candidateId") || searchParams.get("userId");
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const handleReturn = () => {
+    const targetOrgId = organizationId || location.state?.fromOrgId;
+    const targetTab = location.state?.fromTab || "Invitations";
+    if (targetOrgId) {
+      navigate(`/organization/${targetOrgId}?tab=${targetTab}`);
+    } else if (candidateId || selectedUser?.id) {
+      navigate(`/profile/${candidateId || selectedUser?.id}`);
+    } else {
+      navigate("/");
+    }
+  };
 
   // Eligibility state
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(true);
@@ -279,10 +292,10 @@ export default function InviteToOrganization() {
   // State: Loading Eligibility
   if (isCheckingEligibility) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-          <p className="text-sm font-medium text-zinc-400">Verifying invite permissions & hierarchy...</p>
+      <div className="min-h-screen bg-[#F4F1E9] text-[#242427] flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#4963C8] border-t-transparent" />
+          <p className="text-xs font-semibold text-[#585754]">Verifying invite permissions & hierarchy...</p>
         </div>
       </div>
     );
@@ -291,38 +304,31 @@ export default function InviteToOrganization() {
   // State: Permission Denied (has_permission is false and not Owner)
   if (!canInvite) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-        <div className="w-full max-w-lg rounded-3xl border border-red-500/20 bg-zinc-950/80 p-8 text-center shadow-2xl backdrop-blur-xl">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20">
-            <Lock className="h-8 w-8" />
+      <div className="min-h-screen bg-[#F4F1E9] text-[#242427] flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-[6px] border border-[#D8D4CB] bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[5px] bg-[#FEF2F2] text-[#B44A4A] border border-[#B44A4A]/20">
+            <Lock className="h-6 w-6" />
           </div>
-          <h2 className="mt-6 text-2xl font-bold tracking-tight text-white">Invite Permission Required</h2>
-          <p className="mt-3 text-sm leading-relaxed text-zinc-400">{permissionReason}</p>
+          <h2 className="mt-4 text-lg font-bold tracking-tight text-[#242427]">Invite Permission Required</h2>
+          <p className="mt-2 text-xs leading-relaxed text-[#585754]">{permissionReason}</p>
 
-          <div className="mt-6 rounded-2xl bg-white/[0.03] border border-white/5 p-4 text-left text-xs text-zinc-400 space-y-2">
-            <div className="flex items-center gap-2 font-medium text-zinc-300">
-              <ShieldAlert className="h-4 w-4 text-amber-400" />
+          <div className="mt-5 rounded-[5px] bg-[#FAF9F6] border border-[#E8E5DD] p-3.5 text-left text-xs text-[#585754] space-y-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-[#242427]">
+              <ShieldAlert className="h-3.5 w-3.5 text-[#D97706]" />
               <span>OMeet Permission Governance</span>
             </div>
-            <p>
-              By default, only the Organization Owner has <code className="text-indigo-300">has_permission = TRUE</code>. 
-              The Owner can grant invite permissions to team leads and managers inside the workspace directory.
+            <p className="text-[11px] text-[#7E7C77]">
+              Only the Organization Owner has default invite privileges. The Owner can delegate permissions to managers within the workspace directory.
             </p>
           </div>
 
-          <div className="mt-8 flex justify-center gap-4">
+          <div className="mt-6 flex justify-center">
             <button
               type="button"
-              onClick={() => {
-                if (candidateId || selectedUser?.id) {
-                  navigate(`/profile/${candidateId || selectedUser?.id}`);
-                } else {
-                  navigate("/");
-                }
-              }}
-              className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black hover:bg-zinc-200 transition-colors"
+              onClick={handleReturn}
+              className="rounded-[5px] bg-[#1D2026] px-5 py-2 text-xs font-semibold text-white hover:bg-[#2C3039] transition-colors"
             >
-              Return
+              Return to Workspace
             </button>
           </div>
         </div>
@@ -331,39 +337,33 @@ export default function InviteToOrganization() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-white/30 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-3xl space-y-8">
+    <div className="min-h-screen bg-[#F4F1E9] text-[#242427] flex justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="w-full max-w-3xl space-y-6">
         {/* Navigation & Header */}
         <div>
           <button
             type="button"
-            onClick={() => {
-              if (candidateId || selectedUser?.id) {
-                navigate(`/profile/${candidateId || selectedUser?.id}`);
-              } else {
-                navigate("/");
-              }
-            }}
-            className="group flex items-center text-sm font-medium text-zinc-400 hover:text-white transition-colors"
+            onClick={handleReturn}
+            className="group flex items-center text-xs font-semibold text-[#7E7C77] hover:text-[#242427] transition-colors"
           >
-            <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            {candidateId || selectedUser?.id ? "Back to Profile" : "Back to Dashboard"}
+            <ArrowLeft className="mr-1.5 h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+            {organizationId || location.state?.fromOrgId ? "Back to Workspace" : (candidateId || selectedUser?.id ? "Back to Profile" : "Back to Dashboard")}
           </button>
 
-          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#D8D4CB] pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-md bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 text-xs font-medium text-indigo-400">
+                <span className="inline-flex items-center rounded-[3px] bg-[#4963C8]/10 border border-[#4963C8]/20 px-2 py-0.5 text-[10px] font-semibold text-[#4963C8]">
                   {isOwner ? "👑 Owner Access" : "✨ Delegated Permission"}
                 </span>
-                <span className="text-xs text-zinc-500">•</span>
-                <span className="text-xs text-zinc-400">Direct In-App Invite</span>
+                <span className="text-xs text-[#D8D4CB]">•</span>
+                <span className="text-[11px] text-[#7E7C77]">Direct In-App Invite</span>
               </div>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-white">
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#242427]">
                 Invite Colleague to {orgDetails?.name || "Workspace"}
               </h1>
               {orgDetails?.brief && (
-                <p className="mt-1 text-sm text-zinc-400">{orgDetails.brief}</p>
+                <p className="mt-0.5 text-xs text-[#7E7C77]">{orgDetails.brief}</p>
               )}
             </div>
           </div>
@@ -371,135 +371,128 @@ export default function InviteToOrganization() {
 
         {/* Success Modal Card */}
         {invitationSuccess ? (
-          <div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-8 text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              <CheckCircle2 className="h-8 w-8" />
+          <div className="rounded-[6px] border border-[#10B981]/30 bg-white p-8 text-center space-y-6 shadow-sm">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[5px] bg-[#ECFDF5] text-[#065F46] border border-[#10B981]/30">
+              <CheckCircle2 className="h-6 w-6" />
             </div>
 
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-white">Invitation Created!</h2>
-              <p className="text-sm text-zinc-300 max-w-md mx-auto">
-                <span className="font-semibold text-white">{selectedUser?.name}</span> (@{selectedUser?.username}) has been sent an in-app invite for the position of{" "}
-                <span className="font-semibold text-white">{position}</span>.
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-[#242427]">Invitation Issued Successfully</h2>
+              <p className="text-xs text-[#585754] max-w-md mx-auto leading-relaxed">
+                An official offer for <span className="font-semibold text-[#242427]">{position}</span> has been issued to <span className="font-semibold text-[#242427]">{selectedUser?.name}</span> (@{selectedUser?.username}).
               </p>
             </div>
 
-            {/* Invite Code Box for HR to give directly */}
+            {/* Invite Code Box */}
             {createdInviteCode && (
-              <div className="p-5 rounded-2xl bg-black/60 border border-indigo-500/30 max-w-md mx-auto space-y-4 text-left">
+              <div className="p-4 rounded-[5px] bg-[#FAF9F6] border border-[#D8D4CB] max-w-md mx-auto space-y-3 text-left">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
-                    HR Quick-Share Code
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#4963C8]">
+                    Candidate Redemption Code
                   </span>
-                  <span className="text-[11px] text-zinc-400">Valid for {expiryDays} days</span>
+                  <span className="text-[10px] text-[#7E7C77]">Valid for {expiryDays} days</span>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 bg-white/5 p-3 rounded-xl border border-white/10">
-                  <span className="font-mono text-xl font-bold tracking-widest text-white">
+                <div className="flex items-center justify-between gap-3 bg-white p-2.5 rounded-[5px] border border-[#D8D4CB]">
+                  <span className="font-mono text-base font-bold tracking-widest text-[#242427]">
                     {createdInviteCode}
                   </span>
                   <button
                     type="button"
                     onClick={handleCopyCode}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all shadow-sm"
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-[4px] bg-[#4963C8] hover:bg-[#3E56B5] text-[11px] font-semibold text-white transition-all shadow-xs"
                   >
-                    {copiedCode ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                    {copiedCode ? "Copied!" : "Copy Code"}
+                    {copiedCode ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    {copiedCode ? "Copied" : "Copy Code"}
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5 text-xs text-zinc-400">
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#E8E5DD] text-[11px] text-[#7E7C77]">
                   <span className="truncate">Direct URL: {window.location.origin}/join/{createdInviteCode}</span>
                   <button
                     type="button"
                     onClick={handleCopyLink}
-                    className="shrink-0 text-indigo-400 hover:text-indigo-300 font-medium"
+                    className="shrink-0 text-[#4963C8] hover:underline font-semibold"
                   >
-                    {copiedLink ? "Link Copied!" : "Copy Link"}
+                    {copiedLink ? "Copied!" : "Copy Link"}
                   </button>
                 </div>
 
-                <p className="text-[11px] text-zinc-500 leading-relaxed">
-                  🔒 <span className="font-medium text-zinc-400">Account Exclusive:</span> Only @{selectedUser?.username} can redeem this code. If anyone else attempts to enter it, the system will reject it as invalid.
+                <p className="text-[10px] text-[#7E7C77] leading-relaxed">
+                  🔒 <span className="font-medium text-[#585754]">Account Exclusive:</span> Only @{selectedUser?.username} can accept or redeem this invitation.
                 </p>
               </div>
             )}
 
-            <div className="p-4 rounded-2xl bg-black/40 border border-white/5 text-xs text-zinc-400 max-w-md mx-auto space-y-2 text-left">
+            <div className="p-3.5 rounded-[5px] bg-[#FAF9F6] border border-[#E8E5DD] text-xs text-[#585754] max-w-md mx-auto space-y-1.5 text-left">
               <div className="flex justify-between">
-                <span className="text-zinc-500">Invitee:</span>
-                <span className="text-white font-medium">@{selectedUser?.username}</span>
+                <span className="text-[#7E7C77]">Invitee:</span>
+                <span className="text-[#242427] font-semibold">@{selectedUser?.username}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Assigned Direct Senior:</span>
-                <span className="text-white font-medium">
+                <span className="text-[#7E7C77]">Assigned Direct Senior:</span>
+                <span className="text-[#242427] font-semibold">
                   {eligibleSeniors.find((s) => s.employeeId === selectedSeniorId)?.name || "Direct Senior"}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-500">Delivery:</span>
-                <span className="text-emerald-400 font-medium">Delivered to OMeet Inbox & Ready via Code</span>
+                <span className="text-[#7E7C77]">Delivery:</span>
+                <span className="text-[#065F46] font-semibold">In-app notifications + direct link</span>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-center gap-4 pt-2">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleResetForAnotherInvite}
-                className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-medium text-white hover:bg-white/20 transition-colors"
+                className="rounded-[5px] border border-[#D8D4CB] bg-white px-5 py-2 text-xs font-semibold text-[#585754] hover:bg-[#FAF9F6] transition-colors"
               >
                 Invite Another Member
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (selectedUser?.id) {
-                    navigate(`/profile/${selectedUser.id}`);
-                  } else {
-                    navigate("/");
-                  }
-                }}
-                className="rounded-full bg-white px-8 py-2.5 text-sm font-semibold text-black hover:bg-zinc-200 transition-colors"
+                onClick={handleReturn}
+                className="rounded-[5px] bg-[#1D2026] hover:bg-[#2C3039] px-6 py-2 text-xs font-semibold text-white transition-colors"
               >
-                Return to {selectedUser ? `@${selectedUser.username}'s Profile` : "Profile"}
+                {organizationId || location.state?.fromOrgId ? "Return to Workspace" : (selectedUser ? `@${selectedUser.username}'s Profile` : "Return to Profile")}
               </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
             {/* Section 1: Select Registered OMeet User */}
-            <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-medium leading-6 text-white flex items-center gap-2">
-                  <UserPlus className="h-5 w-5 text-indigo-400" />
+            <div className="rounded-[6px] border border-[#D8D4CB] bg-white p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-[#E8E5DD] pb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-[#7E7C77] flex items-center gap-1.5">
+                  <UserPlus className="h-4 w-4 text-[#4963C8]" />
                   1. Select Registered OMeet User
                 </h2>
-                <span className="text-xs text-zinc-400">Must have an existing account</span>
+                <span className="text-[11px] text-[#7E7C77]">Must have an existing account</span>
               </div>
 
               {!selectedUser ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                      <Search className="h-4 w-4 text-zinc-500" />
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <Search className="h-4 w-4 text-[#7E7C77]" />
                     </div>
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search by @username, full name, or email..."
-                      className="block w-full rounded-2xl border-0 bg-white/5 py-3.5 pl-11 pr-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 placeholder:text-zinc-500 transition-all"
+                      className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2.5 pl-9 pr-3 text-xs text-[#242427] placeholder-[#7E7C77] focus:border-[#4963C8] focus:outline-none transition-all"
                     />
                     {isSearchingUsers && (
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-4">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-400 border-t-transparent" />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#4963C8] border-t-transparent" />
                       </div>
                     )}
                   </div>
 
                   {/* Search Results Dropdown */}
                   {searchResults.length > 0 && (
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/95 shadow-2xl divide-y divide-white/5 max-h-64 overflow-y-auto">
+                    <div className="rounded-[5px] border border-[#D8D4CB] bg-white shadow-md divide-y divide-[#E8E5DD] max-h-56 overflow-y-auto">
                       {searchResults.map((searchUser) => (
                         <button
                           key={searchUser.id}
@@ -508,27 +501,27 @@ export default function InviteToOrganization() {
                             setSelectedUser(searchUser);
                             setSearchResults([]);
                           }}
-                          className="w-full flex items-center justify-between p-3.5 hover:bg-white/5 transition-colors text-left group"
+                          className="w-full flex items-center justify-between p-3 hover:bg-[#FAF9F6] transition-colors text-left group"
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5">
                             <img
                               src={searchUser.avatarUrl}
                               alt={searchUser.name}
-                              className="h-10 w-10 rounded-full object-cover border border-white/10"
+                              className="h-8 w-8 rounded-[4px] object-cover border border-[#D8D4CB]"
                             />
                             <div>
-                              <div className="text-sm font-medium text-white group-hover:text-indigo-300 transition-colors">
+                              <div className="text-xs font-semibold text-[#242427] group-hover:text-[#4963C8] transition-colors">
                                 {searchUser.name}
                               </div>
-                              <div className="text-xs text-zinc-400 flex items-center gap-2">
+                              <div className="text-[11px] text-[#7E7C77] flex items-center gap-1.5">
                                 <span>@{searchUser.username}</span>
                                 <span>•</span>
                                 <span>{searchUser.timezone}</span>
                               </div>
                             </div>
                           </div>
-                          <span className="rounded-full bg-indigo-500/10 border border-indigo-500/20 px-3 py-1 text-xs font-medium text-indigo-300">
-                            Select User
+                          <span className="rounded-[3px] bg-[#4963C8]/10 border border-[#4963C8]/20 px-2.5 py-0.5 text-[10px] font-semibold text-[#4963C8]">
+                            Select
                           </span>
                         </button>
                       ))}
@@ -536,30 +529,30 @@ export default function InviteToOrganization() {
                   )}
 
                   {searchQuery.trim().length > 0 && searchResults.length === 0 && !isSearchingUsers && (
-                    <div className="rounded-xl border border-white/5 bg-white/[0.01] p-4 text-center text-xs text-zinc-500">
+                    <div className="rounded-[5px] border border-[#E8E5DD] bg-[#FAF9F6] p-3 text-center text-xs text-[#7E7C77]">
                       No matching registered user found (or user is already a member / has pending invite).
                     </div>
                   )}
 
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-[11px] text-[#7E7C77]">
                     Search finds any verified OMeet user by their @handle or name. They will immediately receive an in-app invite.
                   </p>
                 </div>
               ) : (
                 /* Selected User Preview Card */
-                <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/30">
-                  <div className="flex items-center gap-4 min-w-0">
+                <div className="flex items-center justify-between p-3.5 rounded-[5px] bg-[#FAF9F6] border border-[#D8D4CB]">
+                  <div className="flex items-center gap-3 min-w-0">
                     <img
                       src={selectedUser.avatarUrl}
                       alt={selectedUser.name}
-                      className="h-12 w-12 rounded-full object-cover border-2 border-indigo-500/40"
+                      className="h-10 w-10 rounded-[4px] object-cover border border-[#D8D4CB]"
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-white truncate">{selectedUser.name}</span>
-                        <span className="text-xs font-medium text-indigo-400">@{selectedUser.username}</span>
+                        <span className="font-semibold text-xs text-[#242427] truncate">{selectedUser.name}</span>
+                        <span className="text-[11px] font-semibold text-[#4963C8]">@{selectedUser.username}</span>
                       </div>
-                      <p className="text-xs text-zinc-400 truncate mt-0.5">
+                      <p className="text-[11px] text-[#7E7C77] truncate mt-0.5">
                         {selectedUser.bio || selectedUser.email}
                       </p>
                     </div>
@@ -568,9 +561,9 @@ export default function InviteToOrganization() {
                   <button
                     type="button"
                     onClick={() => setSelectedUser(null)}
-                    className="flex items-center gap-1 text-xs font-medium text-zinc-400 hover:text-white px-3 py-1.5 rounded-full hover:bg-white/10 transition-colors"
+                    className="flex items-center gap-1 text-xs font-semibold text-[#7E7C77] hover:text-[#B44A4A] px-2.5 py-1 rounded-[4px] hover:bg-[#FEF2F2] transition-colors"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-3 w-3" />
                     Change
                   </button>
                 </div>
@@ -578,18 +571,18 @@ export default function InviteToOrganization() {
             </div>
 
             {/* Section 2: Position & Department */}
-            <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 space-y-6">
-              <h2 className="text-lg font-medium leading-6 text-white flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-indigo-400" />
+            <div className="rounded-[6px] border border-[#D8D4CB] bg-white p-6 space-y-4 shadow-sm">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[#7E7C77] flex items-center gap-1.5 border-b border-[#E8E5DD] pb-3">
+                <Briefcase className="h-4 w-4 text-[#4963C8]" />
                 2. Position & Department
               </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="position" className="block text-sm font-medium text-zinc-300">
-                    Target Position / Job Title <span className="text-red-400">*</span>
+                  <label htmlFor="position" className="block text-xs font-semibold text-[#242427]">
+                    Target Position / Job Title <span className="text-[#B44A4A]">*</span>
                   </label>
-                  <div className="mt-2">
+                  <div className="mt-1.5">
                     <input
                       type="text"
                       name="position"
@@ -597,17 +590,17 @@ export default function InviteToOrganization() {
                       value={position}
                       onChange={(e) => setPosition(e.target.value)}
                       placeholder="e.g. Senior Frontend Engineer"
-                      className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all"
+                      className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 px-3 text-xs text-[#242427] placeholder-[#7E7C77] focus:border-[#4963C8] focus:outline-none transition-all"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="department" className="block text-sm font-medium text-zinc-300">
-                    Department <span className="text-xs text-zinc-500 font-normal">(Optional)</span>
+                  <label htmlFor="department" className="block text-xs font-semibold text-[#242427]">
+                    Department <span className="text-[11px] text-[#7E7C77] font-normal">(Optional)</span>
                   </label>
-                  <div className="mt-2">
+                  <div className="mt-1.5">
                     <input
                       type="text"
                       name="department"
@@ -615,7 +608,7 @@ export default function InviteToOrganization() {
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
                       placeholder="e.g. Core Engineering"
-                      className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all"
+                      className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 px-3 text-xs text-[#242427] placeholder-[#7E7C77] focus:border-[#4963C8] focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -623,34 +616,34 @@ export default function InviteToOrganization() {
             </div>
 
             {/* Section 3: Hierarchical Direct Senior Assignment */}
-            <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 space-y-6">
-              <div>
+            <div className="rounded-[6px] border border-[#D8D4CB] bg-white p-6 space-y-4 shadow-sm">
+              <div className="border-b border-[#E8E5DD] pb-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-medium leading-6 text-white flex items-center gap-2">
-                    <GitBranch className="h-5 w-5 text-indigo-400" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-[#7E7C77] flex items-center gap-1.5">
+                    <GitBranch className="h-4 w-4 text-[#4963C8]" />
                     3. Assign Direct Senior (Hierarchy Gate)
                   </h2>
-                  <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span className="text-[11px] text-[#065F46] font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" />
                     Governed Selection
                   </span>
                 </div>
-                <p className="mt-1.5 text-xs text-zinc-400">
-                  <span className="font-semibold text-zinc-300">Strict Hierarchy Rule:</span> You can only assign
+                <p className="mt-1 text-[11px] text-[#7E7C77]">
+                  <span className="font-semibold text-[#585754]">Strict Hierarchy Rule:</span> You can only assign
                   yourself or an employee in your subordinate tree as the direct senior for this new colleague.
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {eligibleSeniors.map((senior) => {
                   const isSelected = selectedSeniorId === senior.employeeId;
                   return (
                     <label
                       key={senior.employeeId}
-                      className={`flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all ${
+                      className={`flex items-center justify-between p-3 rounded-[5px] border cursor-pointer transition-all ${
                         isSelected
-                          ? "bg-indigo-500/10 border-indigo-500 text-white shadow-sm"
-                          : "bg-white/[0.02] border-white/5 text-zinc-300 hover:bg-white/5"
+                          ? "bg-[#4963C8]/5 border-[#4963C8] text-[#242427]"
+                          : "bg-white border-[#D8D4CB] text-[#585754] hover:bg-[#FAF9F6]"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -660,30 +653,30 @@ export default function InviteToOrganization() {
                           value={senior.employeeId}
                           checked={isSelected}
                           onChange={() => setSelectedSeniorId(senior.employeeId)}
-                          className="h-4 w-4 text-indigo-500 focus:ring-indigo-400 border-zinc-700 bg-zinc-900"
+                          className="h-3.5 w-3.5 text-[#4963C8] focus:ring-[#4963C8] border-[#D8D4CB]"
                         />
                         <img
                           src={senior.avatarUrl}
                           alt={senior.name}
-                          className="h-9 w-9 rounded-full object-cover border border-white/10"
+                          className="h-8 w-8 rounded-[4px] object-cover border border-[#D8D4CB]"
                         />
                         <div>
-                          <div className="text-sm font-semibold flex items-center gap-2">
+                          <div className="text-xs font-semibold flex items-center gap-2">
                             <span>{senior.name}</span>
                             {senior.isSelf && (
-                              <span className="rounded-md bg-indigo-500/20 px-2 py-0.5 text-[11px] font-medium text-indigo-300">
+                              <span className="rounded-[3px] bg-[#4963C8]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#4963C8]">
                                 You (Inviter)
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-zinc-400">
+                          <div className="text-[11px] text-[#7E7C77]">
                             {senior.position} • {senior.isSelf ? "Direct Manager" : "Reports under you"}
                           </div>
                         </div>
                       </div>
 
                       {senior.depth > 0 && (
-                        <span className="text-xs text-zinc-500">Subordinate (Level {senior.depth})</span>
+                        <span className="text-[10px] text-[#7E7C77]">Subordinate (Level {senior.depth})</span>
                       )}
                     </label>
                   );
@@ -692,41 +685,38 @@ export default function InviteToOrganization() {
             </div>
 
             {/* Section 4: Role & Compensation */}
-            <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 space-y-6">
-              <h2 className="text-lg font-medium leading-6 text-white flex items-center gap-2">
-                <Users className="h-5 w-5 text-indigo-400" />
-                4. Organization Role & Compensation
+            <div className="rounded-[6px] border border-[#D8D4CB] bg-white p-6 space-y-4 shadow-sm">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[#7E7C77] flex items-center gap-1.5 border-b border-[#E8E5DD] pb-3">
+                <Users className="h-4 w-4 text-[#4963C8]" />
+                4. Organization Role & Terms
               </h2>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label htmlFor="role" className="block text-sm font-medium text-zinc-300">
-                    Organization Role
+                  <label htmlFor="role" className="block text-xs font-semibold text-[#242427]">
+                    Role Access
                   </label>
-                  <div className="mt-2">
+                  <div className="mt-1.5">
                     <select
                       id="role"
                       name="role"
                       value={role}
                       onChange={(e) => setRole(e.target.value)}
-                      className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all [&>option]:bg-zinc-900"
+                      className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 px-3 text-xs text-[#242427] focus:border-[#4963C8] focus:outline-none transition-all"
                     >
-                      <option value="MEMBER">MEMBER (Standard employee access)</option>
-                      {isOwner && <option value="ADMIN">ADMIN (Workspace management permissions)</option>}
+                      <option value="MEMBER">MEMBER (Standard)</option>
+                      {isOwner && <option value="ADMIN">ADMIN (Workspace Lead)</option>}
                     </select>
                   </div>
-                  <p className="mt-1.5 text-xs text-zinc-500">
-                    New joiners default to <code className="text-zinc-400">has_permission = FALSE</code> until the Owner explicitly grants it.
-                  </p>
                 </div>
 
                 <div>
-                  <label htmlFor="salary" className="block text-sm font-medium text-zinc-300">
-                    Annual Salary <span className="text-xs text-zinc-500 font-normal">(Optional)</span>
+                  <label htmlFor="salary" className="block text-xs font-semibold text-[#242427]">
+                    Annual Salary <span className="text-[11px] text-[#7E7C77] font-normal">(Optional)</span>
                   </label>
-                  <div className="mt-2 relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5">
-                      <DollarSign className="h-4 w-4 text-zinc-500" />
+                  <div className="mt-1.5 relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5">
+                      <DollarSign className="h-3.5 w-3.5 text-[#7E7C77]" />
                     </div>
                     <input
                       type="number"
@@ -735,22 +725,22 @@ export default function InviteToOrganization() {
                       value={salary}
                       onChange={(e) => setSalary(e.target.value)}
                       placeholder="e.g. 120000"
-                      className="block w-full rounded-xl border-0 bg-white/5 py-3 pl-10 pr-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all"
+                      className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 pl-8 pr-3 text-xs text-[#242427] placeholder-[#7E7C77] focus:border-[#4963C8] focus:outline-none transition-all"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="expiryDays" className="block text-sm font-medium text-zinc-300">
-                    Invitation Expiry <span className="text-xs text-indigo-400 font-normal">(HR Choice)</span>
+                  <label htmlFor="expiryDays" className="block text-xs font-semibold text-[#242427]">
+                    Invitation Expiry
                   </label>
-                  <div className="mt-2">
+                  <div className="mt-1.5">
                     <select
                       id="expiryDays"
                       name="expiryDays"
                       value={expiryDays}
                       onChange={(e) => setExpiryDays(e.target.value)}
-                      className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all [&>option]:bg-zinc-900"
+                      className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 px-3 text-xs text-[#242427] focus:border-[#4963C8] focus:outline-none transition-all"
                     >
                       <option value="3">3 Days (Fast turnaround)</option>
                       <option value="7">7 Days (Standard / Recommended)</option>
@@ -758,41 +748,32 @@ export default function InviteToOrganization() {
                       <option value="30">30 Days (Long-term offer)</option>
                     </select>
                   </div>
-                  <p className="mt-1.5 text-xs text-zinc-500">
-                    The code and in-app offer will automatically expire after this period.
-                  </p>
                 </div>
               </div>
             </div>
 
             {/* Error Banner */}
             {errorMessage && (
-              <div className="rounded-2xl bg-red-500/10 p-4 border border-red-500/20 text-sm text-red-400">
+              <div className="rounded-[5px] bg-[#FEF2F2] p-3 border border-[#B44A4A]/30 text-xs font-semibold text-[#B44A4A]">
                 {errorMessage}
               </div>
             )}
 
             {/* Form Actions */}
-            <div className="flex items-center justify-end gap-x-4 pt-4">
+            <div className="flex items-center justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  if (candidateId || selectedUser?.id) {
-                    navigate(`/profile/${candidateId || selectedUser?.id}`);
-                  } else {
-                    navigate("/");
-                  }
-                }}
-                className="rounded-full px-6 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors"
+                onClick={handleReturn}
+                className="rounded-[5px] border border-[#D8D4CB] bg-white px-5 py-2 text-xs font-semibold text-[#585754] hover:bg-[#FAF9F6] transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !selectedUser || !position.trim()}
-                className="rounded-full bg-white px-8 py-3 text-sm font-semibold text-black shadow-sm hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-6 py-2 text-xs font-semibold text-white shadow-xs disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {isSubmitting ? "Sending Invitation..." : "Send In-App Invite"}
+                {isSubmitting ? "Sending Invitation..." : "Send Formal Invite"}
               </button>
             </div>
           </form>

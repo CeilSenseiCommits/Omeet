@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "db:init": "tsx src/db/init.ts",
+    "db:clear": "tsx src/db/clear.ts",
     "migrate": "tsx src/db/init.ts"
   },
   "dependencies": {

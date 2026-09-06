@@ -98,7 +98,7 @@ function JoinMeetingModal({ isOpen, onClose, organizationId }: JoinMeetingModalP
 
       // Success! Close modal and navigate to meeting room
       onClose();
-      navigate(`/meeting/${data.meeting.meetingCode}`);
+      navigate(`/meeting/${data.meeting.meetingCode}`, { state: { fromOrgId: organizationId, fromTab: "Meetings" } });
     } catch (err: any) {
       console.error("Join meeting error:", err);
       setError("Unable to connect to meeting service. Please check your connection.");
@@ -108,33 +108,33 @@ function JoinMeetingModal({ isOpen, onClose, organizationId }: JoinMeetingModalP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md overflow-hidden rounded-3xl border border-zinc-800 bg-[#121215] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-xs">
+      <div className="w-full max-w-md overflow-hidden rounded-[8px] border border-[#383D47] bg-[#1D2026] text-[#F3F3EE] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-800/80 px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-950 border border-sky-800 text-sky-400">
-              <KeyRound className="h-5 w-5" />
+        <div className="flex items-center justify-between border-b border-[#383D47] px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[5px] bg-[#252932] border border-[#383D47] text-[#4963C8]">
+              <KeyRound className="h-4 w-4" />
             </div>
             <div>
-              <h3 className="text-base font-semibold text-white">Join Meeting</h3>
-              <p className="text-xs text-zinc-400">Enter a code to connect to a room</p>
+              <h3 className="text-sm font-bold text-white tracking-tight">Join Meeting</h3>
+              <p className="text-[11px] text-[#A9ACB4]">Connect with room invitation code</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-2 text-zinc-400 hover:bg-zinc-800 hover:text-white transition"
+            className="rounded-[5px] border border-[#383D47] bg-[#252932] p-1.5 text-[#A9ACB4] hover:bg-[#2C3039] hover:text-white transition"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleJoin} className="p-6 space-y-5">
+        <form onSubmit={handleJoin} className="p-6 space-y-4">
           {/* General Error Banner */}
           {error && !restrictedInfo && (
-            <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300 leading-relaxed">
+            <div className="flex items-start gap-2.5 rounded-[5px] border border-[#B44A4A]/30 bg-[#B44A4A]/10 p-3 text-xs font-semibold text-[#B44A4A] leading-relaxed">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -142,29 +142,29 @@ function JoinMeetingModal({ isOpen, onClose, organizationId }: JoinMeetingModalP
 
           {/* Org Restricted Access Denied Banner */}
           {restrictedInfo && (
-            <div className="rounded-2xl border border-rose-900/60 bg-rose-950/30 p-4 space-y-2.5 text-left">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-rose-300">
-                <ShieldAlert className="h-4 w-4 text-rose-400" />
-                <span>Organization Membership Required</span>
+            <div className="rounded-[5px] border border-[#B44A4A]/40 bg-[#B44A4A]/10 p-3.5 space-y-2 text-left">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#B44A4A]">
+                <ShieldAlert className="h-4 w-4 text-[#B44A4A]" />
+                <span>Organization Access Required</span>
               </div>
-              <p className="text-xs text-zinc-300 leading-relaxed">
+              <p className="text-xs text-[#F3F3EE] leading-relaxed">
                 This meeting is restricted to active members of{" "}
                 <strong className="text-white font-semibold">"{restrictedInfo.organizationName}"</strong>.
               </p>
-              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 border-t border-rose-900/40 pt-2">
-                <Building className="h-3.5 w-3.5 text-fuchsia-400 shrink-0" />
-                <span>You must be an active employee or member of this organization to join.</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-[#A9ACB4] border-t border-[#B44A4A]/20 pt-2">
+                <Building className="h-3.5 w-3.5 text-[#4963C8] shrink-0" />
+                <span>You must be an employee of this workspace to participate.</span>
               </div>
             </div>
           )}
 
           {/* Code Input */}
           <div className="space-y-1.5">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">
+            <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#A9ACB4]">
               Meeting Code *
             </label>
             <div className="relative">
-              <Video className="absolute left-3.5 top-3.5 h-4 w-4 text-zinc-500" />
+              <Video className="absolute left-3.5 top-3 h-4 w-4 text-[#717684]" />
               <input
                 autoFocus
                 type="text"
@@ -174,41 +174,38 @@ function JoinMeetingModal({ isOpen, onClose, organizationId }: JoinMeetingModalP
                   setError(null);
                   setRestrictedInfo(null);
                 }}
-                placeholder="e.g. OM-7F2A9B or 7F2A9B"
-                className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/90 pl-10 pr-4 py-3 text-sm font-mono tracking-wider text-white placeholder:text-zinc-600 outline-none focus:border-sky-500 transition"
+                placeholder="e.g. OM-7F2A9B"
+                className="w-full rounded-[5px] border border-[#383D47] bg-[#252932] pl-9 pr-3.5 py-2 text-xs font-mono uppercase tracking-wider text-white placeholder:text-[#717684] outline-none focus:border-[#4963C8] transition"
                 required
               />
             </div>
-            <p className="text-[11px] text-zinc-500">
-              Prefix <span className="font-mono text-zinc-400">OM-</span> will be automatically added if omitted.
-            </p>
           </div>
 
           {/* Info note */}
-          <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3 text-[11px] text-zinc-400 leading-relaxed">
-            <span className="text-zinc-300 font-medium">Admission Rule:</span> For organization meetings, your membership credentials are automatically verified before admission. Open public meetings can be joined by any authenticated user.
+          <div className="rounded-[5px] border border-[#383D47] bg-[#252932] p-3 text-[11px] text-[#A9ACB4] leading-relaxed">
+            <span className="text-white font-medium">Access Verification:</span> Organization meetings verify member credentials before admitting participants into video calls.
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800/80">
+          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#383D47]">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-2.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white transition"
+              className="rounded-[5px] border border-[#383D47] bg-[#252932] px-4 py-2 text-xs font-semibold text-[#A9ACB4] hover:bg-[#2C3039] hover:text-white transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isVerifying || !code.trim()}
-              className="flex items-center gap-2 rounded-xl bg-sky-600 hover:bg-sky-500 px-5 py-2.5 text-xs font-semibold text-white shadow-lg shadow-sky-950/50 transition disabled:opacity-40"
+              className="flex items-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-5 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-40"
             >
               {isVerifying ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-3.5 w-3.5" />
               )}
-              {isVerifying ? "Verifying Access..." : "Join Meeting"}
+              {isVerifying ? "Verifying..." : "Join Session"}
             </button>
           </div>
         </form>

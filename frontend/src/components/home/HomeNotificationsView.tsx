@@ -4,14 +4,12 @@ import {
   Bell, 
   Building2, 
   Video, 
-  UserPlus, 
   Check, 
   X, 
-  Loader2, 
-  ExternalLink,
-  Clock
+  Loader2
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { markNotificationsAsSeen } from "../../lib/notificationStorage";
 
 export default function HomeNotificationsView() {
   const { user } = useAuth();
@@ -60,6 +58,20 @@ export default function HomeNotificationsView() {
   useEffect(() => {
     fetchAllNotifications();
   }, [fetchAllNotifications]);
+
+  // Mark all viewed notifications as seen
+  useEffect(() => {
+    if (user?.id && !isLoading) {
+      const pendingIds = [
+        ...orgInvites.filter((i) => i.status === "PENDING").map((i) => i.id),
+        ...meetingInvites.filter((i) => i.status === "PENDING").map((i) => i.id),
+      ].filter(Boolean);
+
+      if (pendingIds.length > 0) {
+        markNotificationsAsSeen(user.id, pendingIds);
+      }
+    }
+  }, [user?.id, isLoading, orgInvites, meetingInvites]);
 
   // Handle Org Invitation Response
   const handleOrgInviteResponse = async (invitationId: string, action: "accept" | "decline") => {
@@ -118,39 +130,44 @@ export default function HomeNotificationsView() {
   const totalCount = orgInvites.length + meetingInvites.length + friendRequests.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-zinc-800 pb-5">
+      <div className="flex items-center justify-between border-b border-[#D8D4CB] pb-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
-            <Bell className="h-6 w-6 text-amber-400" /> Notifications & Requests
+          <h2 className="text-base font-bold text-[#242427] flex items-center gap-2">
+            <Bell className="h-4 w-4 text-[#4963C8]" />
+            <span>Notifications & Requests</span>
           </h2>
-          <p className="text-xs text-zinc-400 mt-1">
-            All your pending organization invitations, meeting invites, and incoming friend requests.
+          <p className="text-xs text-[#585754] mt-0.5">
+            All pending organization invitations, meeting invites, and incoming friend requests.
           </p>
         </div>
 
-        <span className="rounded-xl border border-zinc-800 bg-zinc-900/80 px-3 py-1.5 text-xs font-semibold text-zinc-300">
-          {totalCount} Total Items
+        <span className="rounded-[3px] border border-[#D8D4CB] bg-white px-2.5 py-1 text-xs font-semibold text-[#585754]">
+          {totalCount} Total
         </span>
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-800 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-1.5 border-b border-[#D8D4CB] pb-2 overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab("all")}
-          className={`rounded-xl px-4 py-2 text-xs font-semibold transition shrink-0 ${
-            activeTab === "all" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+          className={`rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+            activeTab === "all"
+              ? "border border-[#D8D4CB] bg-white text-[#242427] shadow-xs"
+              : "border border-transparent text-[#7E7C77] hover:text-[#242427]"
           }`}
         >
-          All Notifications ({totalCount})
+          All ({totalCount})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("friends")}
-          className={`rounded-xl px-4 py-2 text-xs font-semibold transition shrink-0 ${
-            activeTab === "friends" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+          className={`rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+            activeTab === "friends"
+              ? "border border-[#D8D4CB] bg-white text-[#242427] shadow-xs"
+              : "border border-transparent text-[#7E7C77] hover:text-[#242427]"
           }`}
         >
           Friend Requests ({friendRequests.length})
@@ -158,17 +175,21 @@ export default function HomeNotificationsView() {
         <button
           type="button"
           onClick={() => setActiveTab("orgs")}
-          className={`rounded-xl px-4 py-2 text-xs font-semibold transition shrink-0 ${
-            activeTab === "orgs" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+          className={`rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+            activeTab === "orgs"
+              ? "border border-[#D8D4CB] bg-white text-[#242427] shadow-xs"
+              : "border border-transparent text-[#7E7C77] hover:text-[#242427]"
           }`}
         >
-          Organization Invites ({orgInvites.length})
+          Org Invites ({orgInvites.length})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("meetings")}
-          className={`rounded-xl px-4 py-2 text-xs font-semibold transition shrink-0 ${
-            activeTab === "meetings" ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-white"
+          className={`rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+            activeTab === "meetings"
+              ? "border border-[#D8D4CB] bg-white text-[#242427] shadow-xs"
+              : "border border-transparent text-[#7E7C77] hover:text-[#242427]"
           }`}
         >
           Meeting Invites ({meetingInvites.length})
@@ -177,11 +198,11 @@ export default function HomeNotificationsView() {
 
       {/* Notifications List */}
       {isLoading ? (
-        <div className="flex h-64 items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-900/30">
-          <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+        <div className="flex h-48 items-center justify-center rounded-[6px] border border-[#D8D4CB] bg-white">
+          <Loader2 className="h-5 w-5 animate-spin text-[#7E7C77]" />
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {/* Friend Requests */}
           {(activeTab === "all" || activeTab === "friends") &&
             friendRequests.map((req) => {
@@ -189,45 +210,46 @@ export default function HomeNotificationsView() {
               return (
                 <div
                   key={`friend-${req.id}`}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 text-xs hover:border-zinc-700 transition"
+                  className="flex items-center justify-between rounded-[6px] border border-[#D8D4CB] bg-white p-3.5 text-xs shadow-xs hover:border-[#4963C8] transition-colors"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <img
                       src={
                         req.senderAvatarUrl ||
                         `https://ui-avatars.com/api/?name=${encodeURIComponent(req.senderName || "User")}`
                       }
                       alt={req.senderName}
-                      className="h-10 w-10 rounded-full object-cover shrink-0 border border-zinc-700"
+                      className="h-8 w-8 rounded-[5px] object-cover shrink-0 border border-[#D8D4CB]"
                     />
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm truncate">{req.senderName}</span>
-                        <span className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                        <span className="font-semibold text-[#242427] text-xs truncate">{req.senderName}</span>
+                        <span className="rounded-[3px] border border-[#CBD5E1] bg-[#EEF2FF] px-1.5 py-0.5 text-[10px] font-semibold text-[#4963C8]">
                           Friend Request
                         </span>
                       </div>
-                      <p className="text-zinc-400 text-xs mt-0.5 truncate">
-                        @{req.senderUsername} wants to become friends on OMeet.
+                      <p className="text-[#585754] text-[11px] mt-0.5 truncate">
+                        @{req.senderUsername} wants to connect on OMeet.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleFriendRequestResponse(req.id, "ACCEPT")}
                       disabled={isBusy}
-                      className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-white transition disabled:opacity-40"
+                      className="inline-flex items-center gap-1 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
                     >
-                      {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                      {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                       <span>Accept</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleFriendRequestResponse(req.id, "DECLINE")}
                       disabled={isBusy}
-                      className="rounded-xl border border-zinc-700 bg-zinc-800 p-2 text-zinc-400 hover:bg-rose-950/40 hover:text-rose-400 transition"
+                      className="rounded-[5px] border border-[#D8D4CB] bg-white p-1.5 text-[#7E7C77] hover:border-[#B44A4A] hover:bg-[#FDF2F2] hover:text-[#B44A4A] transition-colors"
+                      title="Decline"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -244,48 +266,49 @@ export default function HomeNotificationsView() {
               return (
                 <div
                   key={`org-${inv.id}`}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 text-xs hover:border-zinc-700 transition"
+                  className="flex items-center justify-between rounded-[6px] border border-[#D8D4CB] bg-white p-3.5 text-xs shadow-xs hover:border-[#4963C8] transition-colors"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-950 border border-blue-800 text-blue-400 shrink-0">
-                      <Building2 className="h-5 w-5" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-[#CBD5E1] bg-[#EEF2FF] text-[#4963C8] shrink-0">
+                      <Building2 className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm truncate">{inv.organizationName}</span>
-                        <span className="rounded-md bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
-                          Org Invitation
+                        <span className="font-semibold text-[#242427] text-xs truncate">{inv.organizationName}</span>
+                        <span className="rounded-[3px] border border-[#CBD5E1] bg-[#EEF2FF] px-1.5 py-0.5 text-[10px] font-semibold text-[#4963C8]">
+                          Org Invite
                         </span>
                       </div>
-                      <p className="text-zinc-400 text-xs mt-0.5 truncate">
-                        Invited by {inv.inviterName} as <strong className="text-zinc-200">{inv.role}</strong> ({inv.position}).
+                      <p className="text-[#585754] text-[11px] mt-0.5 truncate">
+                        Invited by {inv.inviterName} as <strong className="text-[#242427] font-medium">{inv.role}</strong> ({inv.position}).
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {isPending ? (
                       <>
                         <button
                           type="button"
                           onClick={() => handleOrgInviteResponse(inv.id, "accept")}
                           disabled={isBusy}
-                          className="flex items-center gap-1 rounded-xl bg-blue-600 hover:bg-blue-500 px-3.5 py-2 text-xs font-semibold text-white transition disabled:opacity-40"
+                          className="inline-flex items-center gap-1 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
                         >
-                          {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                          {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                           <span>Accept</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOrgInviteResponse(inv.id, "decline")}
                           disabled={isBusy}
-                          className="rounded-xl border border-zinc-700 bg-zinc-800 p-2 text-zinc-400 hover:bg-rose-950/40 hover:text-rose-400 transition"
+                          className="rounded-[5px] border border-[#D8D4CB] bg-white p-1.5 text-[#7E7C77] hover:border-[#B44A4A] hover:bg-[#FDF2F2] hover:text-[#B44A4A] transition-colors"
+                          title="Decline"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </>
                     ) : (
-                      <span className="rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-400">
+                      <span className="rounded-[3px] border border-[#D8D4CB] bg-[#FAF9F6] px-2.5 py-1 text-xs font-medium text-[#585754]">
                         {inv.status}
                       </span>
                     )}
@@ -302,42 +325,43 @@ export default function HomeNotificationsView() {
               return (
                 <div
                   key={`meeting-${mInv.id}`}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 text-xs hover:border-zinc-700 transition"
+                  className="flex items-center justify-between rounded-[6px] border border-[#D8D4CB] bg-white p-3.5 text-xs shadow-xs hover:border-[#4963C8] transition-colors"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-950 border border-emerald-800 text-emerald-400 shrink-0">
-                      <Video className="h-5 w-5" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] text-[#585754] shrink-0">
+                      <Video className="h-4 w-4" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm truncate">{mInv.title}</span>
-                        <span className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                        <span className="font-semibold text-[#242427] text-xs truncate">{mInv.title}</span>
+                        <span className="rounded-[3px] border border-[#D8D4CB] bg-[#FAF9F6] px-1.5 py-0.5 text-[10px] font-semibold text-[#585754]">
                           Meeting Invite
                         </span>
                       </div>
-                      <p className="text-zinc-400 text-xs mt-0.5 truncate">
-                        Invited by {mInv.inviterName} • Code: <span className="font-mono text-emerald-400 font-bold">{mInv.meetingCode}</span>
+                      <p className="text-[#585754] text-[11px] mt-0.5 truncate">
+                        Invited by {mInv.inviterName} · Code: <span className="font-mono text-[#4963C8] font-semibold">{mInv.meetingCode}</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {isPending ? (
                       <>
                         <button
                           type="button"
                           onClick={() => handleMeetingInviteResponse(mInv.id, "ACCEPT")}
                           disabled={isBusy}
-                          className="flex items-center gap-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-semibold text-white transition disabled:opacity-40"
+                          className="inline-flex items-center gap-1 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors disabled:opacity-40"
                         >
-                          {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                          {isBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
                           <span>Accept</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleMeetingInviteResponse(mInv.id, "DECLINE")}
                           disabled={isBusy}
-                          className="rounded-xl border border-zinc-700 bg-zinc-800 p-2 text-zinc-400 hover:bg-rose-950/40 hover:text-rose-400 transition"
+                          className="rounded-[5px] border border-[#D8D4CB] bg-white p-1.5 text-[#7E7C77] hover:border-[#B44A4A] hover:bg-[#FDF2F2] hover:text-[#B44A4A] transition-colors"
+                          title="Decline"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -345,7 +369,7 @@ export default function HomeNotificationsView() {
                     ) : (
                       <Link
                         to={`/meeting/${mInv.meetingCode}`}
-                        className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-1.5 text-xs font-semibold text-white transition"
+                        className="rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors"
                       >
                         Join Meeting
                       </Link>
@@ -356,7 +380,7 @@ export default function HomeNotificationsView() {
             })}
 
           {totalCount === 0 && (
-            <div className="rounded-3xl border border-zinc-800 bg-zinc-900/30 p-12 text-center text-xs text-zinc-500">
+            <div className="rounded-[6px] border border-[#D8D4CB] bg-white p-10 text-center text-xs text-[#7E7C77]">
               No notifications or invitations at this time.
             </div>
           )}

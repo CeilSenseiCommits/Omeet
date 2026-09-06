@@ -6,12 +6,9 @@ import {
   Calendar, 
   Clock, 
   Plus, 
-  Users, 
   Copy, 
   Check, 
-  ExternalLink, 
   Loader2, 
-  Sparkles,
   ArrowRight
 } from "lucide-react";
 import CreatePublicMeetingModal from "../CreatePublicMeetingModal";
@@ -82,42 +79,44 @@ export default function HomeMeetingsView() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Top Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D8D4CB] pb-4">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2.5">
-            <Video className="h-6 w-6 text-emerald-400" /> Meetings Hub
+          <h2 className="text-base font-bold text-[#242427] flex items-center gap-2">
+            <Video className="h-4 w-4 text-[#4963C8]" />
+            <span>Meetings Hub</span>
           </h2>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-[#585754] mt-0.5">
             Start instant video meetings, schedule future sessions, and view your upcoming and recent meetings.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setIsJoinModalOpen(true)}
-            className="rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 px-4 py-2 text-xs font-semibold text-white transition"
+            className="rounded-[5px] border border-[#D8D4CB] bg-white hover:bg-[#EFECE4] px-3 py-1.5 text-xs font-medium text-[#242427] transition-colors"
           >
             Join with Code
           </button>
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-emerald-950/50 transition"
+            className="flex items-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors"
           >
-            <Plus className="h-4 w-4" /> Create Meeting
+            <Plus className="h-3.5 w-3.5" />
+            Create Meeting
           </button>
         </div>
       </div>
 
       {/* Live Active Meetings Banner (If Any) */}
       {activeMeetings.length > 0 && (
-        <div className="rounded-3xl border border-emerald-500/30 bg-emerald-950/20 p-5 space-y-3">
+        <div className="rounded-[6px] border border-[#CBD5E1] bg-white p-4 space-y-2.5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#242427]">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
               Live Ongoing Meetings ({activeMeetings.length})
             </span>
           </div>
@@ -126,17 +125,17 @@ export default function HomeMeetingsView() {
             {activeMeetings.map((m) => (
               <div
                 key={m.id}
-                className="flex items-center justify-between rounded-2xl border border-emerald-500/20 bg-zinc-950/80 p-4"
+                className="flex items-center justify-between rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] p-3"
               >
                 <div className="min-w-0 pr-3">
-                  <h4 className="font-bold text-white text-sm truncate">{m.title}</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
-                    {m.organizationName} • Host: {m.host.name}
+                  <h4 className="font-semibold text-[#242427] text-xs truncate">{m.title}</h4>
+                  <p className="text-[11px] text-[#7E7C77] mt-0.5">
+                    {m.organizationName} · Host: {m.host.name}
                   </p>
                 </div>
                 <Link
                   to={`/meeting/${m.meetingCode}`}
-                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-semibold text-white transition shrink-0 shadow-md"
+                  className="rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors shrink-0 shadow-xs"
                 >
                   Join Live
                 </Link>
@@ -147,26 +146,26 @@ export default function HomeMeetingsView() {
       )}
 
       {/* Section Tabs */}
-      <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+      <div className="flex items-center gap-1.5 border-b border-[#D8D4CB] pb-2">
         <button
           type="button"
           onClick={() => setActiveTab("upcoming")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+          className={`flex items-center gap-1.5 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors ${
             activeTab === "upcoming"
-              ? "bg-zinc-800 text-white shadow-sm"
-              : "text-zinc-400 hover:text-white"
+              ? "border border-[#D8D4CB] bg-white text-[#242427] shadow-xs"
+              : "border border-transparent text-[#7E7C77] hover:text-[#242427]"
           }`}
         >
           <Calendar className="h-3.5 w-3.5" />
-          <span>Upcoming Meetings ({upcoming.length})</span>
+          <span>Upcoming ({upcoming.length})</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("recent")}
-          className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition ${
+          className={`flex items-center gap-1.5 rounded-[5px] px-3 py-1.5 text-xs font-medium transition-colors ${
             activeTab === "recent"
-              ? "bg-zinc-800 text-white shadow-sm"
-              : "text-zinc-400 hover:text-white"
+              ? "border border-[#D8D4CB] bg-white text-[#242427] shadow-xs"
+              : "border border-transparent text-[#7E7C77] hover:text-[#242427]"
           }`}
         >
           <Clock className="h-3.5 w-3.5" />
@@ -176,23 +175,23 @@ export default function HomeMeetingsView() {
 
       {/* Tab Content */}
       {isLoading ? (
-        <div className="flex h-56 items-center justify-center rounded-3xl border border-zinc-800 bg-zinc-900/30">
-          <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+        <div className="flex h-48 items-center justify-center rounded-[6px] border border-[#D8D4CB] bg-white">
+          <Loader2 className="h-5 w-5 animate-spin text-[#7E7C77]" />
         </div>
       ) : activeTab === "upcoming" ? (
         upcoming.length === 0 ? (
-          <div className="rounded-3xl border border-zinc-800 bg-zinc-900/30 p-12 text-center space-y-3">
-            <Calendar className="mx-auto h-10 w-10 text-zinc-600" />
-            <h3 className="text-sm font-semibold text-white">No Upcoming Meetings</h3>
-            <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+          <div className="rounded-[6px] border border-[#D8D4CB] bg-white p-10 text-center space-y-2.5">
+            <Calendar className="mx-auto h-8 w-8 text-[#A6A49F]" />
+            <h3 className="text-xs font-semibold text-[#242427]">No Upcoming Meetings</h3>
+            <p className="text-xs text-[#7E7C77] max-w-sm mx-auto">
               You do not have any scheduled meetings coming up. Start an instant call or schedule one now.
             </p>
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(true)}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-semibold text-white transition"
+              className="mt-2 inline-flex items-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors"
             >
-              <Plus className="h-3.5 w-3.5" /> Schedule Meeting
+              <Plus className="h-3 w-3" /> Schedule Meeting
             </button>
           </div>
         ) : (
@@ -204,54 +203,55 @@ export default function HomeMeetingsView() {
               return (
                 <div
                   key={m.id}
-                  className="flex flex-col justify-between rounded-3xl border border-zinc-800 bg-zinc-900/70 p-5 shadow-lg hover:border-zinc-700 transition"
+                  className="flex flex-col justify-between rounded-[6px] border border-[#D8D4CB] bg-white p-4 shadow-xs hover:border-[#4963C8] transition-colors"
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="rounded-md bg-zinc-800 border border-zinc-700/60 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                        <span className="rounded-[3px] border border-[#D8D4CB] bg-[#FAF9F6] px-1.5 py-0.5 text-[10px] font-semibold text-[#585754]">
                           {m.organizationName}
                         </span>
-                        <h4 className="font-bold text-white text-base mt-2 truncate">{m.title}</h4>
+                        <h4 className="font-semibold text-[#242427] text-sm mt-1.5 truncate">{m.title}</h4>
                       </div>
 
-                      <div className="flex items-center gap-1 rounded-xl border border-zinc-800 bg-zinc-950 px-2.5 py-1">
-                        <span className="font-mono text-xs font-bold text-emerald-400">{m.meetingCode}</span>
+                      <div className="flex items-center gap-1 rounded-[3px] border border-[#CBD5E1] bg-[#EEF2FF] px-2 py-0.5">
+                        <span className="font-mono text-xs font-semibold text-[#4963C8]">{m.meetingCode}</span>
                         <button
                           type="button"
                           onClick={() => handleCopyCode(m.meetingCode)}
-                          className="text-zinc-400 hover:text-white p-0.5"
+                          className="text-[#7E7C77] hover:text-[#242427] p-0.5"
                           title="Copy Code"
                         >
-                          {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                          {isCopied ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
                         </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-zinc-300">
-                      <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                    <div className="flex items-center gap-2 text-xs text-[#585754]">
+                      <Clock className="h-3 w-3 text-[#A6A49F]" />
                       <span>
                         {schedDate.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })} at{" "}
                         {schedDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex items-center gap-2 pt-0.5">
                       <img
                         src={m.host.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.host.name)}`}
                         alt={m.host.name}
-                        className="h-6 w-6 rounded-full object-cover border border-zinc-700"
+                        className="h-5 w-5 rounded-[3px] object-cover border border-[#D8D4CB]"
                       />
-                      <span className="text-xs text-zinc-400">Host: <strong className="text-zinc-200">{m.host.name}</strong></span>
+                      <span className="text-xs text-[#7E7C77]">Host: <strong className="text-[#242427] font-medium">{m.host.name}</strong></span>
                     </div>
                   </div>
 
-                  <div className="mt-5 border-t border-zinc-800/80 pt-4 flex items-center justify-end gap-2">
+                  <div className="mt-4 border-t border-[#E8E5DD] pt-3 flex items-center justify-end">
                     <Link
                       to={`/meeting/${m.meetingCode}`}
-                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-semibold text-white shadow-md transition"
+                      className="inline-flex items-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3 py-1.5 text-xs font-medium text-white transition-colors"
                     >
-                      Join Meeting <ArrowRight className="h-3.5 w-3.5" />
+                      <span>Join Meeting</span>
+                      <ArrowRight className="h-3 w-3" />
                     </Link>
                   </div>
                 </div>
@@ -260,35 +260,35 @@ export default function HomeMeetingsView() {
           </div>
         )
       ) : recent.length === 0 ? (
-        <div className="rounded-3xl border border-zinc-800 bg-zinc-900/30 p-12 text-center text-xs text-zinc-500">
+        <div className="rounded-[6px] border border-[#D8D4CB] bg-white p-10 text-center text-xs text-[#7E7C77]">
           No recently ended meetings recorded
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {recent.map((m) => {
             const ended = m.endedAt ? new Date(m.endedAt) : null;
             return (
               <div
                 key={m.id}
-                className="flex items-center justify-between rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 text-xs"
+                className="flex items-center justify-between rounded-[6px] border border-[#D8D4CB] bg-white p-3 text-xs shadow-xs"
               >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800 text-zinc-400 shrink-0">
-                    <Video className="h-5 w-5" />
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] text-[#7E7C77] shrink-0">
+                    <Video className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-bold text-white text-sm truncate">{m.title}</h4>
-                    <p className="text-zinc-400 text-[11px] mt-0.5">
-                      {m.organizationName} • Host: {m.host.name} • {m.duration}
+                    <h4 className="font-semibold text-[#242427] text-xs truncate">{m.title}</h4>
+                    <p className="text-[#7E7C77] text-[11px] mt-0.5">
+                      {m.organizationName} · Host: {m.host.name} · {m.duration}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-zinc-500 text-[11px]">
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <span className="text-[#7E7C77] text-[11px]">
                     {ended ? ended.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Concluded"}
                   </span>
-                  <span className="rounded-lg bg-zinc-800 border border-zinc-700/60 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
+                  <span className="rounded-[3px] border border-[#D8D4CB] bg-[#FAF9F6] px-2 py-0.5 text-[10px] font-medium text-[#585754]">
                     Ended
                   </span>
                 </div>

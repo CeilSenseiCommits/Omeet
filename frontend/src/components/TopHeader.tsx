@@ -3,8 +3,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import NotificationBell from "./NotificationBell";
 import FriendRequestBell from "./FriendRequestBell";
+import UserAvatar from "./UserAvatar";
 import { useAuth } from "../context/AuthContext";
-import { LogOut, ShieldCheck } from "lucide-react";
+import { LogOut, ShieldCheck, Home } from "lucide-react";
 import type { IncomingInvitation, OutgoingInvitation, MeetingInvitation } from "../types/invitation";
 
 /**
@@ -56,11 +57,8 @@ function TopHeader() {
     fetchInvitations();
   }, [fetchInvitations]);
 
-  const displayName = user?.name || "Suryansh";
-  const displayEmail = user?.email || "suryansh@example.com";
-  const avatar =
-    user?.avatarUrl ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=111827&color=ffffff`;
+  const displayName = user?.name || "User";
+  const displayEmail = user?.email || "";
 
   const handleLogout = () => {
     logout();
@@ -68,20 +66,23 @@ function TopHeader() {
   };
 
   return (
-    <header className="flex h-24 shrink-0 items-center justify-between border-b border-zinc-800 bg-zinc-950 px-8">
-      <div className="flex items-center gap-4">
-        <img
-          className="size-12 rounded-full border border-zinc-800 object-cover"
-          src={avatar}
-          alt={`${displayName}'s profile`}
+    <header className="sticky top-0 z-30 flex h-18 shrink-0 items-center justify-between border-b border-[#E2E8F0] bg-white/80 backdrop-blur-md px-6 lg:px-8 text-[#1E293B]">
+      <div className="flex items-center gap-3.5">
+        <UserAvatar
+          name={displayName}
+          avatarUrl={user?.avatarUrl}
+          size="md"
+          className="shadow-xs"
         />
         <div>
           {isHomePage ? (
             <>
-              <p className="text-lg font-semibold text-white">Good morning, {displayName}</p>
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="text-sm font-semibold tracking-tight text-[#1E293B]">
+                Good morning, {displayName}
+              </p>
+              <p className="text-xs text-[#64748B]">
                 {user?.username ? (
-                  <span className="font-mono text-blue-400 mr-1.5">@{user.username} •</span>
+                  <span className="font-mono text-[#3B82F6] mr-1.5">@{user.username} ·</span>
                 ) : null}
                 Hope you have a productive day.
               </p>
@@ -89,15 +90,16 @@ function TopHeader() {
           ) : (
             <Link
               to="/"
-              className="flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
+              className="inline-flex items-center gap-1.5 rounded-[6px] border border-[#E2E8F0] bg-white px-3 py-1.5 text-xs font-medium text-[#1E293B] shadow-2xs transition hover:bg-[#F8FAFC]"
             >
+              <Home className="h-3.5 w-3.5 text-[#64748B]" />
               Home
             </Link>
           )}
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <SearchBar />
         <FriendRequestBell onRefresh={fetchInvitations} />
         <NotificationBell
@@ -124,25 +126,26 @@ function TopHeader() {
               setIsProfileMenuOpen((prev) => !prev);
               setNotificationsOpen(false);
             }}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 text-sm font-semibold text-white transition hover:border-zinc-500 hover:ring-2 hover:ring-zinc-700 focus:outline-none overflow-hidden"
+            className="flex items-center justify-center rounded-[6px] transition focus:outline-none"
             title={`${displayName} (${displayEmail})`}
           >
-            {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt={displayName} className="h-full w-full object-cover" />
-            ) : (
-              user?.initials || "SR"
-            )}
+            <UserAvatar
+              name={displayName}
+              avatarUrl={user?.avatarUrl}
+              size="sm"
+              className="hover:border-[#3B82F6] transition-colors shadow-2xs"
+            />
           </button>
 
           {isProfileMenuOpen && (
-            <div className="absolute right-0 top-full z-50 mt-3 w-64 rounded-2xl border border-zinc-800 bg-zinc-900 p-3 shadow-2xl backdrop-blur-md">
-              <div className="border-b border-zinc-800 p-2 pb-3">
-                <p className="text-xs font-semibold text-white truncate">{displayName}</p>
+            <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-[8px] border border-[#E2E8F0] bg-white/95 backdrop-blur-lg p-2.5 shadow-xl text-[#1E293B]">
+              <div className="border-b border-[#E2E8F0] p-2 pb-3">
+                <p className="text-xs font-semibold text-[#1E293B] truncate">{displayName}</p>
                 {user?.username && (
-                  <p className="text-[11px] font-mono text-blue-400">@{user.username}</p>
+                  <p className="text-[11px] font-mono text-[#3B82F6]">@{user.username}</p>
                 )}
-                <p className="text-[11px] text-zinc-400 truncate">{displayEmail}</p>
-                <div className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-blue-400">
+                <p className="text-[11px] text-[#64748B] truncate">{displayEmail}</p>
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] font-medium text-[#0D9488]">
                   <ShieldCheck className="h-3 w-3" />
                   <span>Google Authenticated</span>
                 </div>
@@ -152,7 +155,7 @@ function TopHeader() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-red-400 transition hover:bg-red-500/10 hover:text-red-300"
+                  className="flex w-full items-center gap-2 rounded-[6px] px-2.5 py-1.5 text-xs font-medium text-[#EF4444] transition hover:bg-[#EF4444]/10 hover:text-[#DC2626]"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   Sign Out

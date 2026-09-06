@@ -10,21 +10,30 @@ interface AppLayoutProps {
 
 function AppLayout({ children, leftRail, rightRail, contentClassName }: AppLayoutProps) {
   return (
-    <main className="flex min-h-screen flex-col bg-zinc-950 text-white">
+    <main className="flex min-h-screen flex-col bg-transparent text-[#1E293B]">
       <TopHeader />
 
-      <section className="flex min-h-0 flex-1 gap-5 p-6" aria-label="Workspace area">
-        <aside className="w-52 shrink-0 rounded-[28px] border border-zinc-800 bg-zinc-900/80 p-4">
-          {leftRail}
-        </aside>
+      <section className="flex min-h-0 flex-1 gap-4 p-4 lg:p-5" aria-label="Workspace area">
+        {leftRail && (
+          <aside className="w-56 shrink-0 rounded-[8px] border border-[#E2E8F0] bg-white/90 backdrop-blur-sm p-3 text-[#1E293B] shadow-xs">
+            {leftRail}
+          </aside>
+        )}
 
-        <section className={contentClassName ?? "min-w-0 flex-1 rounded-4xl border border-zinc-800 bg-zinc-900/90 p-6"}>
+        <section
+          className={
+            contentClassName ??
+            "min-w-0 flex-1 rounded-[8px] border border-[#E2E8F0] bg-white/95 backdrop-blur-sm p-6 text-[#1E293B] shadow-xs"
+          }
+        >
           {children}
         </section>
 
-        <aside className="w-72 shrink-0 rounded-[28px] border border-zinc-800 bg-zinc-900/80 p-4">
-          {rightRail}
-        </aside>
+        {rightRail && (
+          <aside className="w-80 shrink-0 rounded-[8px] border border-[#E2E8F0] bg-white/90 backdrop-blur-sm p-4 text-[#1E293B] shadow-xs">
+            {rightRail}
+          </aside>
+        )}
       </section>
     </main>
   );

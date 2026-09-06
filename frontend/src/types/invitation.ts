@@ -49,3 +49,51 @@ export interface MeetingInvitation {
   status: "PENDING" | "ACCEPTED" | "DECLINED";
   createdAt: string;
 }
+
+export interface ReceiverInvitation {
+  invitationId: string;
+  code: string;
+  organization: {
+    id: string;
+    name: string;
+    description: string;
+    industry?: string;
+    size?: string;
+  };
+  invitee: {
+    id: string;
+    name: string;
+    username: string;
+  };
+  inviter: {
+    id: string;
+    name: string;
+    role: string;
+    email: string;
+    phone: string;
+  };
+  position: string;
+  department: string;
+  employmentType: string;
+  joiningDate: string;
+  directSenior: {
+    id: string;
+    name: string;
+    position: string;
+  };
+  mentor?: {
+    id: string;
+    name: string;
+    position: string;
+  };
+  teamLead?: {
+    id: string;
+    name: string;
+    position: string;
+  };
+  contactEmail: string;
+  contactPhone: string;
+  status: "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED";
+  createdAt: string;
+  expiresAt: string;
+}

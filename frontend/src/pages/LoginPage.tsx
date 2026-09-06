@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
-import { defaultGoogleAccounts, useAuth } from "../context/AuthContext";
-import { Shield, Sparkles, ArrowRight, UserPlus, LogOut, UserCheck } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { Shield, LogOut, CheckCircle2, Video, Building2, Users } from "lucide-react";
 import OnboardingCard from "../components/auth/OnboardingCard";
 
 export default function LoginPage() {
@@ -12,9 +12,6 @@ export default function LoginPage() {
 
   const [activeTab, setActiveTab] = useState<"signin" | "create">("signin");
   const [isLoading, setIsLoading] = useState(false);
-  const [showCustomModal, setShowCustomModal] = useState(false);
-  const [customName, setCustomName] = useState("");
-  const [customEmail, setCustomEmail] = useState("");
 
   const destination = location.state?.from?.pathname || "/";
 
@@ -64,290 +61,189 @@ export default function LoginPage() {
     return <Navigate to="/" replace />;
   }
 
-  // Handle simulated / demo login
-  const handleGoogleAuth = async (
-    account?: (typeof defaultGoogleAccounts)[0],
-    isNew = activeTab === "create"
-  ) => {
-    setIsLoading(true);
-    try {
-      await loginWithGoogle(account, isNew);
-      // If account was already onboarded, navigate to destination
-      if (account?.isOnboarded && !isNew) {
-        navigate(destination, { replace: true });
-      }
-      // If not onboarded, state updates and will render OnboardingCard below!
-    } catch (error) {
-      console.error("Authentication failed", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCustomSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customEmail.trim() || !customName.trim()) return;
-
-    setIsLoading(true);
-    try {
-      await loginWithGoogle(
-        {
-          name: customName.trim(),
-          email: customEmail.trim(),
-          isOnboarded: activeTab === "signin",
-        },
-        activeTab === "create"
-      );
-      setShowCustomModal(false);
-      if (activeTab === "signin") {
-        navigate(destination, { replace: true });
-      }
-    } catch (error) {
-      console.error("Custom auth failed", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-black px-4 py-12 text-white selection:bg-zinc-800">
-      {/* Ambient background lighting effects */}
-      <div className="pointer-events-none absolute left-1/2 top-1/4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/10 blur-[120px] w-[600px] h-[600px]" />
-      <div className="pointer-events-none absolute right-1/4 top-1/3 rounded-full bg-fuchsia-600/10 blur-[140px] w-[500px] h-[500px]" />
+    <div className="flex min-h-screen bg-[#0C0F17] text-[#F8FAFC]">
+      {/* Left Brand Panel (Desktop) */}
+      <div className="hidden lg:flex lg:w-5/12 flex-col justify-between border-r border-[#1E2638] bg-[#0F1420] relative overflow-hidden p-10 xl:p-14">
+        {/* Luminous atmospheric radial glow inspired by reference */}
+        <div 
+          className="pointer-events-none absolute -top-32 -left-20 h-96 w-96 rounded-full opacity-30 blur-3xl"
+          style={{ background: "radial-gradient(circle, rgba(20, 184, 166, 0.4) 0%, rgba(59, 130, 246, 0.2) 50%, transparent 70%)" }}
+        />
+        <div 
+          className="pointer-events-none absolute -bottom-28 -right-20 h-96 w-96 rounded-full opacity-25 blur-3xl"
+          style={{ background: "radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, transparent 70%)" }}
+        />
 
-      <div className="relative z-10 w-full max-w-md space-y-8">
-        {/* Brand & Header */}
-        <div className="text-center">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl shadow-blue-500/10">
-            <span className="text-2xl font-black tracking-tight text-white">Ω</span>
+        <div className="relative z-10">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-[#2D3748] bg-[#1A2234] text-sm font-bold text-white shadow-xs">
+              Ω
+            </div>
+            <span className="text-sm font-bold tracking-tight text-white">OMeet</span>
           </div>
 
-          <h1 className="mt-5 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            OMeet Workspace
-          </h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Real-time meetings, organization hierarchy, and next-generation collaboration.
-          </p>
+          <div className="mt-16 space-y-4">
+            <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-[#204E4A] bg-[#0E2E2B]/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-[#2DD4BF]">
+              ✦ Enterprise Collaboration
+            </span>
+            <h1 className="text-2xl xl:text-3xl font-bold tracking-tight text-white leading-snug">
+              Structured workspace for teams that build and operate.
+            </h1>
+            <p className="text-xs text-[#94A3B8] leading-relaxed max-w-md">
+              Secure, hierarchical meetings with clear organizational reporting, real-time presence, and integrated member directories.
+            </p>
+          </div>
+
+          <div className="mt-12 space-y-3.5 border-t border-[#1E2638] pt-8 max-w-md">
+            <div className="flex items-start gap-3">
+              <Building2 className="h-4 w-4 text-[#38BDF8] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-white">Hierarchical Structure</p>
+                <p className="text-[11px] text-[#94A3B8] mt-0.5">Role-scoped meetings with executive, departmental, and team visibility.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Video className="h-4 w-4 text-[#38BDF8] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-white">Low-Latency Video</p>
+                <p className="text-[11px] text-[#94A3B8] mt-0.5">Instant or scheduled conferences with synchronized recordings.</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Users className="h-4 w-4 text-[#38BDF8] shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-semibold text-white">Unified Directory</p>
+                <p className="text-[11px] text-[#94A3B8] mt-0.5">Direct colleague messaging and personal group sync across devices.</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* If user authenticated with Google but not yet onboarded, show the OnboardingCard */}
-        {isAuthenticated && user && !user.isOnboarded ? (
-          <div className="space-y-4">
-            <OnboardingCard onSuccess={() => navigate(destination, { replace: true })} />
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={logout}
-                className="inline-flex items-center gap-1.5 text-xs text-zinc-500 transition hover:text-zinc-300"
-              >
-                <LogOut className="h-3 w-3" />
-                Cancel and use a different Google account
-              </button>
-            </div>
-          </div>
-        ) : (
-          /* Main Auth Card */
-          <div className="rounded-[32px] border border-zinc-800 bg-zinc-950/80 p-8 shadow-2xl backdrop-blur-xl">
-            {/* Tabbed Switcher: Sign In vs Create Account */}
-            <div className="grid grid-cols-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-1 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setActiveTab("signin")}
-                className={`rounded-xl py-2.5 transition ${
-                  activeTab === "signin"
-                    ? "bg-white text-black shadow"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("create")}
-                className={`rounded-xl py-2.5 transition ${
-                  activeTab === "create"
-                    ? "bg-white text-black shadow"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                Create Account
-              </button>
-            </div>
+        <div className="relative z-10 border-t border-[#1E2638] pt-4 flex items-center justify-between text-[11px] text-[#64748B]">
+          <span>Protected by Google OAuth 2.0</span>
+          <span>Version 2.0</span>
+        </div>
+      </div>
 
-            <div className="mt-6 space-y-6">
+      {/* Right Canvas / Form Panel with Soft Teal/Light Gradient Wash */}
+      <div 
+        className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10 relative overflow-hidden"
+        style={{
+          background: "radial-gradient(circle at 80% 20%, rgba(20, 184, 166, 0.12), transparent 50%), radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.08), transparent 50%), linear-gradient(135deg, #F0F9F8 0%, #F8FAFC 50%, #F1F5F9 100%)"
+        }}
+      >
+        <div className="w-full max-w-md space-y-6 relative z-10">
+          {/* Mobile Header */}
+          <div className="text-center lg:hidden space-y-2">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-[6px] border border-[#E2E8F0] bg-white text-base font-bold text-[#1E293B] shadow-xs">
+              Ω
+            </div>
+            <h2 className="text-xl font-bold text-[#1E293B]">OMeet Workspace</h2>
+            <p className="text-xs text-[#64748B]">Enterprise meetings and organizational collaboration</p>
+          </div>
+
+          {/* If user authenticated with Google but not yet onboarded, show the OnboardingCard */}
+          {isAuthenticated && user && !user.isOnboarded ? (
+            <div className="space-y-4">
+              <OnboardingCard onSuccess={() => navigate(destination, { replace: true })} />
               <div className="text-center">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-400">
-                  <Shield className="h-3.5 w-3.5" />
-                  {activeTab === "signin"
-                    ? "Authentication Guard Active"
-                    : "Fast 1-Step Onboarding"}
-                </span>
-                <p className="mt-3 text-xs leading-relaxed text-zinc-400">
-                  {activeTab === "signin"
-                    ? "Sign in with your Google account to access your organizations, meetings, and team directory."
-                    : "Connect your Google account to get started. No passwords to remember or manage."}
-                </p>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="inline-flex items-center gap-1.5 text-xs text-[#64748B] transition hover:text-[#1E293B]"
+                >
+                  <LogOut className="h-3 w-3" />
+                  Cancel and use a different Google account
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Main Auth Card */
+            <div className="rounded-[10px] border border-[#E2E8F0] bg-white/95 backdrop-blur-md p-7 shadow-lg space-y-6">
+              {/* Tabbed Switcher: Sign In vs Create Account */}
+              <div className="grid grid-cols-2 rounded-[6px] border border-[#E2E8F0] bg-[#F1F5F9] p-1 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("signin")}
+                  className={`rounded-[5px] py-1.5 transition-all ${
+                    activeTab === "signin"
+                      ? "bg-white text-[#1E293B] shadow-xs"
+                      : "text-[#64748B] hover:text-[#1E293B]"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("create")}
+                  className={`rounded-[5px] py-1.5 transition-all ${
+                    activeTab === "create"
+                      ? "bg-white text-[#1E293B] shadow-xs"
+                      : "text-[#64748B] hover:text-[#1E293B]"
+                  }`}
+                >
+                  Create Account
+                </button>
               </div>
 
-              {/* Primary Google Auth Button */}
-              <button
-                type="button"
-                onClick={() => triggerRealGoogleLogin()}
-                disabled={isLoading}
-                className="group relative flex w-full items-center justify-center gap-3 rounded-2xl border border-white/15 bg-white px-5 py-4 text-sm font-semibold text-black transition-all hover:bg-zinc-100 hover:shadow-[0_0_25px_rgba(255,255,255,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-black/30 border-t-black" />
-                ) : (
-                  <svg className="h-5 w-5" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                    />
-                  </svg>
-                )}
-                <span>
-                  {isLoading
-                    ? "Connecting..."
-                    : activeTab === "signin"
-                    ? "Continue with Google"
-                    : "Create Account with Google"}
-                </span>
-              </button>
-
-              {/* Demo Accounts Switcher */}
-              <div className="space-y-3 pt-2">
-                <div className="relative flex items-center justify-center">
-                  <div className="w-full border-t border-zinc-800" />
-                  <span className="bg-zinc-950 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="text-base font-bold text-[#1E293B]">
+                    {activeTab === "signin" ? "Sign in to your workspace" : "Create your workspace account"}
+                  </h3>
+                  <p className="mt-1 text-xs text-[#64748B] leading-relaxed">
                     {activeTab === "signin"
-                      ? "Or select existing demo user"
-                      : "Or test with demo account"}
+                      ? "Access your registered organizations, meetings, and direct team discussions."
+                      : "Connect your Google account to get started immediately."}
+                  </p>
+                </div>
+
+                {/* Primary Google Auth Button */}
+                <button
+                  type="button"
+                  onClick={() => triggerRealGoogleLogin()}
+                  disabled={isLoading}
+                  className="flex w-full items-center justify-center gap-2.5 rounded-[6px] border border-[#E2E8F0] bg-white hover:bg-[#F8FAFC] hover:border-[#CBD5E1] px-4 py-2.5 text-xs font-semibold text-[#1E293B] transition-all shadow-xs hover:shadow-sm disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#E2E8F0] border-t-[#3B82F6]" />
+                  ) : (
+                    <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                      />
+                    </svg>
+                  )}
+                  <span>
+                    {isLoading
+                      ? "Connecting…"
+                      : activeTab === "signin"
+                      ? "Continue with Google"
+                      : "Create Account with Google"}
                   </span>
-                </div>
+                </button>
 
-                <div className="space-y-2">
-                  {defaultGoogleAccounts.map((account) => (
-                    <button
-                      key={account.id}
-                      type="button"
-                      onClick={() => handleGoogleAuth(account, !account.isOnboarded)}
-                      disabled={isLoading}
-                      className="flex w-full items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 text-left transition hover:border-zinc-700 hover:bg-zinc-900 disabled:opacity-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={account.avatarUrl}
-                          alt={account.name}
-                          className="h-9 w-9 rounded-full object-cover border border-zinc-700"
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-white">{account.name}</p>
-                            {account.isOnboarded ? (
-                              <span className="flex items-center gap-0.5 text-[10px] text-zinc-400 font-mono">
-                                @{account.username}
-                              </span>
-                            ) : (
-                              <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-400 border border-amber-500/20">
-                                Needs Setup
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-zinc-400">{account.email}</p>
-                        </div>
-                      </div>
-                      <ArrowRight className="h-4 w-4 text-zinc-500" />
-                    </button>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomModal(true)}
-                    disabled={isLoading}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-800 bg-black/40 p-3 text-xs font-medium text-zinc-400 transition hover:border-zinc-700 hover:text-white"
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                    Use custom Google identity
-                  </button>
-                </div>
               </div>
             </div>
+          )}
+
+          <div className="text-center text-[11px] text-[#64748B]">
+            <p>Single sign-on encrypted and managed via OAuth 2.0</p>
           </div>
-        )}
-
-        {/* Custom Account Modal */}
-        {showCustomModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-900 p-6 shadow-2xl">
-              <h3 className="text-lg font-semibold text-white">
-                {activeTab === "signin" ? "Custom Google Account" : "New Google Account"}
-              </h3>
-              <p className="mt-1 text-xs text-zinc-400">
-                Enter simulated Google OAuth profile information.
-              </p>
-
-              <form onSubmit={handleCustomSubmit} className="mt-5 space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-zinc-300">Your Full Name</label>
-                  <input
-                    type="text"
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                    placeholder="e.g. Alex Miller"
-                    className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-black/50 px-3.5 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-zinc-300">Google Email Address</label>
-                  <input
-                    type="email"
-                    value={customEmail}
-                    onChange={(e) => setCustomEmail(e.target.value)}
-                    placeholder="alex@gmail.com"
-                    className="mt-1.5 w-full rounded-xl border border-zinc-700 bg-black/50 px-3.5 py-2.5 text-sm text-white focus:border-zinc-500 focus:outline-none"
-                    required
-                  />
-                </div>
-
-                <div className="mt-6 flex justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomModal(false)}
-                    className="rounded-full px-4 py-2 text-xs font-semibold text-zinc-400 hover:text-white"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="rounded-full bg-white px-5 py-2 text-xs font-semibold text-black hover:bg-zinc-200"
-                  >
-                    {activeTab === "signin" ? "Sign In" : "Continue to Setup"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Security / System Footer */}
-        <div className="text-center text-xs text-zinc-500">
-          <p>Protected by Google OAuth 2.0 single sign-on.</p>
-          <p className="mt-1">Tokens and active session persisted in client storage.</p>
         </div>
       </div>
     </div>

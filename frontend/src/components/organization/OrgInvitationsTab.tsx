@@ -89,12 +89,10 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
-      // 1. Status pill filter
       if (statusFilter !== "ALL" && log.status !== statusFilter) {
         return false;
       }
 
-      // 2. Search query filter
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase().trim();
 
@@ -130,20 +128,20 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-fuchsia-500" />
+        <Loader2 className="h-5 w-5 animate-spin text-[#7E7C77]" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="my-8 rounded-2xl border border-rose-500/30 bg-rose-950/20 p-6 text-center max-w-md mx-auto">
-        <AlertCircle className="h-8 w-8 text-rose-400 mx-auto mb-2" />
-        <p className="text-sm font-semibold text-rose-200">{error}</p>
+      <div className="my-8 rounded-[6px] border border-[#B44A4A]/30 bg-white p-6 text-center max-w-md mx-auto shadow-xs">
+        <AlertCircle className="h-6 w-6 text-[#B44A4A] mx-auto mb-2" />
+        <p className="text-xs font-semibold text-[#B44A4A]">{error}</p>
         <button
           type="button"
           onClick={fetchLogs}
-          className="mt-4 rounded-xl bg-zinc-800 px-4 py-2 text-xs font-medium text-white hover:bg-zinc-700 transition"
+          className="mt-3 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3.5 py-1.5 text-xs font-medium text-white transition-colors"
         >
           Try Again
         </button>
@@ -152,22 +150,22 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
   }
 
   return (
-    <section className="py-6 space-y-6">
+    <section className="py-5 space-y-5">
       {/* Top Action Bar & Metrics */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-white">Organization Invitation Logs</h2>
-          <p className="text-xs text-zinc-400">
+          <h2 className="text-sm font-bold text-[#242427]">Organization Invitation Logs</h2>
+          <p className="text-xs text-[#585754]">
             Audit trail of invitations issued for this workspace. Click any row to preview offer letter.
           </p>
         </div>
         <button
           type="button"
-          onClick={() => navigate(`/organization/${organizationId}/invite`)}
-          className="flex items-center gap-2 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-fuchsia-950/40 transition shrink-0"
+          onClick={() => navigate(`/organization/${organizationId}/invite`, { state: { fromOrgId: organizationId, fromTab: "Invitations" } })}
+          className="flex items-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-3.5 py-1.5 text-xs font-medium text-white shadow-xs transition-colors shrink-0"
         >
-          <UserPlus className="h-4 w-4" />
-          Invite New Member
+          <UserPlus className="h-3.5 w-3.5" />
+          <span>Invite New Member</span>
         </button>
       </div>
 
@@ -175,66 +173,66 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div 
           onClick={() => setStatusFilter("ALL")}
-          className={`rounded-xl border p-4 cursor-pointer transition ${
+          className={`rounded-[6px] border p-3.5 cursor-pointer transition-colors shadow-xs ${
             statusFilter === "ALL" 
-              ? "border-fuchsia-600 bg-fuchsia-950/20" 
-              : "border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-800/40"
+              ? "border-[#4963C8] bg-white ring-1 ring-[#4963C8]/30" 
+              : "border-[#D8D4CB] bg-white hover:bg-[#FAF9F6]"
           }`}
         >
-          <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Total Sent</p>
-          <p className="mt-1 text-2xl font-bold text-white">{logs.length}</p>
+          <p className="text-[10px] font-semibold text-[#7E7C77] uppercase tracking-wider">Total Sent</p>
+          <p className="mt-0.5 text-xl font-bold text-[#242427]">{logs.length}</p>
         </div>
         <div 
           onClick={() => setStatusFilter(statusFilter === "PENDING" ? "ALL" : "PENDING")}
-          className={`rounded-xl border p-4 cursor-pointer transition ${
+          className={`rounded-[6px] border p-3.5 cursor-pointer transition-colors shadow-xs ${
             statusFilter === "PENDING" 
-              ? "border-amber-600 bg-amber-950/40" 
-              : "border-amber-900/40 bg-amber-950/20 hover:bg-amber-950/30"
+              ? "border-[#4963C8] bg-white ring-1 ring-[#4963C8]/30" 
+              : "border-[#D8D4CB] bg-white hover:bg-[#FAF9F6]"
           }`}
         >
-          <p className="text-[11px] font-medium text-amber-400 uppercase tracking-wider">Pending</p>
-          <p className="mt-1 text-2xl font-bold text-amber-200">{pendingCount}</p>
+          <p className="text-[10px] font-semibold text-[#7E7C77] uppercase tracking-wider">Pending</p>
+          <p className="mt-0.5 text-xl font-bold text-[#585754]">{pendingCount}</p>
         </div>
         <div 
           onClick={() => setStatusFilter(statusFilter === "ACCEPTED" ? "ALL" : "ACCEPTED")}
-          className={`rounded-xl border p-4 cursor-pointer transition ${
+          className={`rounded-[6px] border p-3.5 cursor-pointer transition-colors shadow-xs ${
             statusFilter === "ACCEPTED" 
-              ? "border-emerald-600 bg-emerald-950/40" 
-              : "border-emerald-900/40 bg-emerald-950/20 hover:bg-emerald-950/30"
+              ? "border-emerald-600 bg-white ring-1 ring-emerald-500/30" 
+              : "border-[#D8D4CB] bg-white hover:bg-[#FAF9F6]"
           }`}
         >
-          <p className="text-[11px] font-medium text-emerald-400 uppercase tracking-wider">Accepted</p>
-          <p className="mt-1 text-2xl font-bold text-emerald-200">{acceptedCount}</p>
+          <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wider">Accepted</p>
+          <p className="mt-0.5 text-xl font-bold text-emerald-700">{acceptedCount}</p>
         </div>
         <div 
           onClick={() => setStatusFilter(statusFilter === "REJECTED" ? "ALL" : "REJECTED")}
-          className={`rounded-xl border p-4 cursor-pointer transition ${
+          className={`rounded-[6px] border p-3.5 cursor-pointer transition-colors shadow-xs ${
             statusFilter === "REJECTED" 
-              ? "border-rose-600 bg-rose-950/40" 
-              : "border-rose-900/40 bg-rose-950/20 hover:bg-rose-950/30"
+              ? "border-[#B44A4A] bg-white ring-1 ring-[#B44A4A]/30" 
+              : "border-[#D8D4CB] bg-white hover:bg-[#FAF9F6]"
           }`}
         >
-          <p className="text-[11px] font-medium text-rose-400 uppercase tracking-wider">Declined</p>
-          <p className="mt-1 text-2xl font-bold text-rose-200">{rejectedCount}</p>
+          <p className="text-[10px] font-semibold text-[#B44A4A] uppercase tracking-wider">Declined</p>
+          <p className="mt-0.5 text-xl font-bold text-[#B44A4A]">{rejectedCount}</p>
         </div>
       </div>
 
       {/* Search Bar & Status Quick Filter */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#7E7C77]" />
           <input
             type="text"
-            placeholder="Search by status (e.g. pending, accepted, declined), candidate, position, or invite code..."
+            placeholder="Search by status, candidate, position, or invite code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-zinc-800 bg-zinc-950/70 pl-10 pr-10 py-2.5 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-fuchsia-600 transition"
+            className="w-full rounded-[5px] border border-[#D8D4CB] bg-white pl-9 pr-8 py-1.5 text-xs text-[#242427] placeholder:text-[#A6A49F] outline-none focus:border-[#4963C8] transition-colors shadow-xs"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-xs p-1"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7E7C77] hover:text-[#242427] text-xs p-1"
             >
               ✕
             </button>
@@ -242,9 +240,9 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
         </div>
 
         {/* Status Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
           {[
-            { id: "ALL", label: "All Statuses" },
+            { id: "ALL", label: "All" },
             { id: "PENDING", label: "Pending" },
             { id: "ACCEPTED", label: "Accepted" },
             { id: "REJECTED", label: "Declined" },
@@ -254,10 +252,10 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
               key={pill.id}
               type="button"
               onClick={() => setStatusFilter(pill.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+              className={`px-2.5 py-1 rounded-[4px] text-xs font-medium transition-colors whitespace-nowrap ${
                 statusFilter === pill.id
-                  ? "bg-fuchsia-600 text-white shadow-sm shadow-fuchsia-950/50"
-                  : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                  ? "bg-[#242427] text-white"
+                  : "bg-white border border-[#D8D4CB] text-[#585754] hover:bg-[#FAF9F6]"
               }`}
             >
               {pill.label}
@@ -268,32 +266,32 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
 
       {/* Logs Table */}
       {logs.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-800/80 bg-zinc-950/30 p-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 text-zinc-500 mx-auto mb-3">
-            <Send className="h-6 w-6" />
+        <div className="rounded-[6px] border border-dashed border-[#D8D4CB] bg-white p-10 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[5px] bg-[#FAF9F6] border border-[#D8D4CB] text-[#7E7C77] mx-auto mb-2.5">
+            <Send className="h-5 w-5" />
           </div>
-          <h3 className="text-base font-semibold text-white">No invitations issued yet</h3>
-          <p className="mt-1 text-xs text-zinc-400 max-w-sm mx-auto">
+          <h3 className="text-xs font-semibold text-[#242427]">No invitations issued yet</h3>
+          <p className="mt-0.5 text-xs text-[#7E7C77] max-w-sm mx-auto">
             You haven't sent any invitations for this workspace yet. Recruit talent using the invite button above.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-zinc-800/60 bg-zinc-950/40">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-zinc-800/60 bg-zinc-900/50 text-xs text-zinc-400 uppercase tracking-wider">
+        <div className="overflow-hidden rounded-[6px] border border-[#D8D4CB] bg-white shadow-xs">
+          <table className="w-full text-left text-xs">
+            <thead className="border-b border-[#D8D4CB] bg-[#FAF9F6] text-[10px] text-[#7E7C77] uppercase tracking-wider font-semibold">
               <tr>
-                <th className="px-5 py-3">Candidate</th>
-                <th className="px-5 py-3">Position & Dept</th>
-                <th className="px-5 py-3">Reporting Senior</th>
-                <th className="px-5 py-3">Invite Code</th>
-                <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Sent Date</th>
+                <th className="px-4 py-2.5">Candidate</th>
+                <th className="px-4 py-2.5">Position & Dept</th>
+                <th className="px-4 py-2.5">Reporting Senior</th>
+                <th className="px-4 py-2.5">Invite Code</th>
+                <th className="px-4 py-2.5">Status</th>
+                <th className="px-4 py-2.5 text-right">Sent Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/40">
+            <tbody className="divide-y divide-[#E8E5DD]">
               {filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-5 py-8 text-center text-xs text-zinc-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-xs text-[#7E7C77]">
                     No invitations found matching your filters.
                   </td>
                 </tr>
@@ -301,78 +299,78 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
                 filteredLogs.map((log) => (
                   <tr 
                     key={log.id} 
-                    onClick={() => navigate(`/invitation-preview/${log.id}`)}
-                    className="hover:bg-zinc-900/60 transition cursor-pointer group"
+                    onClick={() => navigate(`/invitation-preview/${log.id}`, { state: { fromOrgId: organizationId, fromTab: "Invitations" } })}
+                    className="hover:bg-[#FAF9F6] transition-colors cursor-pointer group"
                     title="Click to view candidate invitation preview"
                   >
-                    <td className="px-5 py-3.5 flex items-center gap-3">
+                    <td className="px-4 py-2.5 flex items-center gap-2.5">
                       <img
                         src={
                           log.inviteeAvatarUrl ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(log.inviteeName)}&background=2563eb&color=ffffff`
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(log.inviteeName)}&background=252932&color=F3F3EE`
                         }
                         alt={log.inviteeName}
-                        className="h-8 w-8 rounded-full border border-zinc-800 object-cover group-hover:border-fuchsia-500 transition"
+                        className="h-7 w-7 rounded-[4px] border border-[#D8D4CB] object-cover"
                       />
                       <div>
-                        <p className="font-medium text-white group-hover:text-fuchsia-300 transition flex items-center gap-1.5">
+                        <p className="font-semibold text-[#242427] group-hover:text-[#4963C8] transition-colors flex items-center gap-1">
                           {log.inviteeName}
-                          <ExternalLink className="h-3 w-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition" />
+                          <ExternalLink className="h-3 w-3 text-[#7E7C77] opacity-0 group-hover:opacity-100 transition-opacity" />
                         </p>
-                        <p className="text-xs text-zinc-500">@{log.inviteeUsername}</p>
+                        <p className="text-[10px] text-[#7E7C77]">@{log.inviteeUsername}</p>
                       </div>
                     </td>
-                    <td className="px-5 py-3.5 text-zinc-300">
-                      <p className="font-medium text-white">{log.position}</p>
-                      <p className="text-xs text-zinc-500">{log.department || "General Team"}</p>
+                    <td className="px-4 py-2.5 text-[#242427]">
+                      <p className="font-medium">{log.position}</p>
+                      <p className="text-[10px] text-[#7E7C77]">{log.department || "General Team"}</p>
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-zinc-400">
+                    <td className="px-4 py-2.5 text-xs text-[#585754]">
                       {log.managerName ? log.managerName : "—"}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-2.5">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopy(log.inviteCode);
                         }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2.5 py-1 text-xs font-mono font-semibold text-zinc-300 hover:border-zinc-700 hover:text-white transition"
+                        className="inline-flex items-center gap-1 rounded-[3px] border border-[#CBD5E1] bg-[#EEF2FF] px-2 py-0.5 text-xs font-mono font-semibold text-[#4963C8] hover:bg-[#E0E7FF] transition-colors"
                         title="Copy code"
                       >
                         <span>{log.inviteCode}</span>
                         {copiedCode === log.inviteCode ? (
-                          <Check className="h-3 w-3 text-emerald-400" />
+                          <Check className="h-3 w-3 text-emerald-600" />
                         ) : (
-                          <Copy className="h-3 w-3 text-zinc-500" />
+                          <Copy className="h-3 w-3 text-[#7E7C77]" />
                         )}
                       </button>
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-4 py-2.5">
                       {log.status === "PENDING" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-800/60 bg-amber-950/50 px-2.5 py-0.5 text-[11px] font-medium text-amber-300">
-                          <Clock className="h-3 w-3" />
+                        <span className="inline-flex items-center gap-1 rounded-[3px] border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                          <Clock className="h-2.5 w-2.5" />
                           Pending
                         </span>
                       )}
                       {log.status === "ACCEPTED" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-800/60 bg-emerald-950/50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-300">
-                          <CheckCircle2 className="h-3 w-3" />
+                        <span className="inline-flex items-center gap-1 rounded-[3px] border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">
+                          <CheckCircle2 className="h-2.5 w-2.5" />
                           Accepted
                         </span>
                       )}
                       {log.status === "REJECTED" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-rose-800/60 bg-rose-950/50 px-2.5 py-0.5 text-[11px] font-medium text-rose-300">
-                          <XCircle className="h-3 w-3" />
+                        <span className="inline-flex items-center gap-1 rounded-[3px] border border-rose-300 bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-800">
+                          <XCircle className="h-2.5 w-2.5" />
                           Declined
                         </span>
                       )}
                       {log.status === "EXPIRED" && (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-0.5 text-[11px] font-medium text-zinc-400">
+                        <span className="inline-flex items-center gap-1 rounded-[3px] border border-[#D8D4CB] bg-[#FAF9F6] px-2 py-0.5 text-[10px] font-semibold text-[#7E7C77]">
                           Expired
                         </span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-right text-xs text-zinc-500">
+                    <td className="px-4 py-2.5 text-right text-[11px] text-[#7E7C77]">
                       {new Date(log.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
@@ -387,4 +385,3 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
 }
 
 export default OrgInvitationsTab;
-

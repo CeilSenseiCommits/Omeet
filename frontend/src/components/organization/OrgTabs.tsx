@@ -7,7 +7,7 @@ const tabs = ["Meetings", "Members", "Files", "AI"];
 
 function OrgTabs({ activeTab, onChange }: OrgTabsProps) {
   return (
-    <div className="flex flex-wrap gap-2 rounded-[24px] border border-zinc-800 bg-zinc-900/80 p-2">
+    <div className="flex flex-wrap gap-1.5 rounded-[5px] border border-[#D8D4CB] bg-white p-1 shadow-xs">
       {tabs.map((tab) => {
         const isActive = activeTab === tab;
 
@@ -16,10 +16,10 @@ function OrgTabs({ activeTab, onChange }: OrgTabsProps) {
             key={tab}
             type="button"
             onClick={() => onChange(tab)}
-            className={`rounded-2xl px-4 py-2 text-sm font-medium transition ${
+            className={`rounded-[4px] px-3.5 py-1.5 text-xs font-medium transition-colors ${
               isActive
-                ? "border border-zinc-700 bg-zinc-800 text-white"
-                : "text-zinc-400 hover:bg-zinc-800/70 hover:text-white"
+                ? "border border-[#D8D4CB] bg-[#FAF9F6] text-[#242427] shadow-xs"
+                : "border border-transparent text-[#7E7C77] hover:text-[#242427]"
             }`}
           >
             {tab}

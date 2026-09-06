@@ -1,14 +1,22 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createOrganizationAPI, CreateOrganizationRequest } from "../lib/mockApi";
 import { ArrowLeft, Building2, User } from "lucide-react";
+import UserAvatar from "../components/UserAvatar";
+
+interface CreateOrganizationForm {
+  name: string;
+  brief: string;
+  description: string;
+  size: string;
+  position: string;
+}
 
 function CreateOrganization() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [formData, setFormData] = useState<CreateOrganizationRequest>({
+  const [formData, setFormData] = useState<CreateOrganizationForm>({
     name: "",
     brief: "",
     description: "",
@@ -18,9 +26,9 @@ function CreateOrganization() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const creatorName = user?.name || "Suryansh Rao";
-  const creatorEmail = user?.email || "suryansh@example.com";
-  const creatorInitials = user?.initials || "SR";
+  const creatorName = user?.name || "Workspace Creator";
+  const creatorEmail = user?.email || "";
+  const creatorInitials = user?.initials || "WC";
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -46,60 +54,77 @@ function CreateOrganization() {
     setError(null);
 
     try {
-      // Calls API to create entry in PostgreSQL `organizations` (employee_count=1) and `organization_employees`
-      const response = await createOrganizationAPI({
-        ...formData,
-        userId: user?.id,
+      const res = await fetch("http://localhost:5000/api/organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          brief: formData.brief.trim(),
+          description: formData.description.trim(),
+          size: formData.size,
+          position: formData.position.trim(),
+          userId: user?.id,
+        }),
       });
 
-      // Redirect to the newly created organization's workspace
-      navigate(`/organization/${response.organizationId}`);
-    } catch (err) {
-      setError("Failed to create organization. Please try again.");
+      const data = await res.json();
+      if (!res.ok || !data.organization?.id) {
+        throw new Error(data.error || "Failed to create organization.");
+      }
+
+      window.dispatchEvent(new Event("organization-updated"));
+      navigate("/");
+    } catch (err: any) {
+      setError(err.message || "Failed to create organization. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-white/30 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-2xl space-y-8">
+    <div className="min-h-screen bg-transparent text-[#1E293B] flex justify-center py-10 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="w-full max-w-2xl space-y-6">
         <div>
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="group flex items-center text-sm font-medium text-zinc-400 hover:text-white transition-colors"
+            className="group flex items-center text-xs font-semibold text-[#64748B] hover:text-[#1E293B] transition-colors"
           >
-            <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            Back
+            <ArrowLeft className="mr-1.5 h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+            Back to Dashboard
           </button>
-          <h1 className="mt-6 text-3xl font-semibold tracking-tight">Create Organization</h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Set up a new workspace for your team. You will automatically be added as the OWNER and first employee.
-          </p>
+          <div className="mt-4 border-b border-[#E2E8F0] pb-4">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#0D9488]">
+              Workspace Administration
+            </span>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#1E293B]">Create Organization</h1>
+            <p className="mt-1 text-xs text-[#64748B] leading-relaxed">
+              Set up a governed workspace for your team. You will automatically be designated as the OWNER and Employee #1.
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Section 1: Organization Information */}
-          <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 space-y-6">
-            <h2 className="text-lg font-medium leading-6 text-white flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-zinc-400" />
-              Organization Information
+          <div className="rounded-[10px] border border-[#E2E8F0] bg-white/95 backdrop-blur-sm p-6 space-y-4 shadow-xs">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-[#64748B] flex items-center gap-1.5 border-b border-[#F1F5F9] pb-3">
+              <Building2 className="h-4 w-4 text-[#0D9488]" />
+              1. Organization Profile
             </h2>
 
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-zinc-300">
-                  Organization Name <span className="text-red-400">*</span>
+                <label htmlFor="name" className="block text-xs font-semibold text-[#242427]">
+                  Organization Name <span className="text-[#B44A4A]">*</span>
                 </label>
-                <div className="mt-2">
+                <div className="mt-1.5">
                   <input
                     type="text"
                     name="name"
                     id="name"
                     value={formData.name}
                     onChange={handleChange}
-                    className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all"
+                    className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 px-3 text-xs text-[#242427] placeholder-[#7E7C77] focus:border-[#4963C8] focus:outline-none transition-all"
                     placeholder="e.g. Acme Corporation"
                     required
                   />
@@ -108,14 +133,14 @@ function CreateOrganization() {
 
               <div>
                 <div className="flex items-center justify-between">
-                  <label htmlFor="brief" className="block text-sm font-medium text-zinc-300">
-                    Brief / Tagline <span className="text-xs text-zinc-500 font-normal">(Optional)</span>
+                  <label htmlFor="brief" className="block text-xs font-semibold text-[#242427]">
+                    Brief / Tagline <span className="text-[11px] text-[#7E7C77] font-normal">(Optional)</span>
                   </label>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-[11px] text-[#7E7C77]">
                     {formData.brief?.length || 0}/255
                   </span>
                 </div>
-                <div className="mt-2">
+                <div className="mt-1.5">
                   <input
                     type="text"
                     name="brief"
@@ -123,43 +148,43 @@ function CreateOrganization() {
                     maxLength={255}
                     value={formData.brief || ""}
                     onChange={handleChange}
-                    className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all"
-                    placeholder="e.g. Next-gen AI video conferencing for fast-moving engineering teams"
+                    className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 px-3 text-xs text-[#242427] placeholder-[#7E7C77] focus:border-[#4963C8] focus:outline-none transition-all"
+                    placeholder="e.g. Next-gen AI video conferencing for engineering teams"
                   />
                 </div>
-                <p className="mt-1.5 text-xs text-zinc-500">
-                  A concise one-liner intro that appears on your workspace cards and previews.
+                <p className="mt-1 text-[11px] text-[#7E7C77]">
+                  A concise one-liner summary displayed on workspace directories and cards.
                 </p>
               </div>
 
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-zinc-300">
-                  Organization Description <span className="text-xs text-zinc-500 font-normal">(Optional)</span>
+                <label htmlFor="description" className="block text-xs font-semibold text-[#242427]">
+                  Organization Description <span className="text-[11px] text-[#7E7C77] font-normal">(Optional)</span>
                 </label>
-                <div className="mt-2">
+                <div className="mt-1.5">
                   <textarea
                     id="description"
                     name="description"
                     rows={3}
                     value={formData.description}
                     onChange={handleChange}
-                    className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all"
-                    placeholder="What does your organization or workspace do?"
+                    className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 px-3 text-xs text-[#242427] placeholder-[#7E7C77] focus:border-[#4963C8] focus:outline-none transition-all"
+                    placeholder="Describe your organization's mission or operations..."
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="size" className="block text-sm font-medium text-zinc-300">
-                  Organization Expected Size
+                <label htmlFor="size" className="block text-xs font-semibold text-[#242427]">
+                  Expected Team Size
                 </label>
-                <div className="mt-2">
+                <div className="mt-1.5">
                   <select
                     id="size"
                     name="size"
                     value={formData.size}
                     onChange={handleChange}
-                    className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all [&>option]:bg-zinc-900"
+                    className="block w-full rounded-[5px] border border-[#D8D4CB] bg-white py-2 px-3 text-xs text-[#242427] focus:border-[#4963C8] focus:outline-none transition-all"
                   >
                     <option value="">Select expected size bracket...</option>
                     <option value="1-10 employees">1-10 employees</option>
@@ -169,82 +194,76 @@ function CreateOrganization() {
                     <option value="500+ employees">500+ employees</option>
                   </select>
                 </div>
-                <p className="mt-1.5 text-xs text-zinc-500">
-                  Active employee count will be automatically tracked in the database (initialized to 1).
+                <p className="mt-1 text-[11px] text-[#7E7C77]">
+                  Active employee count will be dynamically audited and tracked in the database.
                 </p>
               </div>
             </div>
           </div>
 
           {/* Section 2: Creator Information */}
-          <div className="rounded-3xl border border-white/10 bg-white/[0.02] p-8 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium leading-6 text-white flex items-center gap-2">
-                <User className="h-5 w-5 text-zinc-400" />
-                Your Employment Profile
+          <div className="rounded-[6px] border border-[#D8D4CB] bg-white p-6 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-[#E8E5DD] pb-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-[#7E7C77] flex items-center gap-1.5">
+                <User className="h-4 w-4 text-[#4963C8]" />
+                2. Your Employment Designation
               </h2>
-              <span className="inline-flex items-center rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-xs font-medium text-emerald-400">
-                You will be the OWNER (Employee #1)
+              <span className="inline-flex items-center rounded-[4px] bg-[#0D9488]/10 border border-[#0D9488]/20 px-2 py-0.5 text-[10px] font-semibold text-[#0F766E]">
+                Owner (Employee #1)
               </span>
             </div>
 
             {/* Authenticated User Card */}
-            <div className="flex items-center gap-x-4 p-4 rounded-2xl bg-white/5 border border-white/5">
-              <div className="h-12 w-12 rounded-full bg-indigo-500/20 text-indigo-200 flex items-center justify-center font-semibold text-lg border border-indigo-500/30">
-                {user?.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={creatorName} className="h-12 w-12 rounded-full object-cover" />
-                ) : (
-                  creatorInitials
-                )}
-              </div>
+            <div className="flex items-center gap-3 p-3 rounded-[6px] bg-[#F8FAFC] border border-[#E2E8F0]">
+              <UserAvatar name={creatorName} avatarUrl={user?.avatarUrl} size="md" />
               <div className="min-w-0">
-                <div className="font-medium text-white truncate">{creatorName}</div>
-                <div className="text-sm text-zinc-400 truncate">{creatorEmail}</div>
+                <div className="text-xs font-semibold text-[#1E293B] truncate">{creatorName}</div>
+                <div className="text-[11px] text-[#64748B] truncate">{creatorEmail}</div>
               </div>
             </div>
 
             <div>
-              <label htmlFor="position" className="block text-sm font-medium text-zinc-300">
-                Your Position / Job Title <span className="text-red-400">*</span>
+              <label htmlFor="position" className="block text-xs font-semibold text-[#1E293B]">
+                Your Position / Job Title <span className="text-[#EF4444]">*</span>
               </label>
-              <div className="mt-2">
+              <div className="mt-1.5">
                 <input
                   type="text"
                   name="position"
                   id="position"
                   value={formData.position}
                   onChange={handleChange}
-                  className="block w-full rounded-xl border-0 bg-white/5 py-3 px-4 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-white sm:text-sm sm:leading-6 transition-all"
-                  placeholder="e.g. Founder, CEO, Lead Researcher"
+                  className="block w-full rounded-[6px] border border-[#E2E8F0] bg-white py-2 px-3 text-xs text-[#1E293B] placeholder-[#94A3B8] focus:border-[#0D9488] focus:outline-none transition-all shadow-2xs"
+                  placeholder="e.g. Founder, CEO, Lead Architect"
                   required
                 />
               </div>
-              <p className="mt-1.5 text-xs text-zinc-500">
-                Saved into the organization_employees table alongside your ownership role.
+              <p className="mt-1 text-[11px] text-[#64748B]">
+                Recorded in organization directory with primary executive permissions.
               </p>
             </div>
           </div>
 
           {error && (
-            <div className="rounded-2xl bg-red-500/10 p-4 border border-red-500/20 text-sm text-red-400">
+            <div className="rounded-[6px] bg-[#FEF2F2] p-3 border border-[#EF4444]/30 text-xs font-semibold text-[#EF4444]">
               {error}
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-x-4 pt-4">
+          <div className="flex items-center justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="rounded-full px-6 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors"
+              className="rounded-[6px] border border-[#E2E8F0] bg-white px-5 py-2 text-xs font-semibold text-[#64748B] hover:bg-[#F8FAFC] transition-colors shadow-2xs"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-full bg-white px-8 py-3 text-sm font-semibold text-black shadow-sm hover:bg-white/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="rounded-[6px] bg-gradient-to-r from-[#0D9488] to-[#0284C7] hover:from-[#0F766E] hover:to-[#0369A1] px-6 py-2 text-xs font-semibold text-white shadow-xs disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
-              {isSubmitting ? "Creating Organization..." : "Create Organization"}
+              {isSubmitting ? "Creating Workspace..." : "Create Organization"}
             </button>
           </div>
         </form>

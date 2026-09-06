@@ -1,25 +1,103 @@
 @import "tailwindcss";
 
-/*
- * These base rules make the application fill the browser window. Component-specific
- * styling remains in the components as Tailwind utilities, where the layout is easiest to read.
- */
+@theme {
+  /* Surfaces */
+  --color-surface-rail: #181B20;
+  --color-surface-rail-hover: #22262E;
+  --color-surface-rail-active: #2A2F38;
+  --color-surface-rail-border: #333945;
+
+  --color-surface-canvas: #F8FAFC;
+  --color-surface-card: #FFFFFF;
+  --color-surface-muted: #F1F5F9;
+  --color-surface-sunken: #E2E8F0;
+
+  /* Borders */
+  --color-border-dark: #383D47;
+  --color-border-dark-subtle: #2A2E37;
+  --color-border-light: #E2E8F0;
+  --color-border-light-subtle: #F1F5F9;
+
+  /* Typography */
+  --color-ink-primary: #1E293B;
+  --color-ink-secondary: #475569;
+  --color-ink-muted: #64748B;
+  --color-ink-faint: #94A3B8;
+  --color-ink-dark: #0F172A;
+
+  --color-ink-rail-primary: #F8FAFC;
+  --color-ink-rail-secondary: #94A3B8;
+  --color-ink-rail-muted: #64748B;
+
+  /* Accents */
+  --color-accent-blue: #3B82F6;
+  --color-accent-blue-hover: #2563EB;
+  --color-accent-blue-subtle: #EFF6FF;
+  --color-accent-blue-border: #BFDBFE;
+
+  --color-accent-teal: #0D9488;
+  --color-accent-teal-hover: #0F766E;
+  --color-accent-teal-subtle: #F0FDFA;
+
+  --color-accent-lime: #84CC16;
+  --color-accent-lime-dark: #3F6212;
+
+  --color-accent-danger: #EF4444;
+  --color-accent-danger-hover: #DC2626;
+  --color-accent-danger-subtle: #FEF2F2;
+
+  /* Border radius tokens */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
 @layer base {
   html,
   body,
   #root {
     min-height: 100%;
+    height: 100%;
   }
 
   body {
     margin: 0;
     min-width: 1024px;
-    background: var(--color-zinc-950);
-    color: var(--color-white);
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    background-color: #F8FAFC;
+    background-image: 
+      radial-gradient(ellipse 90% 60% at 50% -10%, rgba(20, 184, 166, 0.14) 0%, transparent 70%),
+      radial-gradient(ellipse 65% 55% at 95% 15%, rgba(99, 102, 241, 0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 55% 50% at 5% 65%, rgba(14, 165, 233, 0.09) 0%, transparent 60%),
+      linear-gradient(180deg, #EBF6F5 0%, #F1F5F9 28%, #F8FAFC 60%, #F1F5F9 100%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    color: #1E293B;
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   * {
     box-sizing: border-box;
+  }
+
+  /* Custom subtle scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.55);
   }
 }

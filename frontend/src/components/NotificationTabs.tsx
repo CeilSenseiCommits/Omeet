@@ -14,19 +14,19 @@ function NotificationTabs({
   onChange,
 }: NotificationTabsProps) {
   return (
-    <div className="flex rounded-2xl border border-zinc-800 bg-zinc-950/80 p-1 gap-1">
+    <div className="flex rounded-[5px] border border-[#D8D4CB] bg-[#EDE9DF] p-1 gap-1">
       <button
         type="button"
         onClick={() => onChange("incoming")}
-        className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition ${
-          active === "incoming" ? "bg-white text-zinc-950 shadow" : "text-zinc-400 hover:text-white"
+        className={`flex flex-1 items-center justify-center gap-1.5 rounded-[4px] px-2 py-1 text-xs font-medium transition ${
+          active === "incoming" ? "bg-white text-[#242427] shadow-xs font-semibold" : "text-[#7E7C77] hover:text-[#242427]"
         }`}
       >
         <span>Org Invites</span>
         {incomingCount > 0 && (
           <span
-            className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-              active === "incoming" ? "bg-emerald-600 text-white" : "bg-emerald-500/20 text-emerald-400"
+            className={`rounded-[3px] px-1.5 py-0.2 text-[10px] font-bold ${
+              active === "incoming" ? "bg-[#4963C8] text-white" : "bg-[#FAF9F6] text-[#4963C8]"
             }`}
           >
             {incomingCount}
@@ -37,15 +37,15 @@ function NotificationTabs({
       <button
         type="button"
         onClick={() => onChange("meetings")}
-        className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition ${
-          active === "meetings" ? "bg-white text-zinc-950 shadow" : "text-zinc-400 hover:text-white"
+        className={`flex flex-1 items-center justify-center gap-1.5 rounded-[4px] px-2 py-1 text-xs font-medium transition ${
+          active === "meetings" ? "bg-white text-[#242427] shadow-xs font-semibold" : "text-[#7E7C77] hover:text-[#242427]"
         }`}
       >
         <span>Meetings</span>
         {meetingsCount > 0 && (
           <span
-            className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-              active === "meetings" ? "bg-fuchsia-600 text-white" : "bg-fuchsia-500/20 text-fuchsia-400"
+            className={`rounded-[3px] px-1.5 py-0.2 text-[10px] font-bold ${
+              active === "meetings" ? "bg-[#4963C8] text-white" : "bg-[#FAF9F6] text-[#4963C8]"
             }`}
           >
             {meetingsCount}
@@ -56,15 +56,15 @@ function NotificationTabs({
       <button
         type="button"
         onClick={() => onChange("outgoing")}
-        className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold transition ${
-          active === "outgoing" ? "bg-white text-zinc-950 shadow" : "text-zinc-400 hover:text-white"
+        className={`flex flex-1 items-center justify-center gap-1.5 rounded-[4px] px-2 py-1 text-xs font-medium transition ${
+          active === "outgoing" ? "bg-white text-[#242427] shadow-xs font-semibold" : "text-[#7E7C77] hover:text-[#242427]"
         }`}
       >
         <span>Sent</span>
         {outgoingCount > 0 && (
           <span
-            className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-              active === "outgoing" ? "bg-zinc-800 text-zinc-200" : "bg-zinc-800 text-zinc-400"
+            className={`rounded-[3px] px-1.5 py-0.2 text-[10px] font-bold ${
+              active === "outgoing" ? "bg-[#4963C8] text-white" : "bg-[#FAF9F6] text-[#4963C8]"
             }`}
           >
             {outgoingCount}

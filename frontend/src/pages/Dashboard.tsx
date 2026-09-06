@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import ActivityFeed from "../components/ActivityFeed";
 import AppLayout from "../components/AppLayout";
 import MeetSection from "../components/MeetSection";
 import OrganizationCarousel from "../components/OrganizationCarousel";
 import SidebarNav from "../components/SidebarNav";
-import { fetchUserOrganizations, recentActivity, type Organization } from "../lib/mockData";
+import { fetchUserOrganizations, fetchUserActivity } from "../lib/api";
+import type { Organization, ActivityItem } from "../types/organization";
 import { useAuth } from "../context/AuthContext";
+import UserAvatar from "../components/UserAvatar";
 
 // Home page views
 import HomeOrganizationsView from "../components/home/HomeOrganizationsView";
@@ -35,9 +38,24 @@ const utilityNavItems = [
  */
 function Dashboard() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<HomeTab>("dashboard");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab") as HomeTab | null;
+  const [activeTab, setActiveTab] = useState<HomeTab>(
+    tabParam && ["dashboard", "organizations", "meetings", "people", "groups", "notifications"].includes(tabParam)
+      ? tabParam
+      : "dashboard"
+  );
   const [userOrganizations, setUserOrganizations] = useState<Organization[]>([]);
   const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [isLoadingActivities, setIsLoadingActivities] = useState(true);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab") as HomeTab | null;
+    if (tab && ["dashboard", "organizations", "meetings", "people", "groups", "notifications"].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function loadOrganizations() {
@@ -53,7 +71,21 @@ function Dashboard() {
       }
     }
 
+    async function loadActivity() {
+      if (!user?.id) return;
+      setIsLoadingActivities(true);
+      try {
+        const acts = await fetchUserActivity(user.id);
+        setActivities(acts);
+      } catch (err) {
+        console.error("Failed to load user activity:", err);
+      } finally {
+        setIsLoadingActivities(false);
+      }
+    }
+
     loadOrganizations();
+    loadActivity();
 
     window.addEventListener("organization-updated", loadOrganizations);
     return () => {
@@ -83,12 +115,12 @@ function Dashboard() {
   return (
     <AppLayout
       leftRail={
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-              Primary
+            <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[#717684]">
+              Workspace
             </p>
-            <div className="mt-3">
+            <div className="mt-2">
               <SidebarNav
                 items={primaryNavItems}
                 title="Primary navigation"
@@ -99,24 +131,26 @@ function Dashboard() {
         </div>
       }
       rightRail={
-        <div className="space-y-6">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
+        <div className="space-y-5">
+          <div className="rounded-[8px] border border-[#E2E8F0] bg-white/90 p-3.5 text-[#1E293B] shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-800 text-sm font-semibold text-white">
-                {userInitials}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-white">{userDisplayName}</p>
-                <p className="truncate text-xs text-zinc-400">{primaryRole}</p>
+              <UserAvatar
+                name={userDisplayName}
+                avatarUrl={user?.avatarUrl}
+                size="md"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-[#1E293B]">{userDisplayName}</p>
+                <p className="truncate text-[11px] text-[#64748B]">{primaryRole}</p>
               </div>
             </div>
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+            <p className="px-2 text-[10px] font-semibold uppercase tracking-wider text-[#64748B]">
               Utilities
             </p>
-            <div className="mt-3">
+            <div className="mt-2">
               <SidebarNav items={utilityNavItems} title="Utility navigation" />
             </div>
           </div>
@@ -125,13 +159,13 @@ function Dashboard() {
     >
       {/* Exclusive View Display */}
       {activeTab === "dashboard" && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           <OrganizationCarousel
             organizations={userOrganizations}
             isLoading={isLoadingOrgs}
           />
           <MeetSection />
-          <ActivityFeed activities={recentActivity} />
+          <ActivityFeed activities={activities} isLoading={isLoadingActivities} />
         </div>
       )}
 

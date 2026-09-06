@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { validateInvitationCode } from "../lib/mockData";
 
 interface JoinOrganizationModalProps {
   open: boolean;
@@ -27,7 +26,6 @@ function JoinOrganizationModal({
 
     const cleanCode = inviteCode.trim().toUpperCase();
 
-    // 1. Try real backend API with account exclusivity check
     try {
       const res = await fetch(`http://localhost:5000/api/invitations/code/${cleanCode}`, {
         headers: {
@@ -43,67 +41,60 @@ function JoinOrganizationModal({
         return;
       } else {
         setError(data.error || "Invalid or expired invitation code.");
-        setLoading(false);
-        return;
       }
     } catch (backendErr) {
-      console.warn("Backend unavailable, falling back to mock validator:", backendErr);
-    }
-
-    // 2. Mock fallback
-    try {
-      const response = await validateInvitationCode(cleanCode);
-      if (response.isValid && response.invitationId) {
-        navigate(`/invitation-preview/${response.invitationId}`);
-        onClose();
-      } else {
-        setError("Invalid or expired invitation code.");
-      }
-    } catch (err) {
-      setError("An error occurred while validating the code.");
+      setError("Unable to reach server. Please check your connection.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#121212] p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">
-            Join organization
-          </h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
+      <div className="w-full max-w-md rounded-[8px] border border-[#383D47] bg-[#1D2026] p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#383D47] pb-3.5">
+          <div>
+            <h2 className="text-base font-bold text-white tracking-tight">
+              Join Organization
+            </h2>
+            <p className="mt-0.5 text-xs text-[#A9ACB4]">
+              Enter the invite code issued by your organization.
+            </p>
+          </div>
 
           <button
             onClick={onClose}
-            className="text-white/60 hover:text-white"
+            className="rounded-[4px] p-1 text-[#717684] hover:text-white hover:bg-[#2C3039] transition"
           >
             ✕
           </button>
         </div>
 
-        <p className="mt-2 text-sm text-white/60">
-          Enter the invite code you received from your organization.
-        </p>
-
-        <input
-          value={inviteCode}
-          onChange={(e) => {
-            setInviteCode(e.target.value);
-            setError(null);
-          }}
-          placeholder="Enter invite code"
-          className="mt-5 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none placeholder:text-white/30 focus:border-white/20"
-        />
+        <div className="mt-5">
+          <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#A9ACB4] mb-1.5">
+            Invitation Code
+          </label>
+          <input
+            value={inviteCode}
+            onChange={(e) => {
+              setInviteCode(e.target.value);
+              setError(null);
+            }}
+            placeholder="e.g. OM-7X9K2"
+            className="w-full rounded-[5px] border border-[#383D47] bg-[#252932] px-3.5 py-2.5 font-mono text-sm uppercase tracking-wider text-white outline-none placeholder:text-[#717684] focus:border-[#4963C8] transition"
+          />
+        </div>
 
         {error && (
-          <p className="mt-2 text-sm text-red-400">{error}</p>
+          <p className="mt-2.5 text-xs font-semibold text-[#B44A4A] bg-[#B44A4A]/10 border border-[#B44A4A]/20 rounded-[4px] p-2">
+            {error}
+          </p>
         )}
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex justify-end gap-2.5">
           <button
             onClick={onClose}
-            className="rounded-full border border-white/10 px-4 py-2 text-sm text-white/70 hover:bg-white/5"
+            className="rounded-[5px] border border-[#383D47] px-4 py-2 text-xs font-semibold text-[#A9ACB4] hover:bg-[#2C3039] hover:text-white transition"
           >
             Cancel
           </button>
@@ -111,9 +102,9 @@ function JoinOrganizationModal({
           <button
             onClick={handleSubmit}
             disabled={loading || !inviteCode.trim()}
-            className="rounded-full bg-white px-5 py-2 text-sm font-medium text-black hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-[5px] bg-[#4963C8] px-5 py-2 text-xs font-semibold text-white hover:bg-[#3E56B5] disabled:opacity-50 disabled:cursor-not-allowed transition shadow-xs"
           >
-            {loading ? "Validating..." : "Submit"}
+            {loading ? "Validating..." : "Redeem Code"}
           </button>
         </div>
       </div>

@@ -17,22 +17,22 @@ function OrgRightSidebar({ organization, isCollapsed, onToggle }: OrgRightSideba
 
   if (isCollapsed) {
     return (
-      <aside className="flex h-full w-[60px] shrink-0 flex-col items-center border-l border-zinc-800/60 bg-[#111113] py-4 transition-all duration-300">
+      <aside className="flex h-full w-[54px] shrink-0 flex-col items-center border-l border-[#D8D4CB] bg-[#FAF9F6] py-3 transition-all duration-300">
         <button
           type="button"
           onClick={onToggle}
-          className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-colors"
+          className="flex h-7 w-7 items-center justify-center rounded-[4px] border border-[#D8D4CB] bg-[#EDE9DF] text-[#7E7C77] hover:text-[#242427] transition-colors"
           aria-label="Expand right panel"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-4 w-4" />
         </button>
-        <div className="mt-6 flex flex-col items-center gap-6">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-fuchsia-950 border border-fuchsia-900 text-xs font-bold text-fuchsia-200" title={organization.name}>
+        <div className="mt-5 flex flex-col items-center gap-5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[4px] bg-[#EDE9DF] border border-[#D8D4CB] text-[10px] font-bold text-[#242427]" title={organization.name}>
             {getInitials(organization.name)}
           </div>
-          <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" title="Workspace Active" />
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" title="Workspace Active" />
           <div title="Privacy settings">
-            <Lock className="h-4 w-4 text-zinc-500" />
+            <Lock className="h-3.5 w-3.5 text-[#7E7C77]" />
           </div>
         </div>
       </aside>
@@ -40,86 +40,87 @@ function OrgRightSidebar({ organization, isCollapsed, onToggle }: OrgRightSideba
   }
 
   return (
-    <aside className="flex h-full w-[300px] shrink-0 flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-800/60 bg-[#111113] p-6 transition-all duration-300 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
-      <div className="flex items-center gap-2 mb-6">
+    <aside className="flex h-full w-[280px] shrink-0 flex-col overflow-y-auto overflow-x-hidden border-l border-[#D8D4CB] bg-[#FAF9F6] p-4 text-[#242427] transition-all duration-300 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
+      <div className="flex items-center gap-2 mb-5">
         <button
           type="button"
           onClick={onToggle}
-          className="flex h-6 w-6 items-center justify-center rounded-md border border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+          className="flex h-5 w-5 items-center justify-center rounded-[3px] border border-[#D8D4CB] bg-[#EDE9DF] text-[#7E7C77] hover:text-[#242427] hover:bg-[#E2DDD0] transition"
           aria-label="Collapse panel"
         >
           <ChevronRight className="h-3 w-3" />
         </button>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
-          Organization Info
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7E7C77]">
+          Workspace Details
         </span>
       </div>
 
-      <div className="flex items-center gap-4 mb-10">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-fuchsia-950 border border-fuchsia-900 text-lg font-bold text-fuchsia-200">
+      <div className="flex items-center gap-3 mb-6 p-2.5 rounded-[5px] border border-[#D8D4CB] bg-white shadow-xs">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] bg-[#EDE9DF] border border-[#D8D4CB] text-xs font-bold text-[#242427]">
           {getInitials(organization.name)}
         </div>
-        <div>
-          <p className="font-semibold text-white text-sm">{organization.name}</p>
-          <p className="text-xs text-zinc-400 mt-0.5">{organization.memberCount} members</p>
+        <div className="min-w-0">
+          <p className="font-semibold text-[#242427] text-xs truncate">{organization.name}</p>
+          <p className="text-[11px] text-[#7E7C77] mt-0.5">{organization.memberCount} members</p>
         </div>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-4">Workspace Status</p>
-          <p className="text-sm font-medium text-emerald-500 flex items-center gap-2">
-            {organization.status} <span className="text-zinc-600 text-[10px]">•</span> {organization.activeMeetings} meetings live
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7E7C77] mb-2.5">Workspace Status</p>
+          <p className="text-xs font-medium text-emerald-600 flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            {organization.status} <span className="text-[#7E7C77] text-[10px]">·</span> {organization.activeMeetings} active sessions
           </p>
         </div>
 
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-4">Privacy</p>
-          <div className="flex gap-3">
-            <Lock className="h-4 w-4 text-zinc-500 shrink-0 mt-0.5" />
-            <p className="text-xs leading-5 text-zinc-400">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7E7C77] mb-2.5">Privacy</p>
+          <div className="flex gap-2">
+            <Lock className="h-3.5 w-3.5 text-[#7E7C77] shrink-0 mt-0.5" />
+            <p className="text-[11px] leading-relaxed text-[#585754]">
               Meeting recordings and metadata follow this organization's retention policy.
             </p>
           </div>
         </div>
 
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-4">Quick Links</p>
-          <nav className="space-y-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7E7C77] mb-2.5">Quick Actions</p>
+          <nav className="space-y-0.5">
             {[
               {
                 icon: UserPlus,
                 label: "Invite Members",
                 action: () => navigate(`/organization/${organization.id}/invite`),
               },
-              { icon: Settings, label: "Organization Settings" },
-              { icon: BarChart, label: "Workspace Analytics" },
+              { icon: Settings, label: "Settings" },
+              { icon: BarChart, label: "Analytics" },
               { icon: CreditCard, label: "Billing & Plan" },
             ].map((link, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={link.action}
-                className="group flex w-full items-center justify-between rounded-lg px-2 py-2.5 text-xs font-medium text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition"
+                className="group flex w-full items-center justify-between rounded-[5px] px-2 py-1.5 text-xs font-medium text-[#585754] hover:bg-[#EDE9DF] hover:text-[#242427] transition"
               >
-                <span className="flex items-center gap-3">
-                  <link.icon className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300" />
+                <span className="flex items-center gap-2.5">
+                  <link.icon className="h-3.5 w-3.5 text-[#7E7C77] group-hover:text-[#242427]" />
                   {link.label}
                 </span>
-                <ChevronRight className="h-3 w-3 text-zinc-600 group-hover:text-zinc-400" />
+                <ChevronRight className="h-3 w-3 text-[#7E7C77] group-hover:text-[#242427]" />
               </button>
             ))}
           </nav>
         </div>
 
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-4">Storage</p>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-900 border border-zinc-800">
-            <div className="h-full rounded-full bg-fuchsia-900" style={{ width: "23%" }} />
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7E7C77] mb-2">Storage</p>
+          <div className="h-1.5 w-full overflow-hidden rounded-[2px] bg-[#EDE9DF] border border-[#D8D4CB]">
+            <div className="h-full rounded-[2px] bg-[#4963C8]" style={{ width: "23%" }} />
           </div>
-          <div className="mt-3 flex items-center justify-between text-[10px] font-medium text-zinc-400">
+          <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-[#7E7C77]">
             <span>238 GB of 1 TB used</span>
-            <span className="text-white">23%</span>
+            <span className="text-[#242427] font-semibold">23%</span>
           </div>
         </div>
       </div>
