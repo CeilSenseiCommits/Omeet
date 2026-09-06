@@ -536,55 +536,177 @@ OMeet's notification center is specifically dedicated to real, database-backed o
 
 ---
 
-## 9. Organization Real-Time Chat & Direct Messaging Architecture
+## 8. Organization Dynamic Workspace & Data System
 
-### 9.1 Layout Overlay Strategy (Replacing Center & Right Bars)
-When a conversation (Direct Message, Team Group, or Public Channel) is opened from the left sidebar, OMeet does not navigate to a new page. Instead:
-- The **Chat Screen (`OrgChatView`)** expands across the entire remaining workspace area (`flex-1 min-w-0`), smoothly replacing the **Center Workspace (Tabs)** and the **Right Utility Sidebar**.
-- The **Left Sidebar (`OrgSidebar`)** remains fixed (`w-[280px]`), allowing employees to switch between conversations seamlessly.
+The Organization Workspace is fully backed by PostgreSQL entities and real-time queries:
 
-### 9.2 Toggle-to-Close Interaction & Dismissal
-- **Toggle on Click**: Clicking the name of the **currently open conversation** in the left sidebar toggles it closed, instantly restoring the Center Tabs (Meetings, Members, Invitations) and the Right Utility Sidebar.
-- **Header Dismissal**: A dedicated close (`✕`) button in the chat header allows one-click return to the workspace dashboard.
-- **Keyboard Dismissal**: Pressing the `Esc` key immediately closes the active chat screen.
+### 8.1 Unified Conversations Model (`conversations` & `conversation_participants`)
+* **Channels (`type = 'CHANNEL'`):** Public and private communication streams (e.g. `# general`, `# random`). Auto-provisioned on organization creation.
+* **Team Groups (`type = 'GROUP'`):** Custom collaborative groups created by employees with member rosters, roles, and administrative controls.
+* **Direct Messages (`type = 'DIRECT'`):** 1-on-1 private employee chats sorted by most recent activity.
+* **Participant Junction (`conversation_participants`):** Associates users with conversations, tracking user role (`OWNER`, `ADMIN`, `MEMBER`) and `last_read_at TIMESTAMPTZ` for live unread counts.
 
-### 9.3 Tailored Experiences: Direct Message vs. Group Chat
-
-#### A. Direct Messages
-- **Recipient Identity**: Displays colleague's avatar, status, job title, and department.
-- **Quick Profile Insight**: Includes a "View Profile" action that opens their organization employee modal without losing chat context.
-- **Meeting Invite Shortcut**: An instant "Invite to Meeting" action generates a quick video meeting link and posts it directly into the conversation.
-
-#### B. Team Groups & Public Channels
-- **Team Identity**: Displays group initials/branding, group purpose / topic, and participant counter.
-- **Team Huddle Trigger**: Instant shortcut to start an organization meeting for all group members.
-
-### 9.4 API Specifications & REST Handshake
-1. **`GET /api/organizations/:id/conversations/:convId/messages`**:
-   - Validates membership and permissions.
-   - Returns recipient profile (for DMs) or group metadata (for groups).
-   - Returns chronological message history with sender avatar and handle.
-   - Automatically marks unread messages as read by setting `conversation_participants.last_read_at = NOW()`.
-2. **`POST /api/organizations/:id/conversations/:convId/messages`**:
-   - Accepts `{ content, messageType, attachments }`.
-   - Inserts into `messages` table and updates `conversations.updated_at = NOW()`.
-   - Optimistic UI updates on the client deliver an instant, lag-free chatting experience.
+### 8.2 Synchronous Meetings Model (`organization_meetings` & `meeting_participants`)
+* **Meetings Table:** Stores unique meeting codes (`OM-XXXXXX`), title, host user, organization binding (`organization_id`, nullable for public meetings), status (`SCHEDULED`, `LIVE`, `ENDED`), `is_hierarchical` flag, scope, and timestamps.
+* **Participants Junction:** Tracks participant role (`HOST`, `CO_HOST`, `SPEAKER`, `LISTENER`), join timestamp (`joined_at`), and leave timestamp (`left_at`).
 
 ---
 
-## 8. Upcoming Architecture: Organization Workspace Dynamic Data System
+## 9. Group Chat & Direct Messaging Architecture & Storage Engine
 
-The next phase transitions the Organization Workspace from static mock data to PostgreSQL-backed entities:
+### 9.1 How Messages in Groups are Stored in PostgreSQL
 
-### 8.1 Unified Conversations Model (`conversations` & `conversation_participants`)
-* **Channels:** Public and private text communication channels (e.g. `# general`, `# dev-announcements`).
-* **Team Groups:** Functional cross-subordinate discussion groups tied to organizational departments.
-* **Direct Messages:** 1-on-1 employee communication streams.
-* **Participant Junction:** Tracks user membership, unread counters, and per-conversation roles.
+Group messaging utilizes a normalized, high-performance relational schema across three interconnected tables:
 
-### 8.2 Synchronous Meetings Engine (`organization_meetings`)
-* **Live & Scheduled Meetings:** Stores meeting codes, start/end timestamps, host identity, and communication scope (`ORG_WIDE`, `DIRECT_REPORTS`, `DEPTH_2`).
-* **Deep Dynamic Routing:** Replaces mock array lookups in `OrgWorkspaceLayout.tsx` with dynamic API queries by organization UUID (`GET /api/organizations/:organizationId`), loading real members, channels, and meetings seamlessly.
+```mermaid
+erDiagram
+    organizations ||--o{ conversations : owns
+    conversations ||--o{ conversation_participants : enrolls
+    users ||--o{ conversation_participants : participates
+    conversations ||--o{ messages : contains
+    users ||--o{ messages : sends
+
+    conversations {
+        uuid id PK
+        uuid organization_id FK
+        varchar type "GROUP, DIRECT, CHANNEL"
+        varchar name
+        varchar topic
+        boolean is_private
+        uuid created_by FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    conversation_participants {
+        uuid id PK
+        uuid conversation_id FK
+        uuid user_id FK
+        varchar role "OWNER, ADMIN, MEMBER"
+        timestamptz last_read_at
+        timestamptz created_at
+    }
+
+    messages {
+        uuid id PK
+        uuid conversation_id FK
+        uuid sender_id FK
+        text content
+        varchar message_type "TEXT, SYSTEM, FILE, MEETING_LINK"
+        jsonb attachments
+        uuid reply_to_id FK
+        boolean is_edited
+        timestamptz created_at
+        timestamptz updated_at
+    }
+```
+
+#### Step-by-Step Message Storage Lifecycle:
+1. **Conversation Container**: When a group is created, a row is inserted into `conversations` with `type = 'GROUP'` and `organization_id`.
+2. **Participant Enrollment**: Every enrolled colleague has a record in `conversation_participants` mapping `(conversation_id, user_id)` with their group `role` (`OWNER`, `ADMIN`, or `MEMBER`) and an initial `last_read_at` timestamp.
+3. **Single Append-Only Message Insertion**:
+   - When any member posts a message to the group, a single record is inserted into the `messages` table:
+     ```sql
+     INSERT INTO messages (conversation_id, sender_id, content, message_type, attachments)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *;
+     ```
+   - No duplicate per-user message rows are ever created.
+4. **Activity Timestamp Update**: `conversations.updated_at` is updated to `NOW()`, bubbling the group to the top of active feeds.
+5. **Sender Read Marker**: The sender's `last_read_at` in `conversation_participants` is immediately bumped to `NOW()` so their own sent message is never counted as unread.
+
+### 9.2 How Unread Message Badges Work
+OMeet avoids heavy counters or per-user message status tables. Instead, unread counts are calculated **dynamically on-the-fly** using timestamps:
+
+```sql
+SELECT COUNT(*)::int
+FROM messages m
+JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = $userId
+WHERE m.conversation_id = c.id
+  AND m.sender_id != $userId
+  AND m.created_at > cp.last_read_at;
+```
+
+- **Efficiency**: With indexed composite keys on `messages(conversation_id, created_at ASC)`, the count query resolves in sub-milliseconds.
+- **Mark as Read**: When a user selects a group or conversation, `POST /api/organizations/:id/conversations/:convId/read` updates `last_read_at = NOW()`, instantly reducing the unread badge to 0.
+
+### 9.3 Cascading Deletion & Cleanups
+When a group is deleted (`DELETE FROM conversations WHERE id = $1`):
+- All entries in `conversation_participants` are deleted automatically via `ON DELETE CASCADE`.
+- All message records in `messages` are purged automatically via `ON DELETE CASCADE`.
+- Default channels (`# general` and `# random`) are protected at the API level from accidental deletion.
+
+### 9.4 Group Management & Roster Modal (`GroupInfoModal`)
+Clicking the group avatar or title in the chat header opens the interactive group details modal:
+- **Member Roster**: Lists all members with group roles (`Owner`, `Admin`, `Member`), organization job positions, and join dates.
+- **Admin Add Members**: Group owners/admins can select from available organization colleagues who are not yet members and add them. Emits an automated `SYSTEM` announcement to the chat timeline (`"User A added User B to the group"`).
+- **Admin Remove Members**: Group owners/admins can remove members. Built-in protection prevents non-org owners from removing the group creator.
+- **Leave Group**: Non-owner members can safely leave the group at any time.
+- **Permanent Group Deletion**: Group owners can delete custom groups with confirmation dialog.
+
+---
+
+## 10. Multi-Modal Meeting Creation & Access Gatekeeper
+
+### 10.1 3-Way Meeting Creation Workflows
+1. **From Direct Message Chat**:
+   - Pre-populates the meeting participant roster with the 1-on-1 recipient.
+   - Allows adding further colleagues from the organization before dispatching.
+2. **From Group Chat**:
+   - Pre-populates the meeting participant roster with all active group members.
+   - Allows inviting additional organization members beyond the group roster.
+3. **From "Create Meeting" Button**:
+   - Starts with an empty roster and provides a searchable colleague picker.
+
+### 10.2 Timing Options: Instant vs. Scheduled
+- **Instant Meeting**: Creates the meeting in `LIVE` status, marks `started_at = NOW()`, and redirects the host immediately into the video room (`/meeting/:meetingCode`).
+- **Scheduled Meeting**: Creates the meeting in `SCHEDULED` status with target `scheduled_at`, generating invitations without opening the video stage immediately.
+
+### 10.3 Hierarchy Mode Toggle
+- Organization meetings support a toggle: **Hierarchy Mode** (`is_hierarchical: boolean`).
+- **Default State**: Defaults to **OFF** (`false`), providing an open, democratic conferencing format where all participants have standard communication privileges.
+- When enabled (`true`), meeting structure adheres to the organization's reporting hierarchy (leaders hold host/moderator privileges while subordinates join as listeners).
+
+### 10.4 Home Page Meeting Setup Modal
+- Meetings created from the Home page (outside an organization) open a dedicated setup modal.
+- Generates a branded meeting code (`OM-XXXXXX`), provides a copy-code action, and lets the host invite registered colleagues.
+- Public meetings are stored with `organization_id = NULL` and `is_hierarchical = FALSE`.
+
+### 10.5 Join with Code & Access Gatekeeper
+- The "Join with Code" modal normalizes input (e.g. `ABC123` or `OM-ABC123`) and invokes `POST /api/meetings/join`.
+- **Organization Access Gatekeeper**:
+  - If `organization_id IS NOT NULL`, the backend validates whether the caller has an `ACTIVE` record in `organization_employees`.
+  - Non-members are rejected with HTTP 403 (`"Access Denied: This meeting is restricted to members of <Organization Name>"`).
+  - Public meetings (`organization_id IS NULL`) are accessible to all authenticated users.
+- Upon valid join, the user is registered in `meeting_participants` and any pending `meeting_invitations` record is marked `ACCEPTED`.
+
+---
+
+## 11. Meeting Lifecycle & Automated Expiration Engine
+
+### 11.1 Meeting Termination: "End for All" vs. "Leave Meeting"
+When clicking the "End Meeting" control in the video stage:
+1. **Host "End for All"** (`POST /api/meetings/:meetingCode/end`):
+   - Available exclusively to the meeting creator (`host_user_id`).
+   - Sets `status = 'ENDED'`, `ended_at = NOW()`, and updates all active participants with `left_at = NOW()`.
+   - Terminates the session for all participants globally.
+2. **Participant "Leave Meeting"** (`POST /api/meetings/:meetingCode/leave`):
+   - Updates the caller's record in `meeting_participants` with `left_at = NOW()`.
+   - The meeting remains live for remaining participants.
+
+### 11.2 Automated Expiration Engine (`autoCleanExpiredMeetings`)
+To prevent abandoned or forgotten meetings from staying perpetually `LIVE` or `SCHEDULED`, an automated lifecycle engine runs before every meeting query and action:
+
+1. **20-Minute No-Show Auto-Termination**:
+   - If a meeting's scheduled time has passed by more than 20 minutes (`m.scheduled_at < NOW() - INTERVAL '20 minutes'`) and no participants have joined (or only the host briefly entered), the system automatically updates its status to `ENDED`.
+2. **10-Minute Abandonment Auto-Termination**:
+   - If one or more participants joined a meeting, but everyone subsequently left without the host clicking "End for All", the meeting remains open for a 10-minute grace period.
+   - Once all participants have been gone for more than 10 minutes (`MAX(mp.left_at) < NOW() - INTERVAL '10 minutes'`), the system automatically marks the meeting `ENDED`.
+
+### 11.3 Recently Ended Meetings Feed
+- Concluded meetings are queried via `GET /api/organizations/:id/meetings/recent` and displayed in the **Recently Ended** carousel on the organization dashboard.
+- Displays meeting title, host name, duration, participant count, and conclusion timestamp.
+
 
 
 

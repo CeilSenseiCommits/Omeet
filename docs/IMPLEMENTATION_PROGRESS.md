@@ -69,6 +69,13 @@
 - Access-gated video conferencing meeting room page (`/meeting/:meetingCode`) with organization-only verification vs. non-hierarchical open meetings, stage video grid, bottom controls, and drawer panels
 - Organization header refactoring removing Create/Join buttons and introducing an Organization-Scoped Notification Bell filtering membership and meeting invites strictly to the active workspace
 - Provisioned `meeting_invitations` table on PostgreSQL and connected meeting invites to notifications and the Upcoming Meetings feed
+- Hierarchy mode toggle for organization meetings (`is_hierarchical: boolean`, default OFF)
+- Home page non-hierarchical meeting setup modal with generated meeting code (`OM-XXXXXX`), copy button, and colleague invitation selector
+- Join meeting with code functionality (`POST /api/meetings/join`) with organization access gatekeeper
+- Unread message count badges for direct messages, groups, and channels with `POST /read` endpoint and dynamic database calculation
+- Host meeting termination ("End for All") vs. participant "Leave Meeting" (`POST /end` & `POST /leave`)
+- Automated meeting expiration engine (20-minute no-show past scheduled time and 10-minute abandonment grace period)
+- Recently ended meetings carousel bar on the organization dashboard connected to `GET /api/organizations/:id/meetings/recent`
 
 ## In Progress
 

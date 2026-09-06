@@ -426,16 +426,20 @@ Represents organization-scoped synchronous video/audio meetings (Live, Scheduled
 ```sql
 CREATE TABLE organization_meetings (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    organization_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    organization_id     UUID NULL REFERENCES organizations(id) ON DELETE CASCADE,  -- NULL for open public meetings
     conversation_id     UUID NULL REFERENCES conversations(id) ON DELETE SET NULL,
-    meeting_code        VARCHAR(20) UNIQUE NOT NULL,          -- e.g. "OM-ENG-492"
+    meeting_code        VARCHAR(20) UNIQUE NOT NULL,          -- e.g. "OM-46IRFD"
     title               VARCHAR(255) NOT NULL,
     host_user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status              VARCHAR(20) NOT NULL DEFAULT 'SCHEDULED', -- 'SCHEDULED' | 'LIVE' | 'ENDED'
-    scope               VARCHAR(50) NOT NULL DEFAULT 'ORG_WIDE',  -- 'SELF' | 'DIRECT_REPORTS' | 'DEPTH_2' | 'ORG_WIDE'
+    scope               VARCHAR(50) NOT NULL DEFAULT 'ORG_WIDE',  -- 'CUSTOM' | 'ORG_WIDE' | 'PUBLIC'
+    meeting_type        VARCHAR(20) NOT NULL DEFAULT 'INSTANT',   -- 'INSTANT' | 'SCHEDULED'
+    is_hierarchical     BOOLEAN NOT NULL DEFAULT FALSE,           -- Hierarchy Mode (default OFF)
     scheduled_at        TIMESTAMPTZ NOT NULL,
     started_at          TIMESTAMPTZ NULL,
     ended_at            TIMESTAMPTZ NULL,
+    has_recording       BOOLEAN NOT NULL DEFAULT FALSE,
+    has_ai_summary      BOOLEAN NOT NULL DEFAULT FALSE,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -445,12 +449,86 @@ CREATE INDEX idx_org_meetings_status ON organization_meetings(status);
 CREATE INDEX idx_org_meetings_scheduled ON organization_meetings(scheduled_at);
 ```
 
+### Table 8: `meeting_participants`
+Tracks attendees, active session state, joined/left timestamps, and participant roles.
+
+```sql
+CREATE TABLE meeting_participants (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    meeting_id          UUID NOT NULL REFERENCES organization_meetings(id) ON DELETE CASCADE,
+    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role                VARCHAR(20) NOT NULL DEFAULT 'LISTENER', -- 'HOST' | 'SPEAKER' | 'LISTENER'
+    joined_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    left_at             TIMESTAMPTZ NULL,                        -- Set when user leaves or meeting ends
+    CONSTRAINT uq_meeting_participant UNIQUE (meeting_id, user_id)
+);
+
+CREATE INDEX idx_meeting_participants_meeting ON meeting_participants(meeting_id);
+CREATE INDEX idx_meeting_participants_user ON meeting_participants(user_id);
+```
+
+### Table 9: `meeting_invitations`
+Delivers in-app notifications and meeting invites with instant join actions.
+
+```sql
+CREATE TABLE meeting_invitations (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    meeting_id          UUID NOT NULL REFERENCES organization_meetings(id) ON DELETE CASCADE,
+    organization_id     UUID NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    inviter_user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    invitee_user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status              VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- 'PENDING' | 'ACCEPTED' | 'DECLINED'
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_meeting_invitee UNIQUE (meeting_id, invitee_user_id)
+);
+
+CREATE INDEX idx_meeting_invitations_invitee ON meeting_invitations(invitee_user_id);
+CREATE INDEX idx_meeting_invitations_org ON meeting_invitations(organization_id);
+CREATE INDEX idx_meeting_invitations_meeting ON meeting_invitations(meeting_id);
+```
+
 ---
 
-## 8. Real-Time Chat & Direct Messaging Schema
+## 9. Real-Time Chat, Team Groups & Group Message Storage Architecture
 
-### Table 8: `messages`
-Stores all chat communications sent within channels, team groups, and 1-on-1 direct messages.
+### Table 10: `conversations`
+Represents public channels, team groups, and 1-on-1 direct message rooms.
+
+```sql
+CREATE TABLE conversations (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    name                VARCHAR(100) NOT NULL,
+    type                VARCHAR(20) NOT NULL,                    -- 'CHANNEL' | 'GROUP' | 'DIRECT'
+    topic               TEXT NULL,
+    is_private          BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by_user_id  UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### Table 11: `conversation_participants`
+Defines who belongs to which group/channel, their group administrative permission, and their individual read receipts.
+
+```sql
+CREATE TABLE conversation_participants (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id     UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role                VARCHAR(20) NOT NULL DEFAULT 'MEMBER',    -- 'ADMIN' | 'MEMBER'
+    last_read_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),       -- Timestamp for unread count calculations
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_conversation_user UNIQUE (conversation_id, user_id)
+);
+
+CREATE INDEX idx_conv_participants_user ON conversation_participants(user_id);
+CREATE INDEX idx_conv_participants_conv ON conversation_participants(conversation_id);
+```
+
+### Table 12: `messages`
+Stores individual messages across all channels, team groups, and 1-on-1 direct chats.
 
 ```sql
 CREATE TABLE messages (
@@ -458,8 +536,8 @@ CREATE TABLE messages (
     conversation_id     UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
     sender_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     content             TEXT NOT NULL,
-    message_type        VARCHAR(20) NOT NULL DEFAULT 'TEXT', -- 'TEXT' | 'FILE' | 'SYSTEM' | 'MEETING_LINK'
-    attachments         JSONB DEFAULT '[]'::jsonb,           -- [{ url, name, size, type }]
+    message_type        VARCHAR(20) NOT NULL DEFAULT 'TEXT',     -- 'TEXT' | 'FILE' | 'SYSTEM' | 'MEETING_LINK'
+    attachments         JSONB DEFAULT '[]'::jsonb,               -- [{ url, name, size, type }]
     reply_to_id         UUID NULL REFERENCES messages(id) ON DELETE SET NULL,
     is_edited           BOOLEAN NOT NULL DEFAULT FALSE,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -470,13 +548,34 @@ CREATE INDEX idx_messages_conv_created ON messages(conversation_id, created_at A
 CREATE INDEX idx_messages_sender ON messages(sender_id);
 ```
 
-#### Message Query Optimization:
-- **Composite Index `(conversation_id, created_at ASC)`**: Guarantees high-speed retrieval of chat history in chronological order without expensive sorting passes.
-- **Unread Tracking**: Calculated on-the-fly or via `last_read_at` on `conversation_participants`:
-  ```sql
-  SELECT COUNT(*) FROM messages m
-  WHERE m.conversation_id = cp.conversation_id
-    AND m.created_at > cp.last_read_at;
-  ```
+### How Group Messages are Stored & Managed (End-to-End Walkthrough)
+
+1. **Group Creation**:
+   - `conversations` record is inserted with `type = 'GROUP'`, `organization_id`, and `created_by_user_id`.
+   - Creator is inserted into `conversation_participants` with `role = 'ADMIN'`.
+   - Selected members are inserted into `conversation_participants` with `role = 'MEMBER'`.
+
+2. **Sending a Message in a Group**:
+   - User posts payload: `{ content, replyToId?, attachments? }`.
+   - Backend inserts into `messages (conversation_id, sender_id, content, created_at)`.
+   - Backend updates `conversations.updated_at = NOW()`.
+   - Backend updates sender's own `conversation_participants.last_read_at = NOW()`.
+
+3. **Unread Messages Tracking for Group Members**:
+   - Unread count for a given user in a group is computed without storing separate read counters per message:
+     ```sql
+     SELECT COUNT(*)::int
+     FROM messages m
+     JOIN conversation_participants cp ON cp.conversation_id = m.conversation_id AND cp.user_id = $userId
+     WHERE m.conversation_id = $groupId
+       AND m.sender_id != $userId
+       AND m.created_at > cp.last_read_at;
+     ```
+   - When a user opens or reads the group chat, `POST /api/organizations/:id/conversations/:convId/read` updates their `last_read_at = NOW()`, resetting their unread count to 0.
+
+4. **Group Member Management & Deletion**:
+   - Group Admins can add members via `POST /participants` or remove members via `DELETE /participants/:targetUserId`.
+   - When a group is deleted (`DELETE /conversations/:convId`), PostgreSQL's `ON DELETE CASCADE` automatically removes all `conversation_participants` and all associated `messages` cleanly.
+
 
 

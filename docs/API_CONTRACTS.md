@@ -334,89 +334,275 @@ Fetches complete public profile data for any user by UUID or `@username`, includ
 - `PublicProfilePage` (`/profile/:userId`)
 
 
-## Organization Details
+## Organization Details & Workspace
 
-## Organization and communication
-
-### GET /api/organizations/:organizationId
-
-Returns organization identity, avatar, status, member count, active-meeting count, and description. Used by the workspace header and utility rail.
-
-### GET /api/organizations/:organizationId/chatrooms
-
-Returns chat rooms available to the member: `id`, `name`, `unreadCount`, and membership/access state. Used by `OrgSidebar`.
+### GET /api/organizations/:id
+Returns organization metadata, active employee count, live meeting count, and user's role and permission state. Used by `OrgWorkspaceLayout` and header.
 
 ### POST /api/organizations
+Creates a new organization with an atomic transaction (organization record + owner employee record + default channels `# general` and `# random`).
 
-**Expected request**
-- Authenticated user context (backend resolves `userId` from auth)
+---
+
+## Organization Conversations & Chat System
+
+### GET /api/organizations/:id/conversations
+Returns chat rooms (channels), team groups, and direct messages for the organization sidebar, dynamically computing unread message counts for the authenticated user based on `conversation_participants.last_read_at`.
+
+**Request**:
+- Headers: `x-user-id: <uuid>` or Query `?userId=<uuid>`
+
+**Response**:
 ```json
 {
-  "name": "Acme Corp",
-  "description": "A technology company",
-  "size": "1-10 employees",
-  "position": "CEO"
+  "chatRooms": [
+    { "id": "uuid", "name": "general", "unreadCount": 0, "active": true }
+  ],
+  "groups": [
+    { "id": "uuid", "name": "Core Engineering", "unreadCount": 3, "active": true }
+  ],
+  "directMessages": [
+    {
+      "id": "conv-uuid",
+      "userId": "user-uuid",
+      "name": "Sarah Connor",
+      "avatarUrl": "https://...",
+      "role": "Lead Architect",
+      "lastSeen": "Active now",
+      "unreadCount": 2,
+      "active": true
+    }
+  ]
 }
 ```
 
-**Expected response**
+### POST /api/organizations/:id/conversations/:convId/read
+Marks a conversation as read by updating caller's `last_read_at = NOW()` in `conversation_participants`.
+
+**Request**:
+- Headers: `x-user-id: <uuid>` or Body `{ "userId": "<uuid>" }`
+
+**Response**:
+```json
+{ "success": true }
+```
+
+### GET /api/organizations/:id/conversations/:convId/messages
+Fetches message history for a conversation, auto-marks messages read for the requesting user, and returns recipient/group context.
+
+**Request**:
+- Headers: `x-user-id: <uuid>` or Query `?userId=<uuid>`
+
+**Response**:
 ```json
 {
-  "organizationId": "org_12345",
-  "name": "Acme Corp",
-  "ownerId": "user_456",
-  "employeeCount": 1,
-  "createdAt": "2026-08-24T00:00:00Z"
+  "conversation": {
+    "id": "uuid",
+    "type": "GROUP",
+    "name": "Core Engineering",
+    "topic": "Frontend and backend architecture",
+    "isPrivate": false,
+    "participantCount": 6
+  },
+  "recipient": null,
+  "messages": [
+    {
+      "id": "uuid",
+      "conversationId": "uuid",
+      "senderId": "user-uuid",
+      "senderName": "Suryansh Rao",
+      "senderUsername": "suryansh",
+      "senderAvatarUrl": "https://...",
+      "senderPosition": "Staff Engineer",
+      "content": "Standup starting in 5 minutes.",
+      "messageType": "TEXT",
+      "attachments": [],
+      "replyToId": null,
+      "isEdited": false,
+      "createdAt": "2026-09-06T09:00:00Z"
+    }
+  ]
 }
 ```
 
-**Database Generation Rules**
-- Backend executes an atomic transaction:
-  1. Inserts into `organizations` with `employee_count = 1`.
-  2. Inserts into `organization_employees` linking creator to organization with `role = 'OWNER'` and specified `position`.
-  3. Initializes `hierarchy_tree` with creator node.
+### POST /api/organizations/:id/conversations/:convId/messages
+Sends a message (TEXT, SYSTEM, FILE, or MEETING_LINK) to a conversation. Updates `conversations.updated_at` and caller's `last_read_at`.
 
-**Used by**
-- CreateOrganization page
-
-## Organization Hierarchy
-
-### GET /api/organizations/:organizationId/groups
-
-Returns organization groups: `id`, `name`, `unreadCount`, and membership/access state. Used by `OrgSidebar` and meeting group labels.
-
-### GET /api/organizations/:organizationId/direct-messages
-
-Returns direct-message conversation summaries for the current member: conversation ID, person summary, last activity, unread count, and active/presence state. Used by `OrgSidebar`.
-
-## Meetings
-
-### GET /api/organizations/:organizationId/meetings
-
-Returns meetings currently active for groups to which the current user belongs, including `id`, `title`, `group`, participant summaries, and join eligibility. Used by Ongoing Meetings.
-
-### POST /api/organizations/:organizationId/meetings
-
-Creates an organization-scoped meeting.
-
+**Request**:
 ```json
-{ "title": "Engineering Standup", "groupId": "group-backend", "scheduledAt": "2026-08-12T10:00:00Z" }
+{
+  "content": "Here is the agenda for our review.",
+  "messageType": "TEXT",
+  "attachments": []
+}
 ```
 
-Responds with the created meeting ID and join URL. Used by Create Meeting.
+**Response**:
+```json
+{
+  "message": {
+    "id": "uuid",
+    "conversationId": "uuid",
+    "senderId": "uuid",
+    "senderName": "Suryansh Rao",
+    "senderUsername": "suryansh",
+    "senderAvatarUrl": "https://...",
+    "senderPosition": "Staff Engineer",
+    "content": "Here is the agenda for our review.",
+    "messageType": "TEXT",
+    "attachments": [],
+    "isEdited": false,
+    "createdAt": "2026-09-06T09:05:00Z"
+  }
+}
+```
 
-### POST /api/organizations/:organizationId/meetings/join
+### GET /api/organizations/:id/conversations/:convId/details
+Fetches detailed group info, member roster with roles (`OWNER`, `ADMIN`, `MEMBER`), caller permissions, and available candidate colleagues eligible to be added.
 
-Joins an authorized organization meeting using `meetingId` or a meeting code. Responds with meeting ID, authorization state, and join URL. Used by Join Meeting and active-meeting cards.
+### POST /api/organizations/:id/conversations/:convId/participants
+Enrolls a new member into the group (admin/owner permission required) and automatically posts a system audit message.
 
-### GET /api/organizations/:organizationId/meetings/upcoming
+### DELETE /api/organizations/:id/conversations/:convId/participants/:targetUserId
+Removes a member from the group (admin required) or executes self-leave. Enforces protection preventing removal of the group owner. Posts system activity message.
 
-Returns accepted invitations and meetings for the user’s groups, including time, date, organizer, group, and RSVP/status. Used by Upcoming Meetings.
+### DELETE /api/organizations/:id/conversations/:convId
+Permanently deletes a custom group and cascades participants and messages. Protected against deleting default channels (`general` and `random`).
 
-### GET /api/organizations/:organizationId/meetings/recent
+---
 
-Returns recently ended meetings with duration, organization retention decisions, recording availability, AI-summary availability, and details URL. Used by Recently Ended.
+## Meetings & Video Conferencing API Suite
 
-## Existing global APIs
+### POST /api/organizations/:id/meetings
+Creates an organization-scoped meeting (Instant or Scheduled) with optional hierarchy mode toggle (`is_hierarchical: boolean`). Enrolls participants and dispatches invitations.
 
-Notification and invitation endpoints remain documented by the corresponding dashboard surfaces and will be consolidated with authenticated API client implementation work.
+**Request Body**:
+```json
+{
+  "title": "Weekly Sprint Planning",
+  "hostUserId": "user-uuid",
+  "scheduledAt": "2026-09-07T10:00:00Z",
+  "meetingType": "SCHEDULED",
+  "isHierarchical": false,
+  "scope": "ORG_WIDE",
+  "participantUserIds": ["user-uuid-1", "user-uuid-2"]
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "meeting": {
+    "id": "uuid",
+    "meetingCode": "OM-ABC123",
+    "title": "Weekly Sprint Planning",
+    "status": "SCHEDULED"
+  }
+}
+```
+
+### POST /api/meetings/public
+Creates an open, non-hierarchical meeting without organization binding (e.g. from Home page Meet section).
+
+**Request Body**:
+```json
+{
+  "title": "Quick Sync",
+  "userId": "user-uuid",
+  "meetingCode": "OM-XYZ789",
+  "participantUserIds": ["optional-user-uuid"]
+}
+```
+
+### GET /api/meetings/:meetingCode
+Access gatekeeper check and meeting room resolution:
+1. Runs automated cleanup rules (20-min no-show, 10-min abandonment).
+2. For organization-scoped meetings: verifies caller is an active employee of the hosting organization. Returns 403 Forbidden with `isRestricted: true` if unauthorized.
+3. For public meetings: open to all authenticated users.
+4. Auto-enrolls the caller into `meeting_participants` and marks any pending `meeting_invitations` as `ACCEPTED`.
+
+**Response**:
+```json
+{
+  "meeting": {
+    "id": "uuid",
+    "meetingCode": "OM-ABC123",
+    "title": "Weekly Sprint Planning",
+    "status": "LIVE",
+    "scope": "ORG_WIDE",
+    "meetingType": "INSTANT",
+    "isHierarchical": false,
+    "scheduledAt": "2026-09-06T09:00:00Z",
+    "startedAt": "2026-09-06T09:00:00Z",
+    "endedAt": null,
+    "isEnded": false,
+    "host": {
+      "id": "user-uuid",
+      "name": "Suryansh Rao",
+      "avatarUrl": "https://..."
+    },
+    "organization": {
+      "id": "org-uuid",
+      "name": "Acme Corp"
+    },
+    "userRole": "ADMIN",
+    "participants": [
+      { "id": "uuid", "name": "Suryansh Rao", "avatarUrl": "https://...", "role": "HOST" }
+    ]
+  }
+}
+```
+
+### POST /api/meetings/join
+Validates a meeting code entered via "Join with Code", checks organization membership constraints, registers participant, and returns meeting context.
+
+**Request Body**:
+```json
+{
+  "meetingCode": "OM-ABC123",
+  "userId": "user-uuid"
+}
+```
+
+### POST /api/meetings/:meetingCode/end
+Meeting host ends the meeting for all participants:
+- Verifies caller is `host_user_id`.
+- Sets `organization_meetings.status = 'ENDED'` and `ended_at = NOW()`.
+- Sets `meeting_participants.left_at = NOW()` for all active participants.
+
+**Request Body**:
+```json
+{
+  "userId": "host-user-uuid"
+}
+```
+
+### POST /api/meetings/:meetingCode/leave
+Individual participant leaves the meeting room:
+- Sets `meeting_participants.left_at = NOW()` for the caller.
+- Triggers auto-expiration check: if all participants have left, the 10-minute abandonment grace timer begins.
+
+**Request Body**:
+```json
+{
+  "userId": "caller-user-uuid"
+}
+```
+
+### GET /api/meetings/invitations/user/:userId
+Fetches all meeting invitations dispatched to a user, optionally filtered by `?organizationId=...`.
+
+### POST /api/meetings/invitations/:id/respond
+Responds to a meeting invitation (`ACCEPT` or `DECLINE`).
+
+**Request Body**:
+```json
+{
+  "action": "ACCEPT",
+  "userId": "user-uuid"
+}
+```
+
+### GET /api/organizations/:id/meetings
+Returns ongoing, upcoming, and recently ended meetings for the organization dashboard `MeetingsTab`. Executes auto-clean rules before returning.

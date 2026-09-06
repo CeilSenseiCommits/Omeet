@@ -4,24 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Added
-- **3-Way Meeting Creation & Instant/Scheduled Workflows**:
-  - **Direct Message Chat**: Launches meeting pre-populated with the recipient, with the ability to invite additional colleagues from the organization.
-  - **Group Chat**: Launches meeting pre-populated with all group participants, with the ability to invite additional colleagues from the organization.
-  - **Manual Creation ("Create Meeting" button)**: Opens meeting creation with an empty participant roster and searchable organization colleague picker.
-  - **Instant vs. Scheduled Timing**: Users choose between starting an instant meeting (enters video conference immediately) or scheduling for a future date/time.
-- **Access-Gated Video Conferencing Meeting Room (`/meeting/:meetingCode`)**:
-  - **Organization Access Gate**: Meetings created inside an organization dashboard can ONLY be joined by verified active members of that organization. Unauthorized join attempts show a restricted access banner.
-  - **Public Non-Hierarchical Meetings**: Meetings created outside an organization dashboard (e.g. from home page Meet section) are non-hierarchical and open to all authenticated participants.
-  - **Rich Meeting Interface**: Responsive video grid with self preview tile, host/participant stream tiles, active speaker glow, floating control bar (mic, video, screen share, raise hand), participants drawer, and in-meeting chat.
-- **Organization Header Refactoring & Org-Scoped Notification Center**:
-  - Removed "Create Meeting" and "Join Meeting" buttons from the organization top bar (`OrgHeader.tsx`).
-  - Added an **Organization-Scoped Notification Center** in `OrgHeader` filtering membership and meeting invites strictly to the active organization.
-  - The home page notification bell retains global scope across all organizations.
-- **Meeting Invitation Notifications & Upcoming Meetings Feed**:
-  - Provisioned `meeting_invitations` table in PostgreSQL.
-  - Creating a meeting dispatches meeting invite notifications with live status badges and direct "Join Meeting" triggers.
-  - Invited users automatically see the meeting in their "Upcoming Meetings" feed.
+- **Hierarchy Mode Toggle for Organization Meetings**:
+  - Meeting creation in organization workspaces now includes a dedicated **Hierarchy Mode Toggle** (`is_hierarchical: boolean`).
+  - Hierarchy mode defaults to **OFF** (`false`), allowing non-hierarchical open discussions by default while enabling strict hierarchical permissions when requested.
+- **Home Page Non-Hierarchical Meeting Creation & Invitation Modal**:
+  - Replaced immediate instant launch on the Home page Meet section with an interactive **Meeting Setup Modal**.
+  - Provides a generated branded meeting code (`OM-XXXXXX`), copy-to-clipboard button, meeting title configuration, and colleague invitation selector before starting.
+  - Ensures meetings created outside an organization dashboard are marked `organization_id: NULL` and `is_hierarchical: FALSE`.
+- **Join Meeting by Code with Strict Organization Gatekeeper**:
+  - Implemented `POST /api/meetings/join` and connected the **"Join with Code"** modal.
+  - Automatically normalizes meeting codes with `OM-` prefix.
+  - **Access Gatekeeper**: Strictly validates that organization-scoped meetings can only be joined by active employees of that organization (`organization_employees.status = 'ACTIVE'`). Returns `403 Forbidden` with a clear explanation if unauthorized.
+  - Public meetings can be joined by any authenticated user.
+  - Upon successful join, automatically adds the user to `meeting_participants` as a `LISTENER` and marks any pending `meeting_invitations` as `ACCEPTED`.
+- **Unread Message Badges for Direct Messages & Groups**:
+  - Added real-time dynamic unread counters to `OrgSidebar` next to direct messages, team groups, and chat rooms.
+  - Calculated dynamically on the backend by comparing `messages.created_at > conversation_participants.last_read_at` where `sender_id != currentUserId`.
+  - Automatically marks conversations as read (`POST /api/organizations/:id/conversations/:convId/read`) when a user selects a conversation, resetting the badge to zero.
+- **Meeting Host Termination ("End for All") vs. Participant "Leave"**:
+  - Implemented dual termination options when clicking "End Meeting":
+    - **Host "End for All"** (`POST /api/meetings/:meetingCode/end`): Terminates the meeting globally, marks `organization_meetings.status = 'ENDED'`, records `ended_at = NOW()`, and sets `left_at = NOW()` for all active participants.
+    - **Participant "Leave Meeting"** (`POST /api/meetings/:meetingCode/leave`): Records `left_at = NOW()` for the individual caller without interrupting other participants.
+- **Automated Meeting Expiration & Abandonment Cleanup Engine**:
+  - Integrated `autoCleanExpiredMeetings()` into all meeting queries and routes:
+    - **20-Minute No-Show Expiration**: If a scheduled meeting has no participants join within 20 minutes past `scheduled_at`, the engine automatically transitions its status to `ENDED`.
+    - **10-Minute Abandonment Expiration**: If participants joined a meeting and everyone subsequently left without the host clicking "End for All", the meeting remains open for a 10-minute grace window before automatically terminating.
+- **Recently Ended Meetings Carousel**:
+  - Connected the dashboard's **Recently Ended Meetings** bar to live database queries (`GET /api/organizations/:id/meetings/recent`).
+  - Displays concluded meetings with duration, host information, timestamps, and ended badges.
 - **Group Details, Member Management & Group Deletion**:
   - Clicking the group icon or header title in `OrgChatView` opens the interactive `GroupInfoModal`.
   - **Member Roster & Roles**: Displays group members with badges (`Owner`, `Admin`, `Member`), organization roles, and join dates.
