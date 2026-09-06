@@ -14,6 +14,12 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
     const { meetingCode } = req.params;
     const userId = (req.query.userId as string) || (req.headers["x-user-id"] as string) || "";
 
+    const rawCode = String(meetingCode || "").toUpperCase().trim();
+    let normalizedCode = rawCode;
+    if (!normalizedCode.startsWith("OM-") && normalizedCode.length > 0) {
+      normalizedCode = `OM-${normalizedCode}`;
+    }
+
     const meetingResult = await query(
       `SELECT 
          m.id,
@@ -48,8 +54,8 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
        FROM organization_meetings m
        LEFT JOIN organizations o ON o.id = m.organization_id
        JOIN users u_host ON u_host.id = m.host_user_id
-       WHERE m.meeting_code = $1;`,
-      [String(meetingCode || "").toUpperCase().trim()]
+       WHERE m.meeting_code = $1 OR m.meeting_code = $2;`,
+      [rawCode, normalizedCode]
     );
 
     if (meetingResult.rows.length === 0) {
@@ -85,6 +91,23 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
       }
 
       const callerMembership = memberCheck.rows[0];
+
+      // Auto-register participant and mark pending invitation accepted
+      if (userId) {
+        await query(
+          `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
+           VALUES ($1, $2, 'LISTENER', NOW())
+           ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+          [meeting.id, userId]
+        );
+        await query(
+          `UPDATE meeting_invitations
+           SET status = 'ACCEPTED', updated_at = NOW()
+           WHERE meeting_id = $1 AND invitee_user_id = $2 AND status = 'PENDING';`,
+          [meeting.id, userId]
+        );
+      }
+
       return res.status(200).json({
         meeting: {
           id: meeting.id,
@@ -113,6 +136,21 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
     }
 
     // Non-hierarchical / Public meeting
+    if (userId) {
+      await query(
+        `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
+         VALUES ($1, $2, 'LISTENER', NOW())
+         ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+        [meeting.id, userId]
+      );
+      await query(
+        `UPDATE meeting_invitations
+         SET status = 'ACCEPTED', updated_at = NOW()
+         WHERE meeting_id = $1 AND invitee_user_id = $2 AND status = 'PENDING';`,
+        [meeting.id, userId]
+      );
+    }
+
     return res.status(200).json({
       meeting: {
         id: meeting.id,
@@ -137,6 +175,146 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error verifying meeting access:", error);
     return res.status(500).json({ error: "Failed to load meeting room." });
+  }
+});
+
+/**
+ * POST /api/meetings/join
+ * Verifies code, checks organization membership permissions, registers participant,
+ * and returns meeting details to caller.
+ */
+router.post("/join", async (req: Request, res: Response) => {
+  try {
+    const { meetingCode, userId } = req.body;
+
+    if (!meetingCode || typeof meetingCode !== "string" || !meetingCode.trim()) {
+      return res.status(400).json({ error: "Please enter a valid meeting code." });
+    }
+
+    const rawCode = meetingCode.toUpperCase().trim();
+    let normalizedCode = rawCode;
+    if (!normalizedCode.startsWith("OM-") && normalizedCode.length > 0) {
+      normalizedCode = `OM-${normalizedCode}`;
+    }
+
+    const meetingResult = await query(
+      `SELECT 
+         m.id,
+         m.meeting_code,
+         m.title,
+         m.organization_id,
+         m.host_user_id,
+         m.status,
+         m.scope,
+         m.meeting_type,
+         m.is_hierarchical,
+         m.scheduled_at,
+         m.started_at,
+         o.name AS organization_name,
+         u_host.name AS host_name
+       FROM organization_meetings m
+       LEFT JOIN organizations o ON o.id = m.organization_id
+       JOIN users u_host ON u_host.id = m.host_user_id
+       WHERE m.meeting_code = $1 OR m.meeting_code = $2;`,
+      [rawCode, normalizedCode]
+    );
+
+    if (meetingResult.rows.length === 0) {
+      return res.status(404).json({ error: "Meeting not found. Please verify the meeting code." });
+    }
+
+    const meeting = meetingResult.rows[0];
+
+    // Organization-restricted validation
+    if (meeting.organization_id) {
+      if (!userId) {
+        return res.status(401).json({
+          error: "You must be signed in to join this organization meeting.",
+          isRestricted: true,
+          organizationName: meeting.organization_name
+        });
+      }
+
+      const memberCheck = await query(
+        `SELECT oe.id, oe.role, oe.position, oe.status
+         FROM organization_employees oe
+         WHERE oe.organization_id = $1 AND oe.user_id = $2 AND oe.status = 'ACTIVE';`,
+        [meeting.organization_id, userId]
+      );
+
+      if (memberCheck.rows.length === 0) {
+        return res.status(403).json({
+          error: `Access Denied: This meeting is restricted to members of "${meeting.organization_name}". You are not an active member of this organization.`,
+          isRestricted: true,
+          organizationName: meeting.organization_name,
+          organizationId: meeting.organization_id
+        });
+      }
+
+      const callerMembership = memberCheck.rows[0];
+
+      // Insert participant & update invitation
+      await query(
+        `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
+         VALUES ($1, $2, 'LISTENER', NOW())
+         ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+        [meeting.id, userId]
+      );
+      await query(
+        `UPDATE meeting_invitations
+         SET status = 'ACCEPTED', updated_at = NOW()
+         WHERE meeting_id = $1 AND invitee_user_id = $2 AND status = 'PENDING';`,
+        [meeting.id, userId]
+      );
+
+      return res.status(200).json({
+        success: true,
+        meeting: {
+          id: meeting.id,
+          meetingCode: meeting.meeting_code,
+          title: meeting.title,
+          status: meeting.status,
+          isHierarchical: meeting.is_hierarchical,
+          organization: {
+            id: meeting.organization_id,
+            name: meeting.organization_name,
+          },
+          userRole: callerMembership.role,
+        }
+      });
+    }
+
+    // Public meeting
+    if (userId) {
+      await query(
+        `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
+         VALUES ($1, $2, 'LISTENER', NOW())
+         ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+        [meeting.id, userId]
+      );
+      await query(
+        `UPDATE meeting_invitations
+         SET status = 'ACCEPTED', updated_at = NOW()
+         WHERE meeting_id = $1 AND invitee_user_id = $2 AND status = 'PENDING';`,
+        [meeting.id, userId]
+      );
+    }
+
+    return res.status(200).json({
+      success: true,
+      meeting: {
+        id: meeting.id,
+        meetingCode: meeting.meeting_code,
+        title: meeting.title,
+        status: meeting.status,
+        isHierarchical: false,
+        organization: null,
+        userRole: "MEMBER",
+      }
+    });
+  } catch (error) {
+    console.error("Failed to join meeting by code:", error);
+    return res.status(500).json({ error: "Failed to join meeting." });
   }
 });
 
