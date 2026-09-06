@@ -60,9 +60,9 @@ function InvitationPreviewPage() {
               size: "10-50",
             },
             invitee: {
-              id: user?.id || "u_1",
-              name: user?.name || "Candidate",
-              username: user?.username || "user",
+              id: inv.inviteeUserId || inv.inviteeId || user?.id || "u_1",
+              name: inv.inviteeName || user?.name || "Candidate",
+              username: inv.inviteeUsername || user?.username || "user",
             },
             position: inv.position,
             department: inv.department || "Core Workspace",
@@ -226,20 +226,33 @@ function InvitationPreviewPage() {
     );
   }
 
+  const isInvitee = !user?.id || invitation.invitee.id === user?.id;
+
   return (
     <div className="min-h-screen bg-black text-white pb-20">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-white/10 bg-black/50 backdrop-blur-md px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate("/")}
+            onClick={() => navigate(-1)}
             className="rounded-full p-2 hover:bg-white/10 transition"
+            title="Go back"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg font-semibold">Invitation Preview</h1>
+          <div>
+            <h1 className="text-lg font-semibold">Invitation Preview</h1>
+            {!isInvitee && (
+              <p className="text-xs text-fuchsia-400">Viewing as organization manager / sender</p>
+            )}
+          </div>
         </div>
-        <div>
+        <div className="flex items-center gap-2">
+          {!isInvitee && (
+            <span className="rounded-full border border-fuchsia-800/60 bg-fuchsia-950/50 px-2.5 py-1 text-[11px] font-medium text-fuchsia-300">
+              Sender View
+            </span>
+          )}
           {invitation.status === "PENDING" && (
             <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-400">
               PENDING
@@ -425,41 +438,57 @@ function InvitationPreviewPage() {
         </div>
         
         {/* Actions */}
-        {invitation.status === "PENDING" && (
-          <div className="mt-8 pt-8 border-t border-white/10 flex flex-wrap items-center justify-end gap-4">
+        {!isInvitee ? (
+          <div className="mt-8 pt-8 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
+            <p className="text-xs text-zinc-400">
+              ✦ <span className="text-zinc-200 font-semibold">Preview Mode:</span> This is the exact invitation preview viewed by candidate <span className="text-fuchsia-300 font-medium">{invitation.invitee.name} (@{invitation.invitee.username})</span>. Only the invited candidate can accept or decline.
+            </p>
             <button
-              onClick={() => navigate("/")}
-              disabled={actionLoading}
-              className="rounded-full border border-white/10 px-6 py-3 text-sm font-medium text-white/70 hover:bg-white/5 transition disabled:opacity-50"
+              onClick={() => navigate(-1)}
+              className="rounded-full bg-zinc-800 hover:bg-zinc-700 px-6 py-2.5 text-xs font-medium text-white transition"
             >
-              Cancel
-            </button>
-            <button
-              onClick={handleDecline}
-              disabled={actionLoading}
-              className="rounded-full border border-red-500/30 bg-red-500/10 px-6 py-3 text-sm font-medium text-red-400 hover:bg-red-500/20 transition disabled:opacity-50"
-            >
-              Decline Invitation
-            </button>
-            <button
-              onClick={handleAccept}
-              disabled={actionLoading}
-              className="rounded-full bg-white px-8 py-3 text-sm font-medium text-black hover:bg-zinc-200 transition disabled:opacity-50 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-            >
-              {actionLoading ? "Processing..." : "Accept Invitation"}
+              Return to Workspace
             </button>
           </div>
-        )}
+        ) : (
+          <>
+            {invitation.status === "PENDING" && (
+              <div className="mt-8 pt-8 border-t border-white/10 flex flex-wrap items-center justify-end gap-4">
+                <button
+                  onClick={() => navigate("/")}
+                  disabled={actionLoading}
+                  className="rounded-full border border-white/10 px-6 py-3 text-sm font-medium text-white/70 hover:bg-white/5 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDecline}
+                  disabled={actionLoading}
+                  className="rounded-full border border-red-500/30 bg-red-500/10 px-6 py-3 text-sm font-medium text-red-400 hover:bg-red-500/20 transition disabled:opacity-50"
+                >
+                  Decline Invitation
+                </button>
+                <button
+                  onClick={handleAccept}
+                  disabled={actionLoading}
+                  className="rounded-full bg-white px-8 py-3 text-sm font-medium text-black hover:bg-zinc-200 transition disabled:opacity-50 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                >
+                  {actionLoading ? "Processing..." : "Accept Invitation"}
+                </button>
+              </div>
+            )}
 
-        {invitation.status !== "PENDING" && (
-          <div className="mt-8 pt-8 border-t border-white/10 flex justify-end">
-             <button
-              onClick={() => navigate("/")}
-              className="rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white hover:bg-white/20 transition"
-            >
-              Back to Dashboard
-            </button>
-          </div>
+            {invitation.status !== "PENDING" && (
+              <div className="mt-8 pt-8 border-t border-white/10 flex justify-end">
+                <button
+                  onClick={() => navigate("/")}
+                  className="rounded-full bg-white/10 px-6 py-3 text-sm font-medium text-white hover:bg-white/20 transition"
+                >
+                  Back to Dashboard
+                </button>
+              </div>
+            )}
+          </>
         )}
 
       </main>

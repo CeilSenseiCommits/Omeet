@@ -546,6 +546,7 @@ router.get("/:id", async (req: Request, res: Response) => {
          oi.id,
          oi.invite_code,
          oi.organization_id,
+         oi.inviter_user_id,
          oi.invitee_user_id,
          oi.position,
          oi.department,
@@ -580,8 +581,38 @@ router.get("/:id", async (req: Request, res: Response) => {
 
     const invite = result.rows[0];
 
-    // Exclusivity check
-    if (requestingUserId && invite.invitee_user_id !== requestingUserId) {
+    // Exclusivity / Authorization check:
+    // User can view if:
+    // 1. User is the invitee
+    // 2. User is the inviter who created the invitation
+    // 3. User is an owner, admin, or has permission in that organization
+    let isAuthorized = false;
+    let isSenderOrAdmin = false;
+
+    if (!requestingUserId) {
+      isAuthorized = true;
+    } else if (invite.invitee_user_id === requestingUserId) {
+      isAuthorized = true;
+    } else if (invite.inviter_user_id === requestingUserId) {
+      isAuthorized = true;
+      isSenderOrAdmin = true;
+    } else {
+      const permCheck = await query(
+        `SELECT id, role, has_permission FROM organization_employees 
+         WHERE organization_id = $1 AND user_id = $2 
+         LIMIT 1;`,
+        [invite.organization_id, requestingUserId]
+      );
+      if (permCheck.rows.length > 0) {
+        const emp = permCheck.rows[0];
+        if (emp.role === "OWNER" || emp.role === "ADMIN" || emp.has_permission) {
+          isAuthorized = true;
+          isSenderOrAdmin = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
       return res.status(403).json({
         error: `This invitation was issued exclusively to @${invite.invitee_username}. You are logged in with a different account.`,
       });
@@ -595,6 +626,10 @@ router.get("/:id", async (req: Request, res: Response) => {
         organizationName: invite.organization_name,
         organizationBrief: invite.organization_brief,
         organizationDescription: invite.organization_description,
+        inviteeUserId: invite.invitee_user_id,
+        inviteeName: invite.invitee_name,
+        inviteeUsername: invite.invitee_username,
+        inviterUserId: invite.inviter_user_id,
         position: invite.position,
         department: invite.department,
         role: invite.role,
@@ -606,6 +641,7 @@ router.get("/:id", async (req: Request, res: Response) => {
         managerPosition: invite.manager_position,
         expiresAt: invite.expires_at,
         createdAt: invite.created_at,
+        isSenderOrAdmin,
       },
     });
   } catch (error) {

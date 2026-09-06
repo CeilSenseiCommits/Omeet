@@ -27,9 +27,12 @@ All notable changes to this project will be documented in this file.
   - Searching direct messages dynamically queries all organization colleagues with matching prefix.
 - **Team Group Creation Modal**:
   - Added `CreateGroupModal` connected to `POST /api/organizations/:id/groups` for creating team/department channels with automated participant enrollment.
-- **Permission-Gated Organization Invitations Tab**:
+- **Permission-Gated Organization Invitations Tab & Candidate Preview**:
   - Added `Invitations` tab in workspace center navigation visible only to users with invitation permissions (`hasPermission = true` or `role = 'OWNER'/'ADMIN'`).
   - Provides metrics cards (Total, Pending, Accepted, Declined) and audit table of invitations with copyable codes (`OM-XXXXXX`) and candidate metadata (`GET /api/organizations/:id/invitations/logs`).
+  - Added real-time search bar to search and filter by specific status (pending, accepted, declined/rejected, expired) alongside candidate name, position, department, and invite code.
+  - Added quick status filter pills (`All`, `Pending`, `Accepted`, `Declined`, `Expired`).
+  - Clicking any invitation row opens the exact invitation preview page (`/invitation-preview/:id`) as seen by the invitee, with sender authorization check and preview indicator.
 
 - **Live Search Bar Integration**:
   - Connected `SearchBar.tsx` to live backend search (`GET /api/users/search?q=...`) querying Neon PostgreSQL.
