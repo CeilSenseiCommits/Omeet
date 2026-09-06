@@ -1,37 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
 import JoinMeetingModal from "./organization/JoinMeetingModal";
-import { Loader2 } from "lucide-react";
+import CreatePublicMeetingModal from "./CreatePublicMeetingModal";
 
 function MeetSection() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [isCreating, setIsCreating] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
-
-  const handleCreatePublicMeeting = async () => {
-    if (!user?.id || isCreating) return;
-    try {
-      setIsCreating(true);
-      const res = await fetch("http://localhost:5000/api/meetings/public", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: `${user.name || "Personal"} Open Meeting`,
-          userId: user.id,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        navigate(`/meeting/${data.meeting.meetingCode}`);
-      }
-    } catch (err) {
-      console.error("Failed to create public meeting:", err);
-    } finally {
-      setIsCreating(false);
-    }
-  };
 
   return (
     <section className="space-y-4">
@@ -51,12 +24,10 @@ function MeetSection() {
           </p>
           <button
             type="button"
-            disabled={isCreating}
-            onClick={handleCreatePublicMeeting}
-            className="mt-6 flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 px-5 py-3 text-sm font-medium text-white transition disabled:opacity-50"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="mt-6 flex items-center gap-2 rounded-2xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 px-5 py-3 text-sm font-medium text-white transition"
           >
-            {isCreating && <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />}
-            {isCreating ? "Starting Meeting..." : "Create Open Meeting"}
+            Create Open Meeting
           </button>
         </article>
 
@@ -77,6 +48,11 @@ function MeetSection() {
           </button>
         </article>
       </div>
+
+      <CreatePublicMeetingModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+      />
 
       <JoinMeetingModal
         isOpen={isJoinModalOpen}

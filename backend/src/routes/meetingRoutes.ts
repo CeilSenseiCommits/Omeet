@@ -146,7 +146,7 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
  */
 router.post("/public", async (req: Request, res: Response) => {
   try {
-    const { title, userId } = req.body;
+    const { title, userId, meetingCode: customCode, participantUserIds } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: "Meeting title is required." });
@@ -155,8 +155,13 @@ router.post("/public", async (req: Request, res: Response) => {
       return res.status(401).json({ error: "Host user ID is required." });
     }
 
-    const hex = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const meetingCode = `OM-${hex}`;
+    let meetingCode = customCode && typeof customCode === "string" && customCode.trim()
+      ? customCode.trim().toUpperCase()
+      : `OM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+    if (!meetingCode.startsWith("OM-")) {
+      meetingCode = `OM-${meetingCode}`;
+    }
 
     const insertResult = await query(
       `INSERT INTO organization_meetings (
@@ -184,6 +189,25 @@ router.post("/public", async (req: Request, res: Response) => {
        ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
       [meeting.id, userId]
     );
+
+    // Insert invited participants & meeting invitations
+    if (Array.isArray(participantUserIds) && participantUserIds.length > 0) {
+      for (const pId of participantUserIds) {
+        if (!pId || pId === userId) continue;
+        await query(
+          `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
+           VALUES ($1, $2, 'LISTENER', NOW())
+           ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+          [meeting.id, pId]
+        );
+        await query(
+          `INSERT INTO meeting_invitations (meeting_id, organization_id, inviter_user_id, invitee_user_id, status)
+           VALUES ($1, NULL, $2, $3, 'PENDING')
+           ON CONFLICT (meeting_id, invitee_user_id) DO NOTHING;`,
+          [meeting.id, userId, pId]
+        );
+      }
+    }
 
     return res.status(201).json({
       success: true,

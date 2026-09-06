@@ -11,7 +11,8 @@ import {
   Loader2, 
   Clock, 
   AlertCircle,
-  Video
+  Video,
+  Shield
 } from "lucide-react";
 
 export interface ParticipantCandidate {
@@ -49,6 +50,7 @@ function CreateMeetingModal({
 
   // State
   const [meetingType, setMeetingType] = useState<"INSTANT" | "SCHEDULED">("INSTANT");
+  const [isHierarchical, setIsHierarchical] = useState(false);
   const [title, setTitle] = useState("");
   const [scheduledDate, setScheduledDate] = useState(() => {
     const d = new Date();
@@ -67,9 +69,10 @@ function CreateMeetingModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    // Reset error & submission state
+    // Reset error, hierarchy mode & submission state
     setError(null);
     setIsSubmitting(false);
+    setIsHierarchical(false);
 
     // Populate initial participants
     setSelectedParticipants(initialParticipants || []);
@@ -182,6 +185,7 @@ function CreateMeetingModal({
           participantUserIds: selectedParticipants.map((p) => p.id),
           conversationId: conversationId || null,
           userId: user?.id,
+          isHierarchical,
         }),
       });
 
@@ -326,7 +330,53 @@ function CreateMeetingModal({
             </div>
           )}
 
-          {/* 4. Participants Section */}
+          {/* 4. Hierarchy Mode Toggle (Default: OFF) */}
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 transition hover:border-zinc-700/70">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Shield className={`h-4 w-4 ${isHierarchical ? "text-fuchsia-400" : "text-zinc-400"}`} />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-white">
+                    Organization Hierarchy
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      isHierarchical
+                        ? "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30"
+                        : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                    }`}
+                  >
+                    {isHierarchical ? "ON (STRUCTURED)" : "OFF (DEFAULT)"}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  {isHierarchical
+                    ? "Role hierarchy active: Director > Lead > Senior > Member speaking queues and moderation controls."
+                    : "Hierarchy disabled: All participants join as equals with flat speaking and collaboration permissions."}
+                </p>
+              </div>
+
+              {/* Toggle Switch */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={isHierarchical}
+                onClick={() => setIsHierarchical((prev) => !prev)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isHierarchical ? "bg-fuchsia-600" : "bg-zinc-800"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    isHierarchical ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* 5. Participants Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400">

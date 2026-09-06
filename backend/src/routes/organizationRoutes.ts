@@ -508,7 +508,7 @@ router.get("/:id/meetings", async (req: Request, res: Response) => {
 router.post("/:id/meetings", async (req: Request, res: Response) => {
   try {
     const orgId = req.params.id;
-    const { title, meetingType, scheduledAt, scope, participantUserIds, conversationId, userId } = req.body;
+    const { title, meetingType, scheduledAt, scope, participantUserIds, conversationId, userId, isHierarchical } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: "Meeting title is required." });
@@ -520,6 +520,7 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
     const isInstant = meetingType === "INSTANT" || (!scheduledAt && meetingType !== "SCHEDULED");
     const status = isInstant ? "LIVE" : "SCHEDULED";
     const meetingDate = scheduledAt ? new Date(scheduledAt) : new Date();
+    const isHierarchicalMode = typeof isHierarchical === "boolean" ? isHierarchical : false;
 
     // Generate unique meeting code: e.g. OM-7F2A9B
     const hex = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -534,11 +535,12 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
          host_user_id,
          status,
          scope,
+         is_hierarchical,
          meeting_type,
          scheduled_at,
          started_at
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *;`,
       [
         orgId,
@@ -548,6 +550,7 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
         userId,
         status,
         scope || "ORG_WIDE",
+        isHierarchicalMode,
         isInstant ? "INSTANT" : "SCHEDULED",
         meetingDate,
         isInstant ? new Date() : null,
@@ -608,6 +611,7 @@ router.post("/:id/meetings", async (req: Request, res: Response) => {
         title: meeting.title,
         status: meeting.status,
         meetingType: meeting.meeting_type,
+        isHierarchical: meeting.is_hierarchical,
         scheduledAt: meeting.scheduled_at,
       },
     });
