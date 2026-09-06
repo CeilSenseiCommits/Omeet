@@ -11,8 +11,10 @@ import {
   Sparkles,
   Paperclip,
   Smile,
-  ArrowDown
+  ArrowDown,
+  Info
 } from "lucide-react";
+import GroupInfoModal from "./GroupInfoModal";
 
 interface ChatMessage {
   id: string;
@@ -55,6 +57,7 @@ interface OrgChatViewProps {
   onClose: () => void;
   onViewProfile?: (recipient: any) => void;
   onStartMeeting?: (recipientOrGroup?: any) => void;
+  onGroupDeleted?: () => void;
 }
 
 function formatMessageTime(isoDate: string) {
@@ -95,6 +98,7 @@ function OrgChatView({
   onClose,
   onViewProfile,
   onStartMeeting,
+  onGroupDeleted,
 }: OrgChatViewProps) {
   const { user } = useAuth();
   const [conversation, setConversation] = useState<ConversationDetails | null>(null);
@@ -104,6 +108,7 @@ function OrgChatView({
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [isGroupInfoModalOpen, setIsGroupInfoModalOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -265,18 +270,29 @@ function OrgChatView({
               <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#111113] bg-emerald-500" />
             </div>
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fuchsia-950/80 border border-fuchsia-800/60 text-fuchsia-300">
+            <button
+              type="button"
+              onClick={() => setIsGroupInfoModalOpen(true)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fuchsia-950/80 border border-fuchsia-800/60 text-fuchsia-300 hover:bg-fuchsia-900/80 hover:border-fuchsia-600 hover:text-white transition shadow-sm cursor-pointer group"
+              title="View group info & manage members"
+            >
               {conversation?.type === "CHANNEL" ? (
-                <Hash className="h-5 w-5" />
+                <Hash className="h-5 w-5 transition group-hover:scale-105" />
               ) : (
-                <Users className="h-5 w-5" />
+                <Users className="h-5 w-5 transition group-hover:scale-105" />
               )}
-            </div>
+            </button>
           )}
 
-          <div className="min-w-0">
+          <div 
+            className={`min-w-0 ${!isDirect ? "cursor-pointer group select-none" : ""}`}
+            onClick={() => {
+              if (!isDirect) setIsGroupInfoModalOpen(true);
+            }}
+            title={!isDirect ? "Click to view group info & manage members" : undefined}
+          >
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold text-white truncate">
+              <h2 className={`text-base font-semibold text-white truncate ${!isDirect ? "group-hover:text-fuchsia-300 transition" : ""}`}>
                 {!isDirect && conversation?.type === "CHANNEL" ? `# ${title}` : title}
               </h2>
               {isDirect && recipient?.username && (
@@ -286,7 +302,7 @@ function OrgChatView({
             <p className="text-xs text-zinc-400 truncate">
               {isDirect
                 ? `${recipient?.position || "Member"} · ${recipient?.department || "General Team"}`
-                : conversation?.topic || `${conversation?.participantCount || 0} members`}
+                : conversation?.topic || `${conversation?.participantCount || 0} members · Click for details`}
             </p>
           </div>
         </div>
@@ -305,6 +321,19 @@ function OrgChatView({
               {isDirect ? "Meet Now" : "Huddle"}
             </span>
           </button>
+
+          {/* Group details & members button */}
+          {!isDirect && (
+            <button
+              type="button"
+              onClick={() => setIsGroupInfoModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 hover:text-white px-3 py-1.5 text-xs font-medium text-zinc-300 transition shadow-sm"
+              title="Group info & members"
+            >
+              <Info className="h-3.5 w-3.5 text-fuchsia-400" />
+              <span className="hidden sm:inline">Info</span>
+            </button>
+          )}
 
           {/* Direct message profile shortcut */}
           {isDirect && recipient && onViewProfile && (
@@ -483,6 +512,23 @@ function OrgChatView({
           </button>
         </form>
       </footer>
+
+      {/* Group Details & Management Modal */}
+      {!isDirect && (
+        <GroupInfoModal
+          isOpen={isGroupInfoModalOpen}
+          onClose={() => setIsGroupInfoModalOpen(false)}
+          organizationId={organizationId}
+          conversationId={conversationId}
+          onGroupDeleted={() => {
+            setIsGroupInfoModalOpen(false);
+            onGroupDeleted?.();
+          }}
+          onMemberUpdated={() => {
+            fetchMessages(false);
+          }}
+        />
+      )}
     </section>
   );
 }

@@ -1005,6 +1005,321 @@ router.post("/:id/conversations/:convId/messages", async (req: Request, res: Res
   }
 });
 
+/**
+ * GET /api/organizations/:id/conversations/:convId/details
+ * Retrieves conversation details, members, user permissions, and available org candidates
+ */
+router.get("/:id/conversations/:convId/details", async (req: Request, res: Response) => {
+  try {
+    const { id: orgId, convId } = req.params;
+    const requestingUserId = (req.headers["x-user-id"] as string) || (req.query.userId as string);
+
+    // 1. Fetch conversation
+    const convResult = await query(
+      `SELECT c.id, c.organization_id, c.type, c.name, c.topic, c.is_private, c.created_by, c.created_at,
+              u_creator.name AS creator_name, u_creator.username AS creator_username
+       FROM conversations c
+       LEFT JOIN users u_creator ON u_creator.id = c.created_by
+       WHERE c.id = $1 AND c.organization_id = $2
+       LIMIT 1;`,
+      [convId, orgId]
+    );
+
+    if (convResult.rows.length === 0) {
+      return res.status(404).json({ error: "Conversation not found." });
+    }
+
+    const conv = convResult.rows[0];
+
+    // 2. Fetch current participants
+    const participantsResult = await query(
+      `SELECT 
+         cp.user_id,
+         cp.role AS group_role,
+         cp.created_at AS joined_at,
+         u.name,
+         u.username,
+         u.avatar_url,
+         oe.position,
+         oe.department,
+         oe.role AS org_role
+       FROM conversation_participants cp
+       JOIN users u ON u.id = cp.user_id
+       LEFT JOIN organization_employees oe ON oe.user_id = u.id AND oe.organization_id = $1
+       WHERE cp.conversation_id = $2
+       ORDER BY 
+         CASE WHEN cp.role = 'OWNER' THEN 1 WHEN cp.role = 'ADMIN' THEN 2 ELSE 3 END,
+         u.name ASC;`,
+      [orgId, convId]
+    );
+
+    const members = participantsResult.rows.map((row) => ({
+      userId: row.user_id,
+      name: row.name,
+      username: row.username,
+      avatarUrl: row.avatar_url,
+      position: row.position || "Member",
+      department: row.department,
+      groupRole: row.group_role,
+      orgRole: row.org_role,
+      joinedAt: row.joined_at,
+      isCreator: conv.created_by === row.user_id,
+    }));
+
+    // 3. Determine requesting user's permissions
+    const callerParticipant = participantsResult.rows.find((p) => p.user_id === requestingUserId);
+    const callerGroupRole = callerParticipant ? callerParticipant.group_role : null;
+
+    // Check organization role of caller
+    let isOrgAdmin = false;
+    let isOrgOwner = false;
+    if (requestingUserId) {
+      const orgMemberResult = await query(
+        `SELECT role, has_permission FROM organization_employees WHERE organization_id = $1 AND user_id = $2 LIMIT 1;`,
+        [orgId, requestingUserId]
+      );
+      if (orgMemberResult.rows.length > 0) {
+        const oe = orgMemberResult.rows[0];
+        isOrgOwner = oe.role === "OWNER";
+        isOrgAdmin = oe.role === "ADMIN" || oe.has_permission || isOrgOwner;
+      }
+    }
+
+    const isGroupAdmin = callerGroupRole === "OWNER" || callerGroupRole === "ADMIN" || isOrgAdmin || isOrgOwner;
+    const canDeleteGroup = conv.type === "GROUP" && (callerGroupRole === "OWNER" || conv.created_by === requestingUserId || isOrgOwner || isOrgAdmin);
+
+    // 4. Fetch available organization members NOT in this group (candidates to add)
+    const existingUserIds = participantsResult.rows.map((p) => p.user_id);
+    let availableCandidates: any[] = [];
+    if (existingUserIds.length > 0) {
+      const candidatesResult = await query(
+        `SELECT u.id AS user_id, u.name, u.username, u.avatar_url, oe.position, oe.department
+         FROM organization_employees oe
+         JOIN users u ON u.id = oe.user_id
+         WHERE oe.organization_id = $1 AND oe.status = 'ACTIVE'
+           AND u.id != ALL($2::uuid[])
+         ORDER BY u.name ASC;`,
+        [orgId, existingUserIds]
+      );
+      availableCandidates = candidatesResult.rows.map((c) => ({
+        userId: c.user_id,
+        name: c.name,
+        username: c.username,
+        avatarUrl: c.avatar_url,
+        position: c.position || "Member",
+        department: c.department,
+      }));
+    }
+
+    return res.status(200).json({
+      conversation: {
+        id: conv.id,
+        type: conv.type,
+        name: conv.name,
+        topic: conv.topic,
+        isPrivate: conv.is_private,
+        createdAt: conv.created_at,
+        creatorName: conv.creator_name,
+        creatorUsername: conv.creator_username,
+        memberCount: members.length,
+      },
+      members,
+      callerRole: callerGroupRole,
+      isCallerAdmin: !!isGroupAdmin,
+      canDeleteGroup: !!canDeleteGroup,
+      availableCandidates,
+    });
+  } catch (error) {
+    console.error("Failed to fetch conversation details:", error);
+    return res.status(500).json({ error: "Failed to load conversation details." });
+  }
+});
+
+/**
+ * POST /api/organizations/:id/conversations/:convId/participants
+ * Adds member(s) to a group conversation
+ */
+router.post("/:id/conversations/:convId/participants", async (req: Request, res: Response) => {
+  try {
+    const { id: orgId, convId } = req.params;
+    const requestingUserId = (req.headers["x-user-id"] as string) || req.body.userId;
+    const { targetUserId, role = "MEMBER" } = req.body;
+
+    if (!targetUserId) {
+      return res.status(400).json({ error: "Target user ID is required." });
+    }
+
+    // 1. Verify caller permission
+    const callerCheck = await query(
+      `SELECT cp.role AS group_role, oe.role AS org_role, oe.has_permission
+       FROM organization_employees oe
+       LEFT JOIN conversation_participants cp ON cp.conversation_id = $2 AND cp.user_id = $3
+       WHERE oe.organization_id = $1 AND oe.user_id = $3
+       LIMIT 1;`,
+      [orgId, convId, requestingUserId]
+    );
+
+    const caller = callerCheck.rows[0];
+    const isCallerAdmin = caller && (caller.group_role === "OWNER" || caller.group_role === "ADMIN" || caller.org_role === "OWNER" || caller.org_role === "ADMIN" || caller.has_permission);
+
+    if (!isCallerAdmin) {
+      return res.status(403).json({ error: "Only group admins or organization managers can add members." });
+    }
+
+    // 2. Add target user to conversation_participants
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_id, role)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (conversation_id, user_id) DO NOTHING;`,
+      [convId, targetUserId, role]
+    );
+
+    // 3. Insert system announcement message
+    const namesResult = await query(
+      `SELECT u1.name AS adder_name, u2.name AS added_name
+       FROM users u1, users u2
+       WHERE u1.id = $1 AND u2.id = $2;`,
+      [requestingUserId, targetUserId]
+    );
+    if (namesResult.rows.length > 0) {
+      const { adder_name, added_name } = namesResult.rows[0];
+      await query(
+        `INSERT INTO messages (conversation_id, sender_id, content, message_type)
+         VALUES ($1, $2, $3, 'SYSTEM');`,
+        [convId, requestingUserId, `${adder_name} added ${added_name} to the group.`]
+      );
+    }
+
+    return res.status(200).json({ success: true, message: "Member added successfully." });
+  } catch (error) {
+    console.error("Failed to add participant to conversation:", error);
+    return res.status(500).json({ error: "Failed to add member." });
+  }
+});
+
+/**
+ * DELETE /api/organizations/:id/conversations/:convId/participants/:targetUserId
+ * Removes a member from group (or self leave)
+ */
+router.delete("/:id/conversations/:convId/participants/:targetUserId", async (req: Request, res: Response) => {
+  try {
+    const { id: orgId, convId, targetUserId } = req.params;
+    const requestingUserId = (req.headers["x-user-id"] as string) || (req.query.userId as string);
+
+    const isSelfLeaving = requestingUserId === targetUserId;
+
+    if (!isSelfLeaving) {
+      // Caller must be group admin or org admin
+      const callerCheck = await query(
+        `SELECT cp.role AS group_role, oe.role AS org_role, oe.has_permission
+         FROM organization_employees oe
+         LEFT JOIN conversation_participants cp ON cp.conversation_id = $2 AND cp.user_id = $3
+         WHERE oe.organization_id = $1 AND oe.user_id = $3
+         LIMIT 1;`,
+        [orgId, convId, requestingUserId]
+      );
+
+      const caller = callerCheck.rows[0];
+      const isCallerAdmin = caller && (caller.group_role === "OWNER" || caller.group_role === "ADMIN" || caller.org_role === "OWNER" || caller.org_role === "ADMIN" || caller.has_permission);
+
+      if (!isCallerAdmin) {
+        return res.status(403).json({ error: "Only group admins can remove members from this group." });
+      }
+
+      // Check target is not group creator / owner
+      const targetCheck = await query(
+        `SELECT cp.role, c.created_by
+         FROM conversations c
+         JOIN conversation_participants cp ON cp.conversation_id = c.id AND cp.user_id = $2
+         WHERE c.id = $1
+         LIMIT 1;`,
+        [convId, targetUserId]
+      );
+      if (targetCheck.rows.length > 0 && targetCheck.rows[0].created_by === targetUserId && caller.org_role !== "OWNER") {
+        return res.status(400).json({ error: "Cannot remove the group owner." });
+      }
+    }
+
+    // Delete participant
+    await query(
+      `DELETE FROM conversation_participants WHERE conversation_id = $1 AND user_id = $2;`,
+      [convId, targetUserId]
+    );
+
+    // Insert system message
+    const namesResult = await query(
+      `SELECT u1.name AS remover_name, u2.name AS removed_name
+       FROM users u1, users u2
+       WHERE u1.id = $1 AND u2.id = $2;`,
+      [requestingUserId, targetUserId]
+    );
+    if (namesResult.rows.length > 0) {
+      const { remover_name, removed_name } = namesResult.rows[0];
+      const msg = isSelfLeaving ? `${removed_name} left the group.` : `${remover_name} removed ${removed_name} from the group.`;
+      await query(
+        `INSERT INTO messages (conversation_id, sender_id, content, message_type)
+         VALUES ($1, $2, $3, 'SYSTEM');`,
+        [convId, requestingUserId, msg]
+      );
+    }
+
+    return res.status(200).json({ success: true, message: "Member removed successfully." });
+  } catch (error) {
+    console.error("Failed to remove participant:", error);
+    return res.status(500).json({ error: "Failed to remove member." });
+  }
+});
+
+/**
+ * DELETE /api/organizations/:id/conversations/:convId
+ * Permanently deletes a group conversation
+ */
+router.delete("/:id/conversations/:convId", async (req: Request, res: Response) => {
+  try {
+    const { id: orgId, convId } = req.params;
+    const requestingUserId = (req.headers["x-user-id"] as string) || (req.query.userId as string);
+
+    // 1. Fetch conversation
+    const convResult = await query(
+      `SELECT id, type, name, created_by FROM conversations WHERE id = $1 AND organization_id = $2 LIMIT 1;`,
+      [convId, orgId]
+    );
+    if (convResult.rows.length === 0) {
+      return res.status(404).json({ error: "Conversation not found." });
+    }
+    const conv = convResult.rows[0];
+
+    // Cannot delete default channels general or random
+    if (conv.type === "CHANNEL" && (conv.name === "general" || conv.name === "random")) {
+      return res.status(400).json({ error: "Default workspace channels cannot be deleted." });
+    }
+
+    // 2. Permission check
+    const callerCheck = await query(
+      `SELECT cp.role AS group_role, oe.role AS org_role, oe.has_permission
+       FROM organization_employees oe
+       LEFT JOIN conversation_participants cp ON cp.conversation_id = $2 AND cp.user_id = $3
+       WHERE oe.organization_id = $1 AND oe.user_id = $3
+       LIMIT 1;`,
+      [orgId, convId, requestingUserId]
+    );
+    const caller = callerCheck.rows[0];
+    const canDelete = caller && (conv.created_by === requestingUserId || caller.group_role === "OWNER" || caller.org_role === "OWNER" || caller.org_role === "ADMIN");
+
+    if (!canDelete) {
+      return res.status(403).json({ error: "You do not have permission to delete this group." });
+    }
+
+    // 3. Delete conversation (cascade will handle participants and messages)
+    await query("DELETE FROM conversations WHERE id = $1 AND organization_id = $2;", [convId, orgId]);
+
+    return res.status(200).json({ success: true, message: "Group deleted successfully." });
+  } catch (error) {
+    console.error("Failed to delete conversation:", error);
+    return res.status(500).json({ error: "Failed to delete group." });
+  }
+});
+
 export default router;
 
 

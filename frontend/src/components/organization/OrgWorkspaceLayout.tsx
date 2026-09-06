@@ -241,6 +241,10 @@ function OrgWorkspaceLayout() {
             onClose={() => setSelectedConversationId(null)}
             onViewProfile={(employee) => setSelectedEmployeeForModal(employee)}
             onStartMeeting={() => setIsCreateModalOpen(true)}
+            onGroupDeleted={() => {
+              setSelectedConversationId(null);
+              fetchWorkspaceData();
+            }}
           />
         ) : (
           <>

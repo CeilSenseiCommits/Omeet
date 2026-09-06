@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Group Details, Member Management & Group Deletion**:
+  - Clicking the group icon or header title in `OrgChatView` opens the interactive `GroupInfoModal`.
+  - **Member Roster & Roles**: Displays group members with badges (`Owner`, `Admin`, `Member`), organization roles, and join dates.
+  - **Add Members**: Group admins/owners can select and add organization colleagues not yet enrolled in the group.
+  - **Remove Members**: Group admins/owners can remove members (with protection preventing removal of the group creator/owner).
+  - **Delete Group**: Group admins/owners can permanently delete custom groups with confirmation dialog, cascading all participant associations and message history while protecting default channels (`# general` and `# random`).
+  - **Leave Group**: Non-owner members can safely leave the group.
+  - **Automated System Messages**: Dispatches contextual system activity announcements (`X added Y to the group`, `X left the group`, `X removed Y from the group`) to the timeline.
+  - **API Endpoints**:
+    - `GET /api/organizations/:id/conversations/:convId/details`: Returns conversation metadata, member roster with roles, caller permissions, and available candidate colleagues.
+    - `POST /api/organizations/:id/conversations/:convId/participants`: Enrolls a new member and emits system audit message.
+    - `DELETE /api/organizations/:id/conversations/:convId/participants/:targetUserId`: Removes member or processes self-leave.
+    - `DELETE /api/organizations/:id/conversations/:convId`: Deletes group conversation and all associated records.
 - **Dynamic Organization Workspace Dashboard (`/organization/:organizationId`)**:
   - Replaced static mock data lookups with live database queries by organization UUID (`GET /api/organizations/:id`).
   - Added real-time telemetry: active employee count, live meetings count, and user's role/permissions.

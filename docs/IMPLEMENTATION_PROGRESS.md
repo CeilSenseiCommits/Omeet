@@ -63,6 +63,8 @@
 - Interactive Member Directory search bar with live filtering and organization employee profile modal (`OrgEmployeeProfileModal`) with contact details, direct message trigger, and meeting invite actions
 - Real-time Group Chat and Direct Messaging overlay screen (`OrgChatView`) covering Center and Right bars with toggle-to-close on sidebar click, `Esc` dismiss, optimistic message sending, auto-scroll, and meeting shortcuts
 - Provisioned `messages` table on PostgreSQL with `GET` and `POST` message endpoints
+- Group details & management modal (`GroupInfoModal`): clickable group header and icon opening group roster, role badges, member addition for admins, member removal with owner guard, group deletion with cascading cleanup, and safe leave group option for members
+- Group participant management APIs (`GET /details`, `POST /participants`, `DELETE /participants/:targetUserId`, `DELETE /conversations/:convId`) with automated system announcements in timeline
 
 ## In Progress
 
