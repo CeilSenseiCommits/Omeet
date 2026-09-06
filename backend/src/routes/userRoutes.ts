@@ -275,4 +275,72 @@ router.post("/onboard", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/users/search?q=query&orgId=uuid&currentUserId=uuid
+ * Live search for existing registered OMeet users to invite into an organization
+ */
+router.get("/search", async (req: Request, res: Response) => {
+  try {
+    const rawQ = (req.query.q as string || "").trim().replace(/^@/, "");
+    const orgId = req.query.orgId as string || null;
+    const currentUserId = (req.headers["x-user-id"] as string) || (req.query.currentUserId as string) || null;
+
+    if (!rawQ || rawQ.length < 1) {
+      return res.status(200).json({ users: [] });
+    }
+
+    const searchTerm = `%${rawQ}%`;
+
+    const result = await query(
+      `SELECT 
+         u.id,
+         u.name,
+         u.username,
+         u.email,
+         u.avatar_url,
+         u.bio,
+         u.timezone
+       FROM users u
+       WHERE (
+         u.username ILIKE $1 
+         OR u.name ILIKE $1 
+         OR u.email ILIKE $1
+       )
+       AND ($2::uuid IS NULL OR u.id != $2::uuid)
+       AND ($3::uuid IS NULL OR u.id NOT IN (
+         SELECT user_id FROM organization_employees WHERE organization_id = $3::uuid AND status = 'ACTIVE'
+       ))
+       AND ($3::uuid IS NULL OR u.id NOT IN (
+         SELECT invitee_user_id FROM organization_invitations WHERE organization_id = $3::uuid AND status = 'PENDING'
+       ))
+       ORDER BY 
+         CASE WHEN u.username ILIKE $1 THEN 1 ELSE 2 END,
+         u.name ASC
+       LIMIT 10;`,
+      [searchTerm, currentUserId, orgId]
+    );
+
+    const users = result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      username: row.username,
+      email: row.email,
+      avatarUrl: row.avatar_url,
+      initials: row.name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase(),
+      bio: row.bio,
+      timezone: row.timezone,
+    }));
+
+    return res.status(200).json({ users });
+  } catch (error) {
+    console.error("User search error in PostgreSQL:", error);
+    return res.status(500).json({ error: "Failed to search registered users." });
+  }
+});
+
 export default router;

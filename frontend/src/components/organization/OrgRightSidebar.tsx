@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { ChevronLeft, Lock, UserPlus, Settings, BarChart, CreditCard, ChevronRight } from "lucide-react";
 import type { OrganizationDetails } from "../../types/organization";
 
@@ -12,6 +13,8 @@ function getInitials(name: string) {
 }
 
 function OrgRightSidebar({ organization, isCollapsed, onToggle }: OrgRightSidebarProps) {
+  const navigate = useNavigate();
+
   if (isCollapsed) {
     return (
       <aside className="flex h-full w-[60px] shrink-0 flex-col items-center border-l border-zinc-800/60 bg-[#111113] py-4 transition-all duration-300">
@@ -84,12 +87,21 @@ function OrgRightSidebar({ organization, isCollapsed, onToggle }: OrgRightSideba
           <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-4">Quick Links</p>
           <nav className="space-y-1">
             {[
-              { icon: UserPlus, label: "Invite Members" },
+              {
+                icon: UserPlus,
+                label: "Invite Members",
+                action: () => navigate(`/organization/${organization.id}/invite`),
+              },
               { icon: Settings, label: "Organization Settings" },
               { icon: BarChart, label: "Workspace Analytics" },
               { icon: CreditCard, label: "Billing & Plan" },
             ].map((link, i) => (
-              <button key={i} type="button" className="group flex w-full items-center justify-between rounded-lg px-2 py-2.5 text-xs font-medium text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition">
+              <button
+                key={i}
+                type="button"
+                onClick={link.action}
+                className="group flex w-full items-center justify-between rounded-lg px-2 py-2.5 text-xs font-medium text-zinc-400 hover:bg-zinc-800/50 hover:text-white transition"
+              >
                 <span className="flex items-center gap-3">
                   <link.icon className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300" />
                   {link.label}

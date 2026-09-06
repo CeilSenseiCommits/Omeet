@@ -331,3 +331,160 @@ if (!isOwner && !isMember) {
 }
 ```
 
+---
+
+## 5. In-App Organization Invitation System & Hierarchical Senior Rules (Date: 2026-09-06)
+
+### 5.1 Architecture: Inviting Registered Users Only
+Instead of sending unauthenticated email links to outside parties, OMeet's invitation flow operates **strictly between registered OMeet user accounts**:
+* **Immediate Identity Binding:** The inviter searches by `@username`, full name, or email. The recipient's `invitee_user_id` is definitively bound in the database right at creation time.
+* **Instant Profile Verification:** The inviter sees the recipient's verified Google avatar, full name, `@username`, and bio before sending the invite.
+* **Automated Exclusions:** The live user search automatically filters out:
+  1. The inviter themselves.
+  2. Users who are already active employees of the workspace (`organization_employees.status = 'ACTIVE'`).
+  3. Users who already have a `PENDING` invitation for this workspace.
+* **In-App Delivery:** The invitation appears directly inside the invitee's OMeet notifications and dashboard, with **Accept** and **Decline** actions.
+
+---
+
+### 5.2 Permission Governance: The `has_permission` Column
+To prevent unauthorized members from bloating the company roster or adding colleagues without approval, organization invitations are guarded by the `has_permission` column in `organization_employees`:
+
+```sql
+ALTER TABLE organization_employees 
+ADD COLUMN IF NOT EXISTS has_permission BOOLEAN NOT NULL DEFAULT FALSE;
+```
+
+#### Governance Rules:
+1. **The Owner:** Automatically has `has_permission = TRUE` by default.
+2. **Standard Employees:** Default to `has_permission = FALSE` upon joining.
+3. **Delegation:** The Owner can grant or revoke `has_permission` for team leads and hiring managers.
+4. **Enforcement:** If a member without permission accesses `/organization/:id/invite` or posts to the invitation endpoint, the backend returns `403 Forbidden` with a clear explanation.
+
+---
+
+### 5.3 The Hierarchical Senior Assignment Rule
+When inviting someone, the inviter must designate the new colleague's **Direct Senior** (`manager_employee_id`).
+
+> [!IMPORTANT]
+> **Strict Hierarchy Rule:** Whoever is inviting someone can **only** assign that person to report to:
+> 1. **The inviter themselves**, OR
+> 2. **A direct or indirect subordinate in the inviter's reporting tree**.
+>
+> An inviter CANNOT assign a new hire to report to the inviter's own manager/senior or to anyone outside their branch.
+
+#### Database Enforcement via Recursive Common Table Expression (CTE):
+To compute the list of eligible direct seniors, PostgreSQL recursively traverses down the organization tree from the inviter's node:
+
+```sql
+WITH RECURSIVE subordinates AS (
+  -- Base case: The inviter themselves (Depth 0)
+  SELECT 
+    oe.id AS employee_id,
+    oe.user_id,
+    oe.position,
+    oe.role,
+    oe.manager_employee_id,
+    u.name,
+    u.avatar_url,
+    0 AS depth
+  FROM organization_employees oe
+  JOIN users u ON u.id = oe.user_id
+  WHERE oe.organization_id = $1 AND oe.user_id = $2 AND oe.status = 'ACTIVE'
+
+  UNION ALL
+
+  -- Recursive step: Any employee whose manager_employee_id is in subordinates
+  SELECT 
+    oe.id AS employee_id,
+    oe.user_id,
+    oe.position,
+    oe.role,
+    oe.manager_employee_id,
+    u.name,
+    u.avatar_url,
+    s.depth + 1 AS depth
+  FROM organization_employees oe
+  JOIN users u ON u.id = oe.user_id
+  JOIN subordinates s ON oe.manager_employee_id = s.employee_id
+  WHERE oe.organization_id = $1 AND oe.status = 'ACTIVE'
+)
+SELECT * FROM subordinates ORDER BY depth ASC, name ASC;
+```
+
+* For the **Owner** (at root), every employee in the workspace is in their subordinate tree, so the Owner can assign anyone.
+* For a **Team Lead**, depth 0 is the Team Lead, and depth > 0 are the engineers who report directly or indirectly to them. Their senior VP or CEO is excluded!
+
+---
+
+### 5.4 Database Schema: Table `organization_invitations`
+
+```sql
+CREATE TABLE organization_invitations (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invite_code         VARCHAR(20) UNIQUE NOT NULL,          -- e.g. "OM-7K9P2X"
+    organization_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    inviter_user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    inviter_employee_id UUID NOT NULL REFERENCES organization_employees(id) ON DELETE CASCADE,
+    invitee_user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    position            VARCHAR(100) NOT NULL,
+    department          VARCHAR(100) NULL,
+    manager_employee_id UUID NOT NULL REFERENCES organization_employees(id) ON DELETE RESTRICT,
+    role                VARCHAR(50) NOT NULL DEFAULT 'MEMBER',
+    salary              NUMERIC(12, 2) NULL,
+    status              VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    expires_at          TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_invitations_code ON organization_invitations(invite_code);
+CREATE INDEX idx_invitations_invitee ON organization_invitations(invitee_user_id);
+CREATE INDEX idx_invitations_org ON organization_invitations(organization_id);
+CREATE UNIQUE INDEX uq_org_pending_invite 
+    ON organization_invitations(organization_id, invitee_user_id) 
+    WHERE status = 'PENDING';
+```
+
+---
+
+### 5.5 Quick-Share Invite Codes for HRs & Account Exclusivity
+To make onboarding smooth across direct communication channels (WhatsApp, Slack, chat), the system generates a branded quick-share code for each invitation:
+* **Branded Code Format:** `OM-XXXXXX` (e.g., `OM-7K9P2X`).
+* **HR Controls:**
+  - 1-click **Copy Code** and **Copy Direct Link** (`/join/OM-7K9P2X`).
+  - Customizable expiration duration (3, 7, 14, or 30 days).
+* **Strict Account Exclusivity:**
+  - When a user enters the invite code in the **"Join Organization"** modal, the backend verifies:
+    ```sql
+    SELECT * FROM organization_invitations WHERE invite_code = $1 AND status = 'PENDING';
+    ```
+  - If the authenticated user's ID does NOT match `invitee_user_id`, the system blocks the redemption:
+    > *"Invalid invite code for your account. This invitation was exclusively issued to another user."*
+  - This prevents unauthorized candidates from hijacking someone else's offer letter or role.
+
+---
+
+### 5.6 Automatic Login Notification Query & Offer Acceptance Flow
+When any user logs into OMeet (or navigates to the dashboard):
+1. **Login Trigger:** The navigation bar calls `GET /api/invitations/user/:userId`.
+2. **Pending Offer Query:** PostgreSQL queries all pending, unexpired invitations for that user:
+   ```sql
+   SELECT oi.*, o.name AS organization_name, o.brief AS organization_brief, u_inviter.name AS inviter_name
+   FROM organization_invitations oi
+   JOIN organizations o ON o.id = oi.organization_id
+   JOIN users u_inviter ON u_inviter.id = oi.inviter_user_id
+   WHERE oi.invitee_user_id = $1 
+     AND oi.status = 'PENDING' 
+     AND (oi.expires_at IS NULL OR oi.expires_at > NOW())
+   ORDER BY oi.created_at DESC;
+   ```
+3. **Notification Bell:** Populates with high-priority unread items showing:
+   - *"Acme Labs Invitation: Priya invited you to join as Senior ML Engineer. Reports to Rahul Verma."*
+   - Includes a direct **Preview Invitation** button opening the official offer screen.
+4. **Atomic Acceptance:**
+   - Clicking **Accept** triggers `POST /api/invitations/:id/respond` with `{ action: 'ACCEPT', userId }`.
+   - In a single database transaction, the invitation status becomes `'ACCEPTED'`, `organizations.employee_count` is incremented, and the user is added to `organization_employees` with their assigned direct senior!
+
+
+

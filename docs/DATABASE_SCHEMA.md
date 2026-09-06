@@ -172,6 +172,7 @@ CREATE TABLE organization_employees (
     position            VARCHAR(100) NOT NULL,
     role                VARCHAR(50) NOT NULL DEFAULT 'MEMBER',
     salary              NUMERIC(12, 2) NULL,
+    has_permission      BOOLEAN NOT NULL DEFAULT FALSE,       -- TRUE for OWNER; controls member invite permission
     joining_date        DATE NOT NULL DEFAULT CURRENT_DATE,
     resignation_date    DATE NULL,
     last_accessed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -196,12 +197,65 @@ CREATE INDEX idx_org_employees_manager ON organization_employees(manager_employe
 | `position` | `VARCHAR(100)` | `NOT NULL` | Job title (e.g. "Founder", "CEO", "ML Engineer"). |
 | `role` | `VARCHAR(50)` | `DEFAULT 'MEMBER'` | Access role: `OWNER`, `ADMIN`, `MEMBER`. |
 | `salary` | `NUMERIC(12, 2)` | `NULLABLE` | Salary amount for this position. |
+| **`has_permission`** | `BOOLEAN` | `NOT NULL DEFAULT FALSE` | **Permission gate for inviting new members. Automatically TRUE for OWNER.** |
 | `joining_date` | `DATE` | `DEFAULT CURRENT_DATE` | Date user joined organization. |
 | `resignation_date` | `DATE` | `NULLABLE` | Date user left/resigned (`NULL` while active). |
 | `last_accessed_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | **Last time user entered this organization workspace**. |
 | `status` | `VARCHAR(20)` | `DEFAULT 'ACTIVE'` | `ACTIVE`, `INVITED`, `RESIGNED`, `TERMINATED`. |
 | `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Record creation timestamp. |
 | `updated_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Last update timestamp. |
+
+---
+
+### Table 4: `organization_invitations`
+Represents pending and historical in-app invitations between registered OMeet users and workspaces.
+
+#### SQL Table Schema (DDL):
+```sql
+CREATE TABLE organization_invitations (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invite_code         VARCHAR(20) UNIQUE NOT NULL,          -- Branded HR quick-share code (e.g. "OM-7K9P2X")
+    organization_id     UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    inviter_user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    inviter_employee_id UUID NOT NULL REFERENCES organization_employees(id) ON DELETE CASCADE,
+    invitee_user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    position            VARCHAR(100) NOT NULL,
+    department          VARCHAR(100) NULL,
+    manager_employee_id UUID NOT NULL REFERENCES organization_employees(id) ON DELETE RESTRICT,
+    role                VARCHAR(50) NOT NULL DEFAULT 'MEMBER',
+    salary              NUMERIC(12, 2) NULL,
+    status              VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    expires_at          TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX idx_invitations_code ON organization_invitations(invite_code);
+CREATE INDEX idx_invitations_invitee ON organization_invitations(invitee_user_id);
+CREATE INDEX idx_invitations_org ON organization_invitations(organization_id);
+CREATE UNIQUE INDEX uq_org_pending_invite 
+    ON organization_invitations(organization_id, invitee_user_id) 
+    WHERE status = 'PENDING';
+```
+
+#### Column Details:
+| Column Name | Data Type | Constraints | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | `UUID` | `PRIMARY KEY` | Unique invitation record ID. |
+| **`invite_code`** | `VARCHAR(20)` | `UNIQUE, NOT NULL` | **Branded quick-access code (`OM-XXXXXX`) for HRs to share directly.** |
+| `organization_id` | `UUID` | `FK -> organizations(id)` | Target organization. |
+| `inviter_user_id` | `UUID` | `FK -> users(id)` | User who created the invitation. |
+| `inviter_employee_id` | `UUID` | `FK -> organization_employees(id)` | Employment record of the inviter. |
+| `invitee_user_id` | `UUID` | `FK -> users(id)` | **Direct FK to the registered OMeet user being invited.** |
+| `position` | `VARCHAR(100)` | `NOT NULL` | Job title offered. |
+| `department` | `VARCHAR(100)` | `NULLABLE` | Department name. |
+| `manager_employee_id` | `UUID` | `FK -> organization_employees(id)` | **Assigned direct senior (restricted to inviter or their subordinates).** |
+| `role` | `VARCHAR(50)` | `DEFAULT 'MEMBER'` | Role offered (`MEMBER` or `ADMIN`). |
+| `salary` | `NUMERIC(12, 2)` | `NULLABLE` | Optional proposed salary. |
+| `status` | `VARCHAR(20)` | `DEFAULT 'PENDING'` | Lifecycle: `PENDING`, `ACCEPTED`, `REJECTED`, `EXPIRED`, `CANCELLED`. |
+| **`expires_at`** | `TIMESTAMPTZ` | `NOT NULL` | **Expiration timestamp chosen by HR (3, 7, 14, or 30 days).** |
+| `created_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Date invitation sent. |
+| `updated_at` | `TIMESTAMPTZ` | `DEFAULT NOW()` | Date invitation accepted/rejected. |
 
 ---
 

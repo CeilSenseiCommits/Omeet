@@ -47,7 +47,7 @@ router.post("/", async (req: Request, res: Response) => {
 
     const newOrg = orgResult.rows[0];
 
-    // 2. Insert creator into organization_employees as OWNER
+    // 2. Insert creator into organization_employees as OWNER with has_permission = true
     const empResult = await client.query(
       `INSERT INTO organization_employees (
          organization_id,
@@ -55,10 +55,11 @@ router.post("/", async (req: Request, res: Response) => {
          position,
          role,
          status,
+         has_permission,
          joining_date,
          last_accessed_at
        )
-       VALUES ($1, $2, $3, 'OWNER', 'ACTIVE', CURRENT_DATE, NOW())
+       VALUES ($1, $2, $3, 'OWNER', 'ACTIVE', TRUE, CURRENT_DATE, NOW())
        RETURNING *;`,
       [newOrg.id, userId, position.trim()]
     );

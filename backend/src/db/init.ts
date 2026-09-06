@@ -70,6 +70,7 @@ export async function initializeDatabase() {
         position VARCHAR(100) NOT NULL,
         role VARCHAR(50) NOT NULL DEFAULT 'MEMBER',
         salary NUMERIC(12, 2) NULL,
+        has_permission BOOLEAN NOT NULL DEFAULT FALSE,
         joining_date DATE NOT NULL DEFAULT CURRENT_DATE,
         resignation_date DATE NULL,
         last_accessed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -81,6 +82,45 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_org_employees_user ON organization_employees(user_id);
       CREATE INDEX IF NOT EXISTS idx_org_employees_org ON organization_employees(organization_id);
       CREATE INDEX IF NOT EXISTS idx_org_employees_manager ON organization_employees(manager_employee_id);
+    `);
+
+    console.log("Applying schema migrations for organization_employees (has_permission)...");
+    await client.query(`
+      ALTER TABLE organization_employees ADD COLUMN IF NOT EXISTS has_permission BOOLEAN NOT NULL DEFAULT FALSE;
+      UPDATE organization_employees SET has_permission = TRUE WHERE role = 'OWNER';
+    `);
+
+    console.log("Creating 'organization_invitations' table if not exists...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS organization_invitations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        invite_code VARCHAR(20) UNIQUE NOT NULL,
+        organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        inviter_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        inviter_employee_id UUID NOT NULL REFERENCES organization_employees(id) ON DELETE CASCADE,
+        invitee_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        position VARCHAR(100) NOT NULL,
+        department VARCHAR(100) NULL,
+        manager_employee_id UUID NOT NULL REFERENCES organization_employees(id) ON DELETE RESTRICT,
+        role VARCHAR(50) NOT NULL DEFAULT 'MEMBER',
+        salary NUMERIC(12, 2) NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days'),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_invitations_invitee ON organization_invitations(invitee_user_id);
+      CREATE INDEX IF NOT EXISTS idx_invitations_org ON organization_invitations(organization_id);
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_org_pending_invite 
+        ON organization_invitations(organization_id, invitee_user_id) 
+        WHERE status = 'PENDING';
+    `);
+
+    console.log("Applying schema migrations for organization_invitations (invite_code, expires_at)...");
+    await client.query(`
+      ALTER TABLE organization_invitations ADD COLUMN IF NOT EXISTS invite_code VARCHAR(20);
+      ALTER TABLE organization_invitations ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '7 days');
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_invitations_code ON organization_invitations(invite_code);
     `);
 
     // Check if initial demo users exist; if not, seed them

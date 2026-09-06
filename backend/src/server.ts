@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import userRoutes from "./routes/userRoutes";
 import organizationRoutes from "./routes/organizationRoutes";
+import invitationRoutes from "./routes/invitationRoutes";
 import { initializeDatabase } from "./db/init";
 
 dotenv.config();
@@ -16,6 +17,8 @@ app.use(express.json());
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);
+app.use("/api/organizations/:id/invitations", invitationRoutes);
+app.use("/api/invitations", invitationRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

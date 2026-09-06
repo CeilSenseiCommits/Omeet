@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { validateInvitationCode } from "../lib/mockData";
 
 interface JoinOrganizationModalProps {
@@ -11,6 +12,7 @@ function JoinOrganizationModal({
   open,
   onClose,
 }: JoinOrganizationModalProps) {
+  const { user } = useAuth();
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -22,9 +24,35 @@ function JoinOrganizationModal({
     if (!inviteCode.trim()) return;
     setError(null);
     setLoading(true);
-    
+
+    const cleanCode = inviteCode.trim().toUpperCase();
+
+    // 1. Try real backend API with account exclusivity check
     try {
-      const response = await validateInvitationCode(inviteCode.trim());
+      const res = await fetch(`http://localhost:5000/api/invitations/code/${cleanCode}`, {
+        headers: {
+          "x-user-id": user?.id || "",
+        },
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.isValid && data.invitationId) {
+        navigate(`/invitation-preview/${data.invitationId}`);
+        onClose();
+        return;
+      } else {
+        setError(data.error || "Invalid or expired invitation code.");
+        setLoading(false);
+        return;
+      }
+    } catch (backendErr) {
+      console.warn("Backend unavailable, falling back to mock validator:", backendErr);
+    }
+
+    // 2. Mock fallback
+    try {
+      const response = await validateInvitationCode(cleanCode);
       if (response.isValid && response.invitationId) {
         navigate(`/invitation-preview/${response.invitationId}`);
         onClose();

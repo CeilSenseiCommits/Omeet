@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import NotificationBell from "./NotificationBell";
-import { notifications } from "../lib/mockData";
+import { notifications, type Notification } from "../lib/mockData";
 import { useAuth } from "../context/AuthContext";
 import { LogOut, ShieldCheck, User } from "lucide-react";
 
@@ -16,10 +16,47 @@ function TopHeader() {
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [activeNotificationTab, setActiveNotificationTab] = useState<"incoming" | "outgoing">("incoming");
+  const [incomingList, setIncomingList] = useState<Notification[]>(() =>
+    notifications.filter((item) => item.direction === "incoming")
+  );
   const location = useLocation();
   const isHomePage = location.pathname === "/";
 
-  const incomingNotifications = notifications.filter((item) => item.direction === "incoming");
+  // Automatically fetch pending database invitations for the authenticated user on login
+  useEffect(() => {
+    async function fetchUserInvitations() {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`http://localhost:5000/api/invitations/user/${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.invitations) && data.invitations.length > 0) {
+            const mappedInvites: Notification[] = data.invitations.map((inv: any) => ({
+              id: `inv_${inv.id}`,
+              type: "ORG_INVITATION",
+              title: `${inv.organizationName} Invitation`,
+              message: `${inv.inviterName} invited you to join ${inv.organizationName} as ${inv.position}. Reports to ${inv.managerName}.`,
+              createdAt: new Date(inv.createdAt).toLocaleDateString(),
+              direction: "incoming",
+              status: "UNREAD",
+              invitationId: inv.id,
+            }));
+
+            setIncomingList((prev) => {
+              const newIds = new Set(mappedInvites.map((m) => m.id));
+              const filteredOld = prev.filter((p) => !newIds.has(p.id));
+              return [...mappedInvites, ...filteredOld];
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Could not query user invitations:", err);
+      }
+    }
+
+    fetchUserInvitations();
+  }, [user?.id]);
+
   const outgoingNotifications = notifications.filter((item) => item.direction === "outgoing");
 
   const displayName = user?.name || "Suryansh";
@@ -66,7 +103,7 @@ function TopHeader() {
       <div className="flex items-center gap-4">
         <SearchBar />
         <NotificationBell
-          incoming={incomingNotifications}
+          incoming={incomingList}
           outgoing={outgoingNotifications}
           isOpen={isNotificationsOpen}
           activeTab={activeNotificationTab}

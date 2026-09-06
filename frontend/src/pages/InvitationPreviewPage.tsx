@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import {
   acceptInvitation,
   declineInvitation,
@@ -23,6 +24,7 @@ import {
 function InvitationPreviewPage() {
   const { invitationId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [invitation, setInvitation] = useState<ReceiverInvitation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,12 +34,81 @@ function InvitationPreviewPage() {
   useEffect(() => {
     async function fetchInvitation() {
       if (!invitationId) return;
+      setLoading(true);
+      setError(null);
+
+      // 1. Try real PostgreSQL backend with account exclusivity verification
+      try {
+        const res = await fetch(`http://localhost:5000/api/invitations/${invitationId}`, {
+          headers: {
+            "x-user-id": user?.id || "",
+          },
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.invitation) {
+          const inv = data.invitation;
+          setInvitation({
+            invitationId: inv.id,
+            code: inv.inviteCode || "OM-OFFER",
+            organization: {
+              id: inv.organizationId,
+              name: inv.organizationName,
+              description: inv.organizationDescription || inv.organizationBrief || "Workspace",
+              industry: "Technology",
+              size: "10-50",
+            },
+            invitee: {
+              id: user?.id || "u_1",
+              name: user?.name || "Candidate",
+              username: user?.username || "user",
+            },
+            position: inv.position,
+            department: inv.department || "Core Workspace",
+            employmentType: "Full-time",
+            joiningDate: new Date().toISOString().split("T")[0],
+            directSenior: {
+              id: inv.managerEmployeeId || "mgr_id",
+              name: inv.managerName,
+              position: inv.managerPosition,
+            },
+            mentor: {
+              id: inv.managerEmployeeId || "mgr_id",
+              name: inv.managerName,
+              position: inv.managerPosition,
+            },
+            inviter: {
+              id: inv.inviterUserId || "inv_id",
+              name: inv.inviterName,
+              role: "Inviting Authority",
+              email: "inviter@omeet.app",
+              phone: "Verified Account",
+            },
+            contactEmail: "support@omeet.app",
+            contactPhone: "+91 9876543210",
+            status: (inv.status === "PENDING" ? "PENDING" : inv.status) as "PENDING" | "ACCEPTED" | "DECLINED" | "EXPIRED",
+            createdAt: new Date(inv.createdAt).toLocaleDateString(),
+            expiresAt: inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : "In 7 days",
+          });
+          setLoading(false);
+          return;
+        } else if (res.status === 403) {
+          setError(data.error || "This invitation was issued exclusively to a different account.");
+          setLoading(false);
+          return;
+        }
+      } catch (backendErr) {
+        console.warn("Backend unavailable, falling back to mock invitation:", backendErr);
+      }
+
+      // 2. Mock fallback
       try {
         const data = await getInvitationById(invitationId);
         if (data) {
           setInvitation(data);
         } else {
-          setError("Invitation not found.");
+          setError("Invitation not found or has expired.");
         }
       } catch (err) {
         setError("Failed to load invitation details.");
@@ -45,15 +116,45 @@ function InvitationPreviewPage() {
         setLoading(false);
       }
     }
+
     fetchInvitation();
-  }, [invitationId]);
+  }, [invitationId, user?.id]);
 
   const handleAccept = async () => {
     if (!invitationId || !invitation) return;
     setActionLoading(true);
+
+    // 1. Try real backend
+    try {
+      const res = await fetch(`http://localhost:5000/api/invitations/${invitationId}/respond`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user?.id || "",
+        },
+        body: JSON.stringify({
+          action: "ACCEPT",
+          userId: user?.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setInvitation({ ...invitation, status: "ACCEPTED" });
+        setTimeout(() => {
+          navigate(data.organizationId ? `/organization/${data.organizationId}` : "/");
+        }, 800);
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend error accepting, falling back to mock:", err);
+    }
+
+    // 2. Mock fallback
     try {
       await acceptInvitation(invitationId);
       setInvitation({ ...invitation, status: "ACCEPTED" });
+      setTimeout(() => navigate("/"), 800);
     } catch (err) {
       alert("Failed to accept invitation.");
     } finally {
@@ -64,6 +165,31 @@ function InvitationPreviewPage() {
   const handleDecline = async () => {
     if (!invitationId || !invitation) return;
     setActionLoading(true);
+
+    // 1. Try real backend
+    try {
+      const res = await fetch(`http://localhost:5000/api/invitations/${invitationId}/respond`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": user?.id || "",
+        },
+        body: JSON.stringify({
+          action: "REJECT",
+          userId: user?.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setInvitation({ ...invitation, status: "DECLINED" });
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend error declining, falling back to mock:", err);
+    }
+
+    // 2. Mock fallback
     try {
       await declineInvitation(invitationId);
       setInvitation({ ...invitation, status: "DECLINED" });

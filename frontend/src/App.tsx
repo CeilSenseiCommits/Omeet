@@ -8,6 +8,7 @@ import CreateOrganization from "./pages/CreateOrganization";
 import PublicProfilePage from "./pages/PublicProfilePage";
 import InvitationPage from "./pages/InvitationPage";
 import InvitationPreviewPage from "./pages/InvitationPreviewPage";
+import InviteToOrganization from "./pages/InviteToOrganization";
 import LoginPage from "./pages/LoginPage";
 
 const GOOGLE_CLIENT_ID =
@@ -53,6 +54,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <OrgWorkspaceLayout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/organization/:organizationId/invite"
+            element={
+              <ProtectedRoute>
+                <InviteToOrganization />
               </ProtectedRoute>
             }
           />
