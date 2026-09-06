@@ -203,6 +203,23 @@ export async function initializeDatabase() {
       ALTER TABLE organization_meetings ALTER COLUMN organization_id DROP NOT NULL;
       ALTER TABLE organization_meetings ADD COLUMN IF NOT EXISTS is_hierarchical BOOLEAN NOT NULL DEFAULT TRUE;
       ALTER TABLE organization_meetings ADD COLUMN IF NOT EXISTS meeting_type VARCHAR(20) NOT NULL DEFAULT 'INSTANT';
+      ALTER TABLE conversations ALTER COLUMN organization_id DROP NOT NULL;
+    `);
+
+    console.log("Creating 'friendships' table if not exists...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS friendships (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sender_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT uq_friendship_pair UNIQUE (sender_user_id, receiver_user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_friendships_sender ON friendships(sender_user_id);
+      CREATE INDEX IF NOT EXISTS idx_friendships_receiver ON friendships(receiver_user_id);
+      CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status);
     `);
 
     console.log("Creating 'meeting_participants' table if not exists...");

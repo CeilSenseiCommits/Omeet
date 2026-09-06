@@ -11,6 +11,7 @@ import InvitationPreviewPage from "./pages/InvitationPreviewPage";
 import InviteToOrganization from "./pages/InviteToOrganization";
 import MeetingRoomPage from "./pages/MeetingRoomPage";
 import LoginPage from "./pages/LoginPage";
+import OrgPublicProfilePage from "./pages/OrgPublicProfilePage";
 
 const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID ||
@@ -95,6 +96,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <MeetingRoomPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/org-profile/:id"
+            element={
+              <ProtectedRoute>
+                <OrgPublicProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/organization-profile/:id"
+            element={
+              <ProtectedRoute>
+                <OrgPublicProfilePage />
               </ProtectedRoute>
             }
           />

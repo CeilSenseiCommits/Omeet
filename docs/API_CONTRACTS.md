@@ -606,3 +606,66 @@ Responds to a meeting invitation (`ACCEPT` or `DECLINE`).
 
 ### GET /api/organizations/:id/meetings
 Returns ongoing, upcoming, and recently ended meetings for the organization dashboard `MeetingsTab`. Executes auto-clean rules before returning.
+
+### GET /api/organizations/:id/public
+Returns public organization metadata, founder info, public channels, member count, active meetings, and member roster preview for the public organization profile page (`/org-profile/:id`).
+
+### GET /api/meetings/user/:userId
+Returns user meetings across all organizations and personal spaces:
+- `upcoming`: Scheduled meetings with countdown / datetime.
+- `active`: Live ongoing meetings.
+- `recent`: Concluded meetings with duration and participant count.
+
+---
+
+## Friends & Personal Collaboration APIs
+
+### GET /api/friends
+Returns all accepted friends of the user with their profile info, primary organization affiliation, and status.
+
+### GET /api/friends/requests
+Returns pending friend requests:
+- `incoming`: Requests sent to the caller with sender details and inline action targets.
+- `sent`: Requests the caller sent to others with status `PENDING`.
+- `pendingCount`: Total incoming requests for notification badges.
+
+### POST /api/friends/request
+Sends a friend request to a target user (`targetUserId`). Prevents duplicate or self requests.
+
+### POST /api/friends/requests/:id/respond
+Accepts or declines a friend request (`action: "ACCEPT" | "DECLINE"`).
+
+### POST /api/friends/chat/:friendUserId
+Finds or creates a personal 1-on-1 direct conversation (`type = 'DIRECT'`, `organization_id = NULL`) with a friend and returns `conversationId`.
+
+---
+
+## Personal Chat & Personal Groups APIs
+
+### GET /api/personal/conversations
+Returns personal conversations for the home page People and Groups views, including friend DMs and personal groups with live unread message counts and last message previews.
+
+### GET /api/personal/conversations/:convId/messages
+Loads message history for a personal conversation and automatically marks messages read for the requesting user (`last_read_at = NOW()`).
+
+### POST /api/personal/conversations/:convId/messages
+Sends a message to a personal conversation.
+
+### POST /api/personal/conversations/:convId/read
+Marks a personal conversation as read.
+
+### POST /api/personal/groups
+Creates a personal group not bound to an organization (`organization_id = NULL`), adds creator as `OWNER`, enrolls selected friends as `MEMBER`, and emits a system audit message.
+
+### GET /api/personal/groups/:convId/details
+Returns group metadata, member roster with roles (`OWNER`, `ADMIN`, `MEMBER`), and available friends who can be added.
+
+### POST /api/personal/groups/:convId/participants
+Adds friends to a personal group.
+
+### DELETE /api/personal/groups/:convId/participants/:targetUserId
+Removes a member from a personal group or processes self-leave.
+
+### DELETE /api/personal/groups/:convId
+Permanently deletes a personal group (creator only).
+

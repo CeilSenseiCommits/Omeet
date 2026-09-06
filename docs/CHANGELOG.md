@@ -4,7 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- **Hierarchy Mode Toggle for Organization Meetings**:
+- **Home Page Multi-Workspace System**:
+  - Implemented 6 dedicated workspaces accessible via the Left Navigation Rail: **Dashboard**, **Organizations**, **Meetings**, **People**, **Groups**, and **Notifications**.
+  - **Exclusive View Switching**: Selecting an item removes others and renders that view exclusively; clicking the active item keeps it selected with no default fallback.
+- **Dedicated Friend Requests Center**:
+  - Added `FriendRequestBell` in the top header beside the notification bell with an unread incoming request counter.
+  - Dropdown drawer featuring **Received** (with inline Accept & Decline actions) and **Sent** tabs, plus an inline "+ Add Friend" search dialog.
+  - Automatically dispatches `friends-updated` event to refresh personal friends lists across views.
+- **Personal Space ("People" View)**:
+  - Built a complete personal collaboration hub not bound to any organization.
+  - Displays user's friends with avatars, handles, and organization affiliations.
+  - Integrated full 1-on-1 personal direct chat with message history, optimistic sending, and timestamps.
+  - Added "Invite to Meet" trigger to launch open video meetings directly with friends.
+- **Public Organization Profile Page (`/org-profile/:id` & `/organization-profile/:id`)**:
+  - Dedicated public profile page showcasing organization banner, logo, founder/owner card, description, employee metrics, public channels, and team preview.
+  - Connected to `GET /api/organizations/:id/public`.
+- **Detailed Organizations Home View**:
+  - Displays rich organization cards with active metrics, position/role badges, "More Info" (navigates to public org profile), and "Go to Dashboard" (`/organization/:id`).
+  - Integrated "Create Organization" and "Join with Code" actions.
+- **Meetings Hub & Meeting Scheduling**:
+  - Added **Instant vs. Scheduled** meeting timing toggle in `CreatePublicMeetingModal` with date/time picker and confirmation screen.
+  - "Meetings" home view featuring: "Create Meeting", "Join with Code", **Upcoming Meetings** (with countdown/datetime), and **Recently Ended Meetings**.
+  - Connected to `GET /api/meetings/user/:userId`.
+- **Personal / Global Groups Workspace**:
+  - Group creation with friends outside organizations (`organization_id = NULL`).
+  - Interactive group chat, system activity announcements, Group Info modal with member roster and role badges, and "Start Group Meeting" video call launcher.
+- **Unified Notifications View**:
+  - Full-page notifications center aggregating Organization Invitations, Meeting Invitations, and Friend Requests with inline Accept and Decline actions.
   - Meeting creation in organization workspaces now includes a dedicated **Hierarchy Mode Toggle** (`is_hierarchical: boolean`).
   - Hierarchy mode defaults to **OFF** (`false`), allowing non-hierarchical open discussions by default while enabling strict hierarchical permissions when requested.
 - **Home Page Non-Hierarchical Meeting Creation & Invitation Modal**:

@@ -706,8 +706,64 @@ To prevent abandoned or forgotten meetings from staying perpetually `LIVE` or `S
 ### 11.3 Recently Ended Meetings Feed
 - Concluded meetings are queried via `GET /api/organizations/:id/meetings/recent` and displayed in the **Recently Ended** carousel on the organization dashboard.
 - Displays meeting title, host name, duration, participant count, and conclusion timestamp.
+---
 
+## 12. Home Page Multi-Workspace Architecture & Personal Collaboration Hub
 
+### 12.1 Left Navigation Rail & Exclusive View Switching
+The main application dashboard navigation rail (`SidebarNav.tsx`) provides 6 primary destinations:
+1. **Dashboard** (`'dashboard'`): The default overview with organization carousel, quick meeting actions, and recent activity.
+2. **Organizations** (`'organizations'`): Expanded organization management view showing cards for all affiliated organizations with "More Info" and "Go to Dashboard".
+3. **Meetings** (`'meetings'`): Dedicated meetings hub providing "Create Meeting" (with Instant vs. Scheduled options), "Upcoming Meetings", and "Recently Ended Meetings".
+4. **People** (`'people'`): Personal 1-on-1 collaboration space (not bound by any organization) with friends list, real-time direct chat, friend discovery, and "Invite to Meet" video meeting generator.
+5. **Groups** (`'groups'`): Personal groups workspace for collaborative group discussions outside of corporate organizations, complete with group chat, member management, and video meeting launcher.
+6. **Notifications** (`'notifications'`): Full-page unified notification center aggregating organization invitations, meeting invitations, and friend requests with inline actions.
 
+**Exclusive View Switching Rule**:
+- Navigating to any view completely swaps the dashboard center/main content into that exclusive view.
+- Re-clicking the currently active option maintains the active view rather than toggling it off or reverting to an empty state.
 
+---
+
+### 12.2 Personal Collaboration Hub (`PeopleView`)
+Unlike the organization dashboard where interactions are strictly scoped to verified employees of that company, the **People** workspace provides a global personal communication space:
+- **Friends Roster**: Shows all confirmed friends with online status and quick action icons (Open Chat, Start Meeting).
+- **Direct 1-on-1 Chat**: Full chat stream powered by `conversations`, `conversation_participants`, and `messages` with `organization_id = NULL`. Features message input, auto-scroll, unread count clearing, and instant meeting launch.
+- **Invite to Meet**: Instant video meeting generator that auto-generates a public meeting code (`OM-XXXXXX`), opens the meeting modal, and dispatches meeting invites directly to the selected friend.
+- **Add Friend Modal**: Allows searching any registered OMeet user by username, full name, or email and sending a friend request with duplicate prevention.
+
+---
+
+### 12.3 Friend Requests & Dedicated Notification Bell (`FriendRequestBell`)
+To ensure personal networking requests do not get lost in organizational alerts:
+- A dedicated **Friend Request Bell** (`FriendRequestBell.tsx`) is positioned directly alongside the main notification bell in the top navigation bar.
+- Features a real-time pending counter badge.
+- **Dropdown Tabs**:
+  - **Received**: Displays pending incoming friend requests with instant **Accept** (`POST /api/friends/requests/:id/respond` with `status: 'ACCEPTED'`) and **Decline** (`status: 'DECLINED'`) buttons.
+  - **Sent**: Displays pending sent friend requests awaiting approval.
+- Header includes a quick **"+ Add Friend"** button opening the user search modal.
+
+---
+
+### 12.4 Organization Public Profile Page (`OrgPublicProfilePage`)
+In addition to individual user public profiles (`/profile/:id`), organizations have a public storefront (`/org-profile/:id` and `/organization-profile/:id`):
+- Accessible from the "More info" button on organization cards in the Organizations view, or from public search results.
+- **Header & Branding**: Shows organization banner, logo avatar, verified badge, company name, industry, location, and employee count.
+- **Company About & Vision**: Detailed mission statement and description.
+- **Leadership & Founder Section**: Highlights company leadership and founder details with clickable links to their personal profiles.
+- **Public Communication Channels**: Lists public channels (e.g., `# general`, `# random`) open for collaboration.
+- **Team Roster Preview**: Shows active organization members with job titles.
+- **Action Controls**: "Go to Workspace" for affiliated members, and "Request to Join" for prospective candidates.
+
+---
+
+### 12.5 Home Meeting Hub & Scheduling (`CreatePublicMeetingModal` & `HomeMeetingsView`)
+The Home Page meeting suite matches organizational capabilities while maintaining an open, non-hierarchical structure:
+- **Instant vs. Scheduled Selector**:
+  - **Instant Meeting**: Creates a live room immediately (`started_at = NOW()`), generates a copyable code, and redirects the host straight into the video room.
+  - **Scheduled Meeting**: Enables a native date-time picker (`datetime-local`) with minimum datetime set to the current moment. Creates a `SCHEDULED` record in `organization_meetings` (with `organization_id = NULL`), schedules invitations for invited friends, and displays a confirmation card with the scheduled timestamp and meeting code.
+- **Home Meetings Hub (`HomeMeetingsView`)**:
+  - Displays **Upcoming Meetings** with countdowns, host information, scheduled dates, and instant "Join Meeting" CTA.
+  - Displays **Recently Ended Meetings** with duration, participant counts, and conclusion timestamps.
+  - Quick launcher to initiate a new meeting directly from the hub.
 

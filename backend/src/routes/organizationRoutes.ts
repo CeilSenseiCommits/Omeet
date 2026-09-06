@@ -266,6 +266,96 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/organizations/:id/public
+ * Returns public organization profile data
+ */
+router.get("/:id/public", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = (req.headers["x-user-id"] as string) || (req.query.userId as string);
+
+    const orgRes = await query(
+      `SELECT o.id, o.name, o.avatar_url, o.brief, o.description, o.size, o.employee_count, o.owner_id, o.created_at,
+              u.name AS owner_name, u.username AS owner_username, u.avatar_url AS owner_avatar_url
+       FROM organizations o
+       LEFT JOIN users u ON u.id = o.owner_id
+       WHERE o.id = $1 LIMIT 1;`,
+      [id]
+    );
+
+    if (orgRes.rows.length === 0) {
+      return res.status(404).json({ error: "Organization not found." });
+    }
+
+    const org = orgRes.rows[0];
+
+    // Live public channels
+    const channelsRes = await query(
+      `SELECT name, topic FROM conversations WHERE organization_id = $1 AND type = 'CHANNEL' AND is_private = FALSE ORDER BY name ASC;`,
+      [id]
+    );
+
+    // Active public members (top 12)
+    const membersRes = await query(
+      `SELECT u.id, u.name, u.username, u.avatar_url, oe.position, oe.department, oe.role
+       FROM organization_employees oe
+       JOIN users u ON u.id = oe.user_id
+       WHERE oe.organization_id = $1 AND oe.status = 'ACTIVE'
+       ORDER BY CASE WHEN oe.role = 'OWNER' THEN 1 WHEN oe.role = 'ADMIN' THEN 2 ELSE 3 END, u.name ASC
+       LIMIT 12;`,
+      [id]
+    );
+
+    // Active live meetings count
+    const liveMeetingsRes = await query(
+      `SELECT COUNT(*)::int AS count FROM organization_meetings WHERE organization_id = $1 AND status = 'LIVE';`,
+      [id]
+    );
+
+    // Check if caller is member
+    let isMember = false;
+    let userRole = null;
+    if (userId) {
+      const memberCheck = await query(
+        `SELECT role FROM organization_employees WHERE organization_id = $1 AND user_id = $2 AND status = 'ACTIVE' LIMIT 1;`,
+        [id, userId]
+      );
+      if (memberCheck.rows.length > 0) {
+        isMember = true;
+        userRole = memberCheck.rows[0].role;
+      }
+    }
+
+    return res.status(200).json({
+      organization: {
+        id: org.id,
+        name: org.name,
+        avatarUrl: org.avatar_url,
+        brief: org.brief,
+        description: org.description || org.brief || "No description provided.",
+        size: org.size,
+        employeeCount: org.employee_count,
+        owner: {
+          id: org.owner_id,
+          name: org.owner_name,
+          username: org.owner_username,
+          avatarUrl: org.owner_avatar_url,
+        },
+        createdAt: org.created_at,
+        activeMeetings: liveMeetingsRes.rows[0]?.count || 0,
+        channels: channelsRes.rows,
+        topMembers: membersRes.rows,
+        isMember,
+        userRole,
+      },
+    });
+  } catch (err) {
+    console.error("Failed to load public organization profile:", err);
+    return res.status(500).json({ error: "Failed to load public profile." });
+  }
+});
+
+/**
  * GET /api/organizations/:id/conversations
  * Returns channels, direct messages, and groups for OrgSidebar
  */

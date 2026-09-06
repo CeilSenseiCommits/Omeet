@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import NotificationBell from "./NotificationBell";
+import FriendRequestBell from "./FriendRequestBell";
 import { useAuth } from "../context/AuthContext";
 import { LogOut, ShieldCheck } from "lucide-react";
 import type { IncomingInvitation, OutgoingInvitation, MeetingInvitation } from "../types/invitation";
@@ -98,6 +99,7 @@ function TopHeader() {
 
       <div className="flex items-center gap-4">
         <SearchBar />
+        <FriendRequestBell onRefresh={fetchInvitations} />
         <NotificationBell
           incoming={incomingInvites}
           outgoing={outgoingInvites}

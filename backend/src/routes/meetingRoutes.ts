@@ -482,11 +482,18 @@ router.post("/join", async (req: Request, res: Response) => {
 
 /**
  * POST /api/meetings/public
- * Creates an open non-hierarchical meeting without organization binding
+ * Creates an open non-hierarchical meeting without organization binding (Instant or Scheduled)
  */
 router.post("/public", async (req: Request, res: Response) => {
   try {
-    const { title, userId, meetingCode: customCode, participantUserIds } = req.body;
+    const { 
+      title, 
+      userId, 
+      meetingCode: customCode, 
+      participantUserIds,
+      meetingType = "INSTANT",
+      scheduledAt
+    } = req.body;
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: "Meeting title is required." });
@@ -503,6 +510,11 @@ router.post("/public", async (req: Request, res: Response) => {
       meetingCode = `OM-${meetingCode}`;
     }
 
+    const isScheduled = meetingType === "SCHEDULED";
+    const status = isScheduled ? "SCHEDULED" : "LIVE";
+    const schedTime = isScheduled && scheduledAt ? new Date(scheduledAt) : new Date();
+    const startTime = isScheduled ? null : new Date();
+
     const insertResult = await query(
       `INSERT INTO organization_meetings (
          organization_id,
@@ -516,9 +528,9 @@ router.post("/public", async (req: Request, res: Response) => {
          scheduled_at,
          started_at
        )
-       VALUES (NULL, $1, $2, $3, 'LIVE', 'PUBLIC', FALSE, 'INSTANT', NOW(), NOW())
+       VALUES (NULL, $1, $2, $3, $4, 'PUBLIC', FALSE, $5, $6, $7)
        RETURNING *;`,
-      [meetingCode, title.trim(), userId]
+      [meetingCode, title.trim(), userId, status, meetingType, schedTime, startTime]
     );
 
     const meeting = insertResult.rows[0];
@@ -556,11 +568,176 @@ router.post("/public", async (req: Request, res: Response) => {
         meetingCode: meeting.meeting_code,
         title: meeting.title,
         status: meeting.status,
+        meetingType: meeting.meeting_type,
+        scheduledAt: meeting.scheduled_at,
       },
     });
   } catch (error) {
     console.error("Failed to create public meeting:", error);
     return res.status(500).json({ error: "Failed to create meeting." });
+  }
+});
+
+/**
+ * GET /api/meetings/user/:userId
+ * Returns upcoming, recent, and active meetings across all organizations & personal meetings for user
+ */
+router.get("/user/:userId", async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    // Run auto-clean rules
+    await autoCleanExpiredMeetings();
+
+    // 1. Upcoming meetings
+    const upcomingRes = await query(
+      `SELECT DISTINCT
+         m.id,
+         m.meeting_code,
+         m.title,
+         m.status,
+         m.scheduled_at,
+         m.started_at,
+         m.is_hierarchical,
+         m.scope,
+         m.meeting_type,
+         m.organization_id,
+         o.name AS organization_name,
+         u_host.id AS host_id,
+         u_host.name AS host_name,
+         u_host.avatar_url AS host_avatar_url
+       FROM organization_meetings m
+       LEFT JOIN organizations o ON o.id = m.organization_id
+       JOIN users u_host ON u_host.id = m.host_user_id
+       LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
+       LEFT JOIN meeting_invitations mi ON mi.meeting_id = m.id AND mi.invitee_user_id = $1
+       WHERE (m.host_user_id = $1 OR mp.user_id = $1 OR (mi.invitee_user_id = $1 AND mi.status != 'DECLINED'))
+         AND m.status = 'SCHEDULED'
+         AND m.scheduled_at >= NOW() - INTERVAL '15 minutes'
+       ORDER BY m.scheduled_at ASC;`,
+      [userId]
+    );
+
+    // 2. Active live meetings
+    const activeRes = await query(
+      `SELECT DISTINCT
+         m.id,
+         m.meeting_code,
+         m.title,
+         m.status,
+         m.scheduled_at,
+         m.started_at,
+         m.is_hierarchical,
+         m.scope,
+         m.meeting_type,
+         m.organization_id,
+         o.name AS organization_name,
+         u_host.id AS host_id,
+         u_host.name AS host_name,
+         u_host.avatar_url AS host_avatar_url,
+         (
+           SELECT COUNT(*)::int FROM meeting_participants p WHERE p.meeting_id = m.id AND p.left_at IS NULL
+         ) AS active_count
+       FROM organization_meetings m
+       LEFT JOIN organizations o ON o.id = m.organization_id
+       JOIN users u_host ON u_host.id = m.host_user_id
+       LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
+       WHERE (m.host_user_id = $1 OR mp.user_id = $1)
+         AND m.status = 'LIVE'
+       ORDER BY m.started_at DESC;`,
+      [userId]
+    );
+
+    // 3. Recently ended meetings
+    const recentRes = await query(
+      `SELECT DISTINCT
+         m.id,
+         m.meeting_code,
+         m.title,
+         m.status,
+         m.scheduled_at,
+         m.started_at,
+         m.ended_at,
+         m.is_hierarchical,
+         m.scope,
+         m.organization_id,
+         o.name AS organization_name,
+         u_host.id AS host_id,
+         u_host.name AS host_name,
+         u_host.avatar_url AS host_avatar_url,
+         (
+           SELECT COUNT(*)::int FROM meeting_participants p WHERE p.meeting_id = m.id
+         ) AS participant_count
+       FROM organization_meetings m
+       LEFT JOIN organizations o ON o.id = m.organization_id
+       JOIN users u_host ON u_host.id = m.host_user_id
+       LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
+       WHERE (m.host_user_id = $1 OR mp.user_id = $1)
+         AND m.status = 'ENDED'
+       ORDER BY m.ended_at DESC NULLS LAST
+       LIMIT 15;`,
+      [userId]
+    );
+
+    return res.status(200).json({
+      upcoming: upcomingRes.rows.map((row) => ({
+        id: row.id,
+        meetingCode: row.meeting_code,
+        title: row.title,
+        status: row.status,
+        scheduledAt: row.scheduled_at,
+        isHierarchical: row.is_hierarchical,
+        organizationName: row.organization_name || "Open Meeting",
+        organizationId: row.organization_id,
+        host: {
+          id: row.host_id,
+          name: row.host_name,
+          avatarUrl: row.host_avatar_url,
+        },
+      })),
+      active: activeRes.rows.map((row) => ({
+        id: row.id,
+        meetingCode: row.meeting_code,
+        title: row.title,
+        status: row.status,
+        startedAt: row.started_at,
+        activeCount: Number(row.active_count || 1),
+        isHierarchical: row.is_hierarchical,
+        organizationName: row.organization_name || "Open Meeting",
+        organizationId: row.organization_id,
+        host: {
+          id: row.host_id,
+          name: row.host_name,
+          avatarUrl: row.host_avatar_url,
+        },
+      })),
+      recent: recentRes.rows.map((row) => {
+        const start = row.started_at ? new Date(row.started_at).getTime() : 0;
+        const end = row.ended_at ? new Date(row.ended_at).getTime() : 0;
+        const durationMins = start && end && end > start ? Math.round((end - start) / (60 * 1000)) : 0;
+
+        return {
+          id: row.id,
+          meetingCode: row.meeting_code,
+          title: row.title,
+          status: row.status,
+          endedAt: row.ended_at,
+          duration: `${durationMins} min`,
+          participantCount: Number(row.participant_count || 1),
+          isHierarchical: row.is_hierarchical,
+          organizationName: row.organization_name || "Open Meeting",
+          organizationId: row.organization_id,
+          host: {
+            id: row.host_id,
+            name: row.host_name,
+            avatarUrl: row.host_avatar_url,
+          },
+        };
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to fetch user meetings:", error);
+    return res.status(500).json({ error: "Failed to load meetings." });
   }
 });
 

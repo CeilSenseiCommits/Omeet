@@ -5,6 +5,8 @@ import userRoutes from "./routes/userRoutes";
 import organizationRoutes from "./routes/organizationRoutes";
 import invitationRoutes from "./routes/invitationRoutes";
 import meetingRoutes from "./routes/meetingRoutes";
+import friendRoutes from "./routes/friendRoutes";
+import personalChatRoutes from "./routes/personalChatRoutes";
 import { initializeDatabase } from "./db/init";
 
 dotenv.config();
@@ -21,6 +23,8 @@ app.use("/api/organizations", organizationRoutes);
 app.use("/api/organizations/:id/invitations", invitationRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/meetings", meetingRoutes);
+app.use("/api/friends", friendRoutes);
+app.use("/api/personal", personalChatRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

@@ -21,6 +21,10 @@ export interface Organization {
   lastActivity: string;
   initials: string;
   accent: string;
+  avatarUrl?: string;
+  role?: string;
+  size?: string;
+  employeeCount?: number;
 }
 
 export interface ActivityItem {

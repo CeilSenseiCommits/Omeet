@@ -577,5 +577,35 @@ CREATE INDEX idx_messages_sender ON messages(sender_id);
    - Group Admins can add members via `POST /participants` or remove members via `DELETE /participants/:targetUserId`.
    - When a group is deleted (`DELETE /conversations/:convId`), PostgreSQL's `ON DELETE CASCADE` automatically removes all `conversation_participants` and all associated `messages` cleanly.
 
+---
+
+## Table 13: friendships
+
+Stores personal friend connections and friend requests between users, enabling 1-on-1 personal messaging and personal meeting invitations outside organizational boundaries.
+
+```sql
+CREATE TABLE IF NOT EXISTS friendships (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status              VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- 'PENDING', 'ACCEPTED', 'DECLINED'
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_friendship_pair UNIQUE (sender_user_id, receiver_user_id)
+);
+
+CREATE INDEX idx_friendships_sender ON friendships(sender_user_id);
+CREATE INDEX idx_friendships_receiver ON friendships(receiver_user_id);
+CREATE INDEX idx_friendships_status ON friendships(status);
+```
+
+### Key Rules & Behavior
+- **Account Independence**: Friendships are personal peer relationships not tied to any organization.
+- **Direction & Lifecycle**:
+  - Sent: `status = 'PENDING'` with `sender_user_id` pointing to requester.
+  - Accepted: `status = 'ACCEPTED'`. Once accepted, both users appear in each other's friends roster.
+  - Declined: `status = 'DECLINED'`.
+- **Personal Conversations**: When two friends chat, a conversation row is created in `conversations` with `organization_id = NULL` and `type = 'DIRECT'`.
+
 
 

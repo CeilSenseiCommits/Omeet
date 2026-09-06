@@ -48,6 +48,16 @@ function CreatePublicMeetingModal({ isOpen, onClose }: CreatePublicMeetingModalP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Timing: Instant vs Scheduled
+  const [timingOption, setTimingOption] = useState<"INSTANT" | "SCHEDULED">("INSTANT");
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    d.setMinutes(0, 0, 0);
+    const localIso = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    return localIso;
+  });
+  const [scheduledSuccess, setScheduledSuccess] = useState(false);
+
   // Initialize fresh meeting code and title when opening
   useEffect(() => {
     if (!isOpen) return;
@@ -62,6 +72,8 @@ function CreatePublicMeetingModal({ isOpen, onClose }: CreatePublicMeetingModalP
     setSearchResults([]);
     setError(null);
     setIsSubmitting(false);
+    setTimingOption("INSTANT");
+    setScheduledSuccess(false);
   }, [isOpen, user?.name]);
 
   // Live user search effect
@@ -158,6 +170,8 @@ function CreatePublicMeetingModal({ isOpen, onClose }: CreatePublicMeetingModalP
           meetingCode,
           participantUserIds: invitedUsers.map((u) => u.id),
           userId: user.id,
+          meetingType: timingOption,
+          scheduledAt: timingOption === "SCHEDULED" ? new Date(scheduledDate).toISOString() : null,
         }),
       });
 
@@ -166,8 +180,13 @@ function CreatePublicMeetingModal({ isOpen, onClose }: CreatePublicMeetingModalP
         throw new Error(data.error || "Failed to create meeting.");
       }
 
-      onClose();
-      navigate(`/meeting/${meetingCode}`);
+      if (timingOption === "SCHEDULED") {
+        setIsSubmitting(false);
+        setScheduledSuccess(true);
+      } else {
+        onClose();
+        navigate(`/meeting/${meetingCode}`);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to start meeting.");
       setIsSubmitting(false);
@@ -198,66 +217,157 @@ function CreatePublicMeetingModal({ isOpen, onClose }: CreatePublicMeetingModalP
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleStartMeeting} className="flex-1 overflow-y-auto p-6 space-y-5">
-          {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
+        {scheduledSuccess ? (
+          <div className="p-8 text-center space-y-5">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <Sparkles className="h-7 w-7" />
             </div>
-          )}
-
-          {/* Meeting Code Banner */}
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
-                Your Meeting Code
-              </span>
-              <span className="flex items-center gap-1 text-[11px] text-emerald-300/80">
-                <Sparkles className="h-3 w-3" /> Ready to share
-              </span>
+            <div>
+              <h4 className="text-lg font-bold text-white">Meeting Scheduled!</h4>
+              <p className="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                Your meeting <span className="text-white font-medium">"{title}"</span> has been scheduled for{" "}
+                <span className="text-emerald-400 font-medium">
+                  {new Date(scheduledDate).toLocaleString()}
+                </span>.
+              </p>
             </div>
 
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-zinc-950/80 px-4 py-3">
-              <span className="font-mono text-lg font-bold tracking-widest text-emerald-300">
-                {meetingCode}
-              </span>
-              <div className="flex items-center gap-1.5">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-4 space-y-2 max-w-sm mx-auto">
+              <span className="text-[11px] uppercase tracking-wider text-zinc-400 font-semibold">Meeting Code</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-base font-bold text-emerald-300">{meetingCode}</span>
                 <button
                   type="button"
                   onClick={handleCopyCode}
-                  className="flex items-center gap-1.5 rounded-lg border border-emerald-700/50 bg-emerald-950/80 px-2.5 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-900 transition"
-                  title="Copy meeting code"
+                  className="flex items-center gap-1.5 rounded-lg border border-emerald-700/50 bg-emerald-950/80 px-2.5 py-1 text-xs text-emerald-200 hover:bg-emerald-900 transition"
                 >
-                  {copiedCode ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                  <span>{copiedCode ? "Copied" : "Copy Code"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 transition"
-                  title="Copy direct invite link"
-                >
-                  {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Link2 className="h-3.5 w-3.5" />}
-                  <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
+                  {copiedCode ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  <span>{copiedCode ? "Copied" : "Copy"}</span>
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Meeting Title */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
-              Meeting Title *
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Design Review, Coffee Chat"
-              className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500 transition"
-              required
-            />
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-500 py-2.5 text-xs font-semibold text-white transition shadow-lg shadow-emerald-950/50"
+              >
+                Done
+              </button>
+            </div>
           </div>
+        ) : (
+          <form onSubmit={handleStartMeeting} className="flex-1 overflow-y-auto p-6 space-y-5">
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Timing Toggle: Instant vs Scheduled */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                Meeting Timing
+              </label>
+              <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-1">
+                <button
+                  type="button"
+                  onClick={() => setTimingOption("INSTANT")}
+                  className={`rounded-xl py-2 text-xs font-semibold transition ${
+                    timingOption === "INSTANT"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Start Instantly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimingOption("SCHEDULED")}
+                  className={`rounded-xl py-2 text-xs font-semibold transition ${
+                    timingOption === "SCHEDULED"
+                      ? "bg-emerald-600 text-white shadow-md"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  Schedule for Later
+                </button>
+              </div>
+            </div>
+
+            {/* Date & Time Picker when Scheduled */}
+            {timingOption === "SCHEDULED" && (
+              <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-300">
+                  Select Date & Time *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={scheduledDate}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500 transition"
+                  required
+                />
+                <p className="text-[11px] text-zinc-500">
+                  Participants will be notified and this meeting will appear under your Upcoming Meetings.
+                </p>
+              </div>
+            )}
+
+            {/* Meeting Code Banner */}
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                  Your Meeting Code
+                </span>
+                <span className="flex items-center gap-1 text-[11px] text-emerald-300/80">
+                  <Sparkles className="h-3 w-3" /> Ready to share
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-zinc-950/80 px-4 py-3">
+                <span className="font-mono text-lg font-bold tracking-widest text-emerald-300">
+                  {meetingCode}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1.5 rounded-lg border border-emerald-700/50 bg-emerald-950/80 px-2.5 py-1.5 text-xs font-medium text-emerald-200 hover:bg-emerald-900 transition"
+                    title="Copy meeting code"
+                  >
+                    {copiedCode ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                    <span>{copiedCode ? "Copied" : "Copy Code"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className="flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 transition"
+                    title="Copy direct invite link"
+                  >
+                    {copiedLink ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Link2 className="h-3.5 w-3.5" />}
+                    <span>{copiedLink ? "Link Copied" : "Copy Link"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Meeting Title */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-1.5">
+                Meeting Title *
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Design Review, Coffee Chat"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500 transition"
+                required
+              />
+            </div>
 
           {/* Invite Colleagues / Friends Section */}
           <div className="space-y-3">
@@ -374,6 +484,7 @@ function CreatePublicMeetingModal({ isOpen, onClose }: CreatePublicMeetingModalP
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

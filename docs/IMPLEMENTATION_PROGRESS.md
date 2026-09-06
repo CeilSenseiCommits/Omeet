@@ -76,8 +76,21 @@
 - Host meeting termination ("End for All") vs. participant "Leave Meeting" (`POST /end` & `POST /leave`)
 - Automated meeting expiration engine (20-minute no-show past scheduled time and 10-minute abandonment grace period)
 - Recently ended meetings carousel bar on the organization dashboard connected to `GET /api/organizations/:id/meetings/recent`
+- Provisioned `friendships` table on PostgreSQL and relaxed `conversations.organization_id` foreign key constraint to support non-organization personal direct and group messaging
+- Implemented Friends backend API (`GET /api/friends`, `GET /api/friends/requests`, `POST /api/friends/request`, `POST /api/friends/requests/:id/respond`, and `POST /api/friends/chat/:friendUserId`)
+- Implemented Personal Conversations & Groups API (`/api/personal/conversations`, `/api/personal/groups`, member management, message stream, and unread count clearing)
+- Implemented Organization Public Profile API (`GET /api/organizations/:id/public`) and frontend page (`/org-profile/:id` and `/organization-profile/:id`)
+- Implemented Home Page multi-view rail switching (`dashboard`, `organizations`, `meetings`, `people`, `groups`, `notifications`) with exclusive view retention
+- Created Personal Collaboration Hub (`PeopleView`) with friends roster, 1-on-1 direct chat, "+ Add Friend" modal, and "Invite to Meet" public meeting launcher
+- Created Personal Groups Workspace (`GroupsView`) with group creation, group messaging, member roster management, and group video meeting launcher
+- Created dedicated Friend Request Bell (`FriendRequestBell`) beside the main notification bell with real-time pending counter, Received/Sent tabs, and inline Accept/Decline actions
+- Created Organization Hub view (`HomeOrganizationsView`) with detailed organization cards, "More Info", and "Go to Dashboard"
+- Created Home Meetings Hub (`HomeMeetingsView`) with Create Meeting launcher, Upcoming Meetings list, and Recently Ended Meetings list
+- Added Instant vs. Scheduled timing mode to the Home Page Create Meeting modal (`CreatePublicMeetingModal`) with native `datetime-local` picker and scheduled confirmation card
+- Created unified Full-Page Notifications Center (`HomeNotificationsView`) aggregating org invites, meeting invites, and friend requests with inline action handling
 
 ## In Progress
+
 
 - Audio/Video meeting room connection within organization meetings
 - Organization files repository and meeting recording storage
