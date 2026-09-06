@@ -34,7 +34,14 @@
 - Accept/decline mock actions with dummy state tracking
 - Google OAuth Login Page (`/login`)
 - App-wide route authentication guard (`ProtectedRoute`) and session persistence
+- 1-Step User Profile Onboarding Card with real-time unique username handle validation
+- Avatar selector supporting Google profile picture and dynamic initial badge avatars
 - User profile header integration with Sign Out functionality
+- Node.js + Express TypeScript backend initialization (`backend/`)
+- PostgreSQL database schema migrations & initialization script (`init.ts`) for users, organizations, invitations, roles, channels, and meetings
+- Backend user endpoints: Google OAuth token exchange, real-time username availability check, profile completion, and profile retrieval
+- Backend organization endpoints: user organization listing and organization creation
+- Master System Documentation (`docs/DOCUMENTATION.md`) and Database Schema Specification (`docs/DATABASE_SCHEMA.md`)
 
 - Dashboard shell, organization carousel, and organization-card routing
 - Shared `AppLayout` with global search, navigation rail, and utility rail
@@ -49,7 +56,7 @@
 
 ## In Progress
 
-- Backend API wiring and persistence
+- Frontend-to-backend live API wiring (connecting `mockApi` consumers to Express backend)
 - Member roster and files data sources
 - Meeting room interactions and realtime meeting state
 
