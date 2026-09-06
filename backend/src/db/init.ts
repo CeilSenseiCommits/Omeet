@@ -156,6 +156,24 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_conv_participants_conv ON conversation_participants(conversation_id);
     `);
 
+    console.log("Creating 'messages' table if not exists...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+        sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        message_type VARCHAR(20) NOT NULL DEFAULT 'TEXT',
+        attachments JSONB DEFAULT '[]'::jsonb,
+        reply_to_id UUID NULL REFERENCES messages(id) ON DELETE SET NULL,
+        is_edited BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_messages_conv_created ON messages(conversation_id, created_at ASC);
+      CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+    `);
+
     console.log("Creating 'organization_meetings' table if not exists...");
     await client.query(`
       CREATE TABLE IF NOT EXISTS organization_meetings (

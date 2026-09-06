@@ -778,6 +778,233 @@ router.get("/:id/members", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/organizations/:id/conversations/:convId/messages
+ * Retrieves conversation metadata and chronological messages
+ */
+router.get("/:id/conversations/:convId/messages", async (req: Request, res: Response) => {
+  try {
+    const { id: orgId, convId } = req.params;
+    const requestingUserId = (req.headers["x-user-id"] as string) || (req.query.userId as string);
+
+    // 1. Fetch conversation details
+    const convResult = await query(
+      `SELECT id, organization_id, type, name, topic, is_private, created_by, created_at, updated_at
+       FROM conversations
+       WHERE id = $1 AND organization_id = $2
+       LIMIT 1;`,
+      [convId, orgId]
+    );
+
+    if (convResult.rows.length === 0) {
+      return res.status(404).json({ error: "Conversation not found." });
+    }
+
+    const conv = convResult.rows[0];
+
+    // 2. Fetch participant info / recipient info
+    let recipient: any = null;
+    let participantCount = 0;
+
+    const participantsResult = await query(
+      `SELECT cp.user_id, cp.role, u.name, u.username, u.avatar_url, u.email, u.phone, oe.position, oe.department
+       FROM conversation_participants cp
+       JOIN users u ON u.id = cp.user_id
+       LEFT JOIN organization_employees oe ON oe.user_id = u.id AND oe.organization_id = $1
+       WHERE cp.conversation_id = $2;`,
+      [orgId, convId]
+    );
+
+    participantCount = participantsResult.rows.length;
+
+    if (conv.type === "DIRECT") {
+      const otherPerson = participantsResult.rows.find((p) => p.user_id !== requestingUserId);
+      if (otherPerson) {
+        recipient = {
+          id: otherPerson.user_id,
+          name: otherPerson.name,
+          username: otherPerson.username,
+          avatarUrl: otherPerson.avatar_url,
+          email: otherPerson.email,
+          phone: otherPerson.phone,
+          position: otherPerson.position || "Member",
+          department: otherPerson.department || "Core Workspace",
+        };
+      } else if (participantsResult.rows.length > 0) {
+        // Chatting with self or single participant fallback
+        const p = participantsResult.rows[0];
+        recipient = {
+          id: p.user_id,
+          name: p.name,
+          username: p.username,
+          avatarUrl: p.avatar_url,
+          email: p.email,
+          phone: p.phone,
+          position: p.position || "Member",
+          department: p.department || "Core Workspace",
+        };
+      }
+    }
+
+    // 3. Fetch messages in chronological order
+    const messagesResult = await query(
+      `SELECT 
+         m.id,
+         m.conversation_id,
+         m.sender_id,
+         m.content,
+         m.message_type,
+         m.attachments,
+         m.reply_to_id,
+         m.is_edited,
+         m.created_at,
+         u.name AS sender_name,
+         u.username AS sender_username,
+         u.avatar_url AS sender_avatar_url,
+         oe.position AS sender_position
+       FROM messages m
+       JOIN users u ON u.id = m.sender_id
+       LEFT JOIN organization_employees oe ON oe.user_id = u.id AND oe.organization_id = $1
+       WHERE m.conversation_id = $2
+       ORDER BY m.created_at ASC
+       LIMIT 150;`,
+      [orgId, convId]
+    );
+
+    const messages = messagesResult.rows.map((row) => ({
+      id: row.id,
+      conversationId: row.conversation_id,
+      senderId: row.sender_id,
+      senderName: row.sender_name,
+      senderUsername: row.sender_username,
+      senderAvatarUrl: row.sender_avatar_url,
+      senderPosition: row.sender_position,
+      content: row.content,
+      messageType: row.message_type,
+      attachments: row.attachments || [],
+      replyToId: row.reply_to_id,
+      isEdited: row.is_edited,
+      createdAt: row.created_at,
+    }));
+
+    // 4. Update last_read_at for the requesting user
+    if (requestingUserId) {
+      await query(
+        `UPDATE conversation_participants
+         SET last_read_at = NOW()
+         WHERE conversation_id = $1 AND user_id = $2;`,
+        [convId, requestingUserId]
+      );
+    }
+
+    return res.status(200).json({
+      conversation: {
+        id: conv.id,
+        type: conv.type,
+        name: conv.name,
+        topic: conv.topic,
+        isPrivate: conv.is_private,
+        participantCount,
+      },
+      recipient,
+      messages,
+    });
+  } catch (error) {
+    console.error("Failed to load conversation messages:", error);
+    return res.status(500).json({ error: "Failed to load messages." });
+  }
+});
+
+/**
+ * POST /api/organizations/:id/conversations/:convId/messages
+ * Sends a message in a conversation
+ */
+router.post("/:id/conversations/:convId/messages", async (req: Request, res: Response) => {
+  try {
+    const { id: orgId, convId } = req.params;
+    const requestingUserId = (req.headers["x-user-id"] as string) || req.body.userId;
+    const { content, messageType = "TEXT", attachments = [] } = req.body;
+
+    if (!requestingUserId) {
+      return res.status(401).json({ error: "User authentication required." });
+    }
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: "Message content cannot be empty." });
+    }
+
+    // 1. Verify conversation belongs to organization
+    const convCheck = await query(
+      "SELECT id FROM conversations WHERE id = $1 AND organization_id = $2 LIMIT 1;",
+      [convId, orgId]
+    );
+    if (convCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Conversation not found." });
+    }
+
+    // 2. Ensure user is in conversation_participants
+    await query(
+      `INSERT INTO conversation_participants (conversation_id, user_id, role)
+       VALUES ($1, $2, 'MEMBER')
+       ON CONFLICT (conversation_id, user_id) DO NOTHING;`,
+      [convId, requestingUserId]
+    );
+
+    // 3. Insert message
+    const insertResult = await query(
+      `INSERT INTO messages (conversation_id, sender_id, content, message_type, attachments)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, conversation_id, sender_id, content, message_type, attachments, is_edited, created_at;`,
+      [convId, requestingUserId, content.trim(), messageType, JSON.stringify(attachments)]
+    );
+
+    const newMsg = insertResult.rows[0];
+
+    // 4. Update conversation updated_at
+    await query(
+      "UPDATE conversations SET updated_at = NOW() WHERE id = $1;",
+      [convId]
+    );
+
+    // 5. Update user's last_read_at
+    await query(
+      "UPDATE conversation_participants SET last_read_at = NOW() WHERE conversation_id = $1 AND user_id = $2;",
+      [convId, requestingUserId]
+    );
+
+    // 6. Fetch sender details for clean response
+    const senderResult = await query(
+      `SELECT u.name, u.username, u.avatar_url, oe.position
+       FROM users u
+       LEFT JOIN organization_employees oe ON oe.user_id = u.id AND oe.organization_id = $1
+       WHERE u.id = $2
+       LIMIT 1;`,
+      [orgId, requestingUserId]
+    );
+    const sender = senderResult.rows[0] || {};
+
+    return res.status(201).json({
+      message: {
+        id: newMsg.id,
+        conversationId: newMsg.conversation_id,
+        senderId: newMsg.sender_id,
+        senderName: sender.name || "Member",
+        senderUsername: sender.username || "user",
+        senderAvatarUrl: sender.avatar_url,
+        senderPosition: sender.position,
+        content: newMsg.content,
+        messageType: newMsg.message_type,
+        attachments: newMsg.attachments,
+        isEdited: newMsg.is_edited,
+        createdAt: newMsg.created_at,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to send message:", error);
+    return res.status(500).json({ error: "Failed to send message." });
+  }
+});
+
 export default router;
 
 

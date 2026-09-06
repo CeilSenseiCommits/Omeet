@@ -16,6 +16,7 @@ import JoinMeetingModal from "./JoinMeetingModal";
 import CreateGroupModal from "./CreateGroupModal";
 import OrgEmployeeProfileModal from "./OrgEmployeeProfileModal";
 import OrgInvitationsTab from "./OrgInvitationsTab";
+import OrgChatView from "./chat/OrgChatView";
 import MeetingsTab from "./MeetingsTab";
 import OrgHeader from "./OrgHeader";
 import OrgSidebar from "./OrgSidebar";
@@ -225,49 +226,53 @@ function OrgWorkspaceLayout() {
             directMessages={directMessagesList} 
             groups={groupsList} 
             allMembers={membersList}
-            onSelectConversation={setSelectedConversationId}
+            selectedConversationId={selectedConversationId}
+            onSelectConversation={(id) => setSelectedConversationId((prev) => (prev === id ? null : id))}
             onOpenCreateGroup={() => setIsCreateGroupModalOpen(true)}
             onSelectColleague={handleStartDirectMessage}
           />
         </div>
 
-        {/* Column B: Center Content */}
-        <section className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-800/60 bg-[#111113]">
-          {/* Navigation Bar at the top of the center content */}
-          <div className="sticky top-0 z-20 border-b border-zinc-800/60 bg-[#111113]/95 backdrop-blur-md px-8 pt-4">
-            <div className="flex gap-8">
-              {centerTabs.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.name}
-                    type="button"
-                    onClick={() => {
-                      setActiveTab(tab.name);
-                      setSelectedConversationId(null);
-                    }}
-                    className={`flex items-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors ${
-                      activeTab === tab.name && !selectedConversationId
-                        ? "border-fuchsia-500 text-white"
-                        : "border-transparent text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {tab.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+        {/* When a conversation is selected, OrgChatView overlays Center Content + Right Sidebar */}
+        {selectedConversationId ? (
+          <OrgChatView 
+            organizationId={organization.id}
+            conversationId={selectedConversationId}
+            onClose={() => setSelectedConversationId(null)}
+            onViewProfile={(employee) => setSelectedEmployeeForModal(employee)}
+            onStartMeeting={() => setIsCreateModalOpen(true)}
+          />
+        ) : (
+          <>
+            {/* Column B: Center Content */}
+            <section className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-zinc-800/60 bg-[#111113]">
+              {/* Navigation Bar at the top of the center content */}
+              <div className="sticky top-0 z-20 border-b border-zinc-800/60 bg-[#111113]/95 backdrop-blur-md px-8 pt-4">
+                <div className="flex gap-8">
+                  {centerTabs.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <button
+                        key={tab.name}
+                        type="button"
+                        onClick={() => {
+                          setActiveTab(tab.name);
+                        }}
+                        className={`flex items-center gap-2 border-b-2 py-3 text-sm font-semibold transition-colors ${
+                          activeTab === tab.name
+                            ? "border-fuchsia-500 text-white"
+                            : "border-transparent text-zinc-400 hover:text-zinc-200"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {tab.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          <div className="flex-1 px-8">
-            {selectedConversationId ? (
-              <WorkspacePlaceholder 
-                title={selectedConversationId} 
-                description="Chat layout will be connected to real-time conversation messaging." 
-              />
-            ) : (
-              <>
+              <div className="flex-1 px-8">
                 {activeTab === "Meetings" && (
                   <MeetingsTab 
                     ongoingMeetings={ongoingMeetingsList} 
@@ -391,17 +396,17 @@ function OrgWorkspaceLayout() {
                     </div>
                   </section>
                 )}
-              </>
-            )}
-          </div>
-        </section>
+              </div>
+            </section>
 
-        {/* Column C: Right Sidebar */}
-        <OrgRightSidebar 
-          organization={organization}
-          isCollapsed={rightPanelCollapsed}
-          onToggle={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-        />
+            {/* Column C: Right Sidebar */}
+            <OrgRightSidebar 
+              organization={organization}
+              isCollapsed={rightPanelCollapsed}
+              onToggle={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+            />
+          </>
+        )}
       </div>
 
       <CreateMeetingModal

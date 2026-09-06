@@ -445,3 +445,38 @@ CREATE INDEX idx_org_meetings_status ON organization_meetings(status);
 CREATE INDEX idx_org_meetings_scheduled ON organization_meetings(scheduled_at);
 ```
 
+---
+
+## 8. Real-Time Chat & Direct Messaging Schema
+
+### Table 8: `messages`
+Stores all chat communications sent within channels, team groups, and 1-on-1 direct messages.
+
+```sql
+CREATE TABLE messages (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id     UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content             TEXT NOT NULL,
+    message_type        VARCHAR(20) NOT NULL DEFAULT 'TEXT', -- 'TEXT' | 'FILE' | 'SYSTEM' | 'MEETING_LINK'
+    attachments         JSONB DEFAULT '[]'::jsonb,           -- [{ url, name, size, type }]
+    reply_to_id         UUID NULL REFERENCES messages(id) ON DELETE SET NULL,
+    is_edited           BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_messages_conv_created ON messages(conversation_id, created_at ASC);
+CREATE INDEX idx_messages_sender ON messages(sender_id);
+```
+
+#### Message Query Optimization:
+- **Composite Index `(conversation_id, created_at ASC)`**: Guarantees high-speed retrieval of chat history in chronological order without expensive sorting passes.
+- **Unread Tracking**: Calculated on-the-fly or via `last_read_at` on `conversation_participants`:
+  ```sql
+  SELECT COUNT(*) FROM messages m
+  WHERE m.conversation_id = cp.conversation_id
+    AND m.created_at > cp.last_read_at;
+  ```
+
+

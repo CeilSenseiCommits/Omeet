@@ -536,6 +536,42 @@ OMeet's notification center is specifically dedicated to real, database-backed o
 
 ---
 
+## 9. Organization Real-Time Chat & Direct Messaging Architecture
+
+### 9.1 Layout Overlay Strategy (Replacing Center & Right Bars)
+When a conversation (Direct Message, Team Group, or Public Channel) is opened from the left sidebar, OMeet does not navigate to a new page. Instead:
+- The **Chat Screen (`OrgChatView`)** expands across the entire remaining workspace area (`flex-1 min-w-0`), smoothly replacing the **Center Workspace (Tabs)** and the **Right Utility Sidebar**.
+- The **Left Sidebar (`OrgSidebar`)** remains fixed (`w-[280px]`), allowing employees to switch between conversations seamlessly.
+
+### 9.2 Toggle-to-Close Interaction & Dismissal
+- **Toggle on Click**: Clicking the name of the **currently open conversation** in the left sidebar toggles it closed, instantly restoring the Center Tabs (Meetings, Members, Invitations) and the Right Utility Sidebar.
+- **Header Dismissal**: A dedicated close (`✕`) button in the chat header allows one-click return to the workspace dashboard.
+- **Keyboard Dismissal**: Pressing the `Esc` key immediately closes the active chat screen.
+
+### 9.3 Tailored Experiences: Direct Message vs. Group Chat
+
+#### A. Direct Messages
+- **Recipient Identity**: Displays colleague's avatar, status, job title, and department.
+- **Quick Profile Insight**: Includes a "View Profile" action that opens their organization employee modal without losing chat context.
+- **Meeting Invite Shortcut**: An instant "Invite to Meeting" action generates a quick video meeting link and posts it directly into the conversation.
+
+#### B. Team Groups & Public Channels
+- **Team Identity**: Displays group initials/branding, group purpose / topic, and participant counter.
+- **Team Huddle Trigger**: Instant shortcut to start an organization meeting for all group members.
+
+### 9.4 API Specifications & REST Handshake
+1. **`GET /api/organizations/:id/conversations/:convId/messages`**:
+   - Validates membership and permissions.
+   - Returns recipient profile (for DMs) or group metadata (for groups).
+   - Returns chronological message history with sender avatar and handle.
+   - Automatically marks unread messages as read by setting `conversation_participants.last_read_at = NOW()`.
+2. **`POST /api/organizations/:id/conversations/:convId/messages`**:
+   - Accepts `{ content, messageType, attachments }`.
+   - Inserts into `messages` table and updates `conversations.updated_at = NOW()`.
+   - Optimistic UI updates on the client deliver an instant, lag-free chatting experience.
+
+---
+
 ## 8. Upcoming Architecture: Organization Workspace Dynamic Data System
 
 The next phase transitions the Organization Workspace from static mock data to PostgreSQL-backed entities:

@@ -61,11 +61,13 @@
 - Team Group creation modal (`CreateGroupModal`) integrated with `POST /api/organizations/:id/groups`
 - Permission-gated `Invitations` tab (`OrgInvitationsTab`) showing metrics and invitation audit logs with status badges and copyable codes
 - Interactive Member Directory search bar with live filtering and organization employee profile modal (`OrgEmployeeProfileModal`) with contact details, direct message trigger, and meeting invite actions
+- Real-time Group Chat and Direct Messaging overlay screen (`OrgChatView`) covering Center and Right bars with toggle-to-close on sidebar click, `Esc` dismiss, optimistic message sending, auto-scroll, and meeting shortcuts
+- Provisioned `messages` table on PostgreSQL with `GET` and `POST` message endpoints
 
 ## In Progress
 
-- Real-time chat messaging stream for channels, groups, and direct messages
 - Audio/Video meeting room connection within organization meetings
+- Organization files repository and meeting recording storage
 - Meeting room interface and audio/video WebRTC integration.
 - Organization files repository and meeting recording storage.
 

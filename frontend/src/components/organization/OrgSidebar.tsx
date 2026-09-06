@@ -8,6 +8,7 @@ interface OrgSidebarProps {
   directMessages: DirectMessage[];
   groups: OrganizationGroup[];
   allMembers?: any[];
+  selectedConversationId?: string | null;
   onSelectConversation: (id: string) => void;
   onOpenCreateGroup?: () => void;
   onSelectColleague?: (colleague: any) => void;
@@ -22,6 +23,7 @@ function OrgSidebar({
   directMessages,
   groups,
   allMembers = [],
+  selectedConversationId,
   onSelectConversation,
   onOpenCreateGroup,
   onSelectColleague,
@@ -122,28 +124,37 @@ function OrgSidebar({
                       <p className="mt-1 text-[11px] text-zinc-600">Search colleagues above to chat.</p>
                     </div>
                   ) : (
-                    filteredDms.map((dm) => (
-                      <button
-                        key={dm.id}
-                        onClick={() => onSelectConversation(dm.id)}
-                        className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors"
-                      >
-                        <span className="flex items-center gap-3 overflow-hidden">
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold text-white border border-zinc-700">
-                            {getInitials(dm.name)}
-                          </div>
-                          <span className="flex flex-col truncate">
-                            <span className="truncate font-medium">{dm.name}</span>
-                            <span className="text-[11px] text-zinc-500 truncate">{dm.role}</span>
+                    filteredDms.map((dm) => {
+                      const isActive = selectedConversationId === dm.id;
+                      return (
+                        <button
+                          key={dm.id}
+                          onClick={() => onSelectConversation(dm.id)}
+                          className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                            isActive
+                              ? "bg-fuchsia-950/70 border border-fuchsia-800/60 text-white shadow-sm"
+                              : "text-zinc-300 hover:bg-zinc-800/60 hover:text-white"
+                          }`}
+                        >
+                          <span className="flex items-center gap-3 overflow-hidden">
+                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white border ${
+                              isActive ? "bg-fuchsia-700 border-fuchsia-500" : "bg-zinc-800 border-zinc-700"
+                            }`}>
+                              {getInitials(dm.name)}
+                            </div>
+                            <span className="flex flex-col truncate">
+                              <span className="truncate font-medium">{dm.name}</span>
+                              <span className="text-[11px] text-zinc-500 truncate">{dm.role}</span>
+                            </span>
                           </span>
-                        </span>
-                        {dm.unreadCount > 0 && (
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
-                            {dm.unreadCount}
-                          </span>
-                        )}
-                      </button>
-                    ))
+                          {dm.unreadCount > 0 && (
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
+                              {dm.unreadCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
                   )
                 ) : (
                   /* When searching: show all matching colleagues from the organization with matching prefix */
@@ -243,25 +254,34 @@ function OrgSidebar({
                     </button>
                   </div>
                 ) : (
-                  filteredGroups.map((group) => (
-                    <button
-                      key={group.id}
-                      onClick={() => onSelectConversation(group.id)}
-                      className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors"
-                    >
-                      <span className="flex items-center gap-3 truncate">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-800 text-[10px] font-bold text-white border border-zinc-700">
-                          {getInitials(group.name)}
-                        </div>
-                        <span className="truncate font-medium">{group.name}</span>
-                      </span>
-                      {group.unreadCount > 0 && (
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
-                          {group.unreadCount}
+                  filteredGroups.map((group) => {
+                    const isActive = selectedConversationId === group.id;
+                    return (
+                      <button
+                        key={group.id}
+                        onClick={() => onSelectConversation(group.id)}
+                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                          isActive
+                            ? "bg-fuchsia-950/70 border border-fuchsia-800/60 text-white shadow-sm"
+                            : "text-zinc-300 hover:bg-zinc-800/60 hover:text-white"
+                        }`}
+                      >
+                        <span className="flex items-center gap-3 truncate">
+                          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[10px] font-bold text-white border ${
+                            isActive ? "bg-fuchsia-700 border-fuchsia-500" : "bg-zinc-800 border-zinc-700"
+                          }`}>
+                            {getInitials(group.name)}
+                          </div>
+                          <span className="truncate font-medium">{group.name}</span>
                         </span>
-                      )}
-                    </button>
-                  ))
+                        {group.unreadCount > 0 && (
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-black">
+                            {group.unreadCount}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
                 )}
               </div>
             </div>
@@ -301,23 +321,30 @@ function OrgSidebar({
               </div>
 
               <div className="flex-1 overflow-y-auto px-2 pb-2 hide-scrollbar" style={{ scrollbarWidth: 'none' }}>
-                {filteredRooms.map((room) => (
-                  <button
-                    key={room.id}
-                    onClick={() => onSelectConversation(room.id)}
-                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-800/60 hover:text-white transition-colors"
-                  >
-                    <span className="flex items-center gap-2 truncate">
-                      <span className="text-zinc-500 font-mono">#</span>
-                      <span className="truncate">{room.name}</span>
-                    </span>
-                    {room.unreadCount > 0 && (
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-fuchsia-600 text-[10px] font-bold text-white">
-                        {room.unreadCount}
+                {filteredRooms.map((room) => {
+                  const isActive = selectedConversationId === room.id;
+                  return (
+                    <button
+                      key={room.id}
+                      onClick={() => onSelectConversation(room.id)}
+                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                        isActive
+                          ? "bg-fuchsia-950/70 border border-fuchsia-800/60 text-white shadow-sm"
+                          : "text-zinc-300 hover:bg-zinc-800/60 hover:text-white"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 truncate">
+                        <span className={`font-mono ${isActive ? "text-fuchsia-400" : "text-zinc-500"}`}>#</span>
+                        <span className="truncate">{room.name}</span>
                       </span>
-                    )}
-                  </button>
-                ))}
+                      {room.unreadCount > 0 && (
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-fuchsia-600 text-[10px] font-bold text-white">
+                          {room.unreadCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

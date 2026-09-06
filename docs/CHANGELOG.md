@@ -27,12 +27,15 @@ All notable changes to this project will be documented in this file.
   - Searching direct messages dynamically queries all organization colleagues with matching prefix.
 - **Team Group Creation Modal**:
   - Added `CreateGroupModal` connected to `POST /api/organizations/:id/groups` for creating team/department channels with automated participant enrollment.
-- **Permission-Gated Organization Invitations Tab & Candidate Preview**:
-  - Added `Invitations` tab in workspace center navigation visible only to users with invitation permissions (`hasPermission = true` or `role = 'OWNER'/'ADMIN'`).
-  - Provides metrics cards (Total, Pending, Accepted, Declined) and audit table of invitations with copyable codes (`OM-XXXXXX`) and candidate metadata (`GET /api/organizations/:id/invitations/logs`).
-  - Added real-time search bar to search and filter by specific status (pending, accepted, declined/rejected, expired) alongside candidate name, position, department, and invite code.
-  - Added quick status filter pills (`All`, `Pending`, `Accepted`, `Declined`, `Expired`).
-  - Clicking any invitation row opens the exact invitation preview page (`/invitation-preview/:id`) as seen by the invitee, with sender authorization check and preview indicator.
+- **Group Chat & Direct Messaging Screen Overlay**:
+  - Implemented `OrgChatView` spanning the Center Workspace and Right Utility Bar (`flex-1 min-w-0`), preserving the Left Sidebar.
+  - Implemented toggle-to-close behavior: clicking the name of an opened conversation again in the left sidebar closes the chat screen and restores the Center Workspace (Meetings/Members/Invitations) and Right Utility Bar.
+  - Close button (`✕`) in chat header and `Esc` key keyboard shortcut seamlessly dismiss the chat screen.
+  - Active conversation indicator: Highlights the active conversation in `OrgSidebar` with glowing fuchsia border and background.
+  - Real-time chat streaming with chronological message history, date dividers, optimistic sending, and auto-scroll to latest messages.
+  - Direct Message mode: Displays recipient status, job title, department, "View Profile" shortcut, and 1-on-1 meeting trigger.
+  - Group Chat mode: Displays channel/group badge, topic, participant count, and team huddle meeting trigger.
+  - Provisioned `messages` table in PostgreSQL with composite index `(conversation_id, created_at ASC)` and endpoints `GET /api/organizations/:id/conversations/:convId/messages` & `POST /api/organizations/:id/conversations/:convId/messages`.
 
 - **Live Search Bar Integration**:
   - Connected `SearchBar.tsx` to live backend search (`GET /api/users/search?q=...`) querying Neon PostgreSQL.
