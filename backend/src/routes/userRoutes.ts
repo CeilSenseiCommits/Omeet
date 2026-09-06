@@ -299,7 +299,28 @@ router.get("/search", async (req: Request, res: Response) => {
          u.email,
          u.avatar_url,
          u.bio,
-         u.timezone
+         u.timezone,
+         COALESCE(
+           (
+             SELECT o.name 
+             FROM organization_employees oe 
+             JOIN organizations o ON o.id = oe.organization_id 
+             WHERE oe.user_id = u.id AND oe.status = 'ACTIVE' 
+             ORDER BY oe.created_at ASC 
+             LIMIT 1
+           ),
+           'OMeet Network'
+         ) AS organization,
+         COALESCE(
+           (
+             SELECT oe.position 
+             FROM organization_employees oe 
+             WHERE oe.user_id = u.id AND oe.status = 'ACTIVE' 
+             ORDER BY oe.created_at ASC 
+             LIMIT 1
+           ),
+           'Member'
+         ) AS position
        FROM users u
        WHERE (
          u.username ILIKE $1 
@@ -326,7 +347,7 @@ router.get("/search", async (req: Request, res: Response) => {
       username: row.username,
       email: row.email,
       avatarUrl: row.avatar_url,
-      initials: row.name
+      initials: (row.name || "User")
         .split(" ")
         .map((n: string) => n[0])
         .join("")
@@ -334,12 +355,80 @@ router.get("/search", async (req: Request, res: Response) => {
         .toUpperCase(),
       bio: row.bio,
       timezone: row.timezone,
+      organization: row.organization,
+      position: row.position,
     }));
 
     return res.status(200).json({ users });
   } catch (error) {
     console.error("User search error in PostgreSQL:", error);
     return res.status(500).json({ error: "Failed to search registered users." });
+  }
+});
+
+/**
+ * GET /api/users/profile/:userId
+ * Returns public user profile from PostgreSQL
+ */
+router.get("/profile/:userId", async (req: Request, res: Response) => {
+  try {
+    const rawId = (req.params.userId as string || "").trim();
+    if (!rawId) {
+      return res.status(400).json({ error: "User ID is required" });
+    }
+
+    const result = await query(
+      `SELECT * FROM users WHERE (id::text = $1 OR username = $1) LIMIT 1;`,
+      [rawId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const u = result.rows[0];
+
+    // Fetch active organizations
+    const orgsResult = await query(
+      `SELECT 
+         o.id AS organization_id,
+         o.name AS organization_name,
+         oe.position,
+         oe.role
+       FROM organization_employees oe
+       JOIN organizations o ON o.id = oe.organization_id
+       WHERE oe.user_id = $1 AND oe.status = 'ACTIVE'
+       ORDER BY oe.created_at ASC;`,
+      [u.id]
+    );
+
+    const primaryOrg = orgsResult.rows[0];
+
+    return res.status(200).json({
+      user: {
+        id: u.id,
+        name: u.name,
+        username: u.username,
+        email: u.email,
+        avatarUrl: u.avatar_url,
+        initials: (u.name || "User")
+          .split(" ")
+          .map((n: string) => n[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase(),
+        bio: u.bio || "Member of the OMeet collaboration ecosystem.",
+        location: u.timezone || "Global (UTC)",
+        timezone: u.timezone,
+        position: primaryOrg?.position || "Member",
+        organization: primaryOrg?.organization_name || "OMeet Network",
+        organizations: orgsResult.rows.map((r: any) => r.organization_name),
+        skills: ["Collaboration", "Real-Time Comms", "Team Productivity"],
+      },
+    });
+  } catch (error) {
+    console.error("Profile fetch error in PostgreSQL:", error);
+    return res.status(500).json({ error: "Failed to load user profile" });
   }
 });
 

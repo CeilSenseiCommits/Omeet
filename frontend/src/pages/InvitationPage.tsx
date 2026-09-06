@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
+import { useAuth } from "../context/AuthContext";
 import {
   invitationOrganizations,
   sendInvitation,
@@ -30,6 +31,21 @@ function getAvatarBadge(name: string) {
 export default function InvitationPage() {
   const { userId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (userId && user?.id) {
+      fetch(`http://localhost:5000/api/organizations/user/${user.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const orgs = data.organizations || [];
+          if (orgs.length > 0) {
+            navigate(`/organization/${orgs[0].id}/invite?candidateId=${userId}`, { replace: true });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [userId, user?.id, navigate]);
 
   const profile = users.find((user) => user.id === userId);
 
@@ -116,8 +132,10 @@ export default function InvitationPage() {
   if (!profile) {
     return (
       <AppLayout>
-        <div className="flex h-full items-center justify-center">
-          <p className="text-zinc-400">User not found.</p>
+        <div className="flex flex-col h-full items-center justify-center p-12 text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent mb-3" />
+          <p className="text-sm font-medium text-white">Opening Organization Invitation...</p>
+          <p className="text-xs text-zinc-500 mt-1">Connecting to workspace and preparing invitation form.</p>
         </div>
       </AppLayout>
     );

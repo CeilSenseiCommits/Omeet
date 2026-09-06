@@ -1,13 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import NotificationBell from "./NotificationBell";
-import { notifications, type Notification } from "../lib/mockData";
 import { useAuth } from "../context/AuthContext";
-import { LogOut, ShieldCheck, User } from "lucide-react";
+import { LogOut, ShieldCheck } from "lucide-react";
+import type { IncomingInvitation, OutgoingInvitation } from "../types/invitation";
 
 /**
- * The persistent header owns global identity and search controls.
+ * The persistent header owns global identity, live member search, and organization invitation notifications.
  * It connects to useAuth() to display the authenticated Google profile and provides a Sign Out action.
  */
 function TopHeader() {
@@ -16,48 +16,36 @@ function TopHeader() {
   const [isNotificationsOpen, setNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [activeNotificationTab, setActiveNotificationTab] = useState<"incoming" | "outgoing">("incoming");
-  const [incomingList, setIncomingList] = useState<Notification[]>(() =>
-    notifications.filter((item) => item.direction === "incoming")
-  );
+  const [incomingInvites, setIncomingInvites] = useState<IncomingInvitation[]>([]);
+  const [outgoingInvites, setOutgoingInvites] = useState<OutgoingInvitation[]>([]);
   const location = useLocation();
   const isHomePage = location.pathname === "/";
 
-  // Automatically fetch pending database invitations for the authenticated user on login
-  useEffect(() => {
-    async function fetchUserInvitations() {
-      if (!user?.id) return;
-      try {
-        const res = await fetch(`http://localhost:5000/api/invitations/user/${user.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.invitations) && data.invitations.length > 0) {
-            const mappedInvites: Notification[] = data.invitations.map((inv: any) => ({
-              id: `inv_${inv.id}`,
-              type: "ORG_INVITATION",
-              title: `${inv.organizationName} Invitation`,
-              message: `${inv.inviterName} invited you to join ${inv.organizationName} as ${inv.position}. Reports to ${inv.managerName}.`,
-              createdAt: new Date(inv.createdAt).toLocaleDateString(),
-              direction: "incoming",
-              status: "UNREAD",
-              invitationId: inv.id,
-            }));
-
-            setIncomingList((prev) => {
-              const newIds = new Set(mappedInvites.map((m) => m.id));
-              const filteredOld = prev.filter((p) => !newIds.has(p.id));
-              return [...mappedInvites, ...filteredOld];
-            });
-          }
-        }
-      } catch (err) {
-        console.warn("Could not query user invitations:", err);
+  // Query live invitations from Neon PostgreSQL database
+  const fetchInvitations = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      // 1. Fetch received pending invitations for user
+      const incomingRes = await fetch(`http://localhost:5000/api/invitations/user/${user.id}`);
+      if (incomingRes.ok) {
+        const data = await incomingRes.json();
+        setIncomingInvites(data.invitations || []);
       }
-    }
 
-    fetchUserInvitations();
+      // 2. Fetch sent invitations created by this user
+      const outgoingRes = await fetch(`http://localhost:5000/api/invitations/sent/${user.id}`);
+      if (outgoingRes.ok) {
+        const data = await outgoingRes.json();
+        setOutgoingInvites(data.invitations || []);
+      }
+    } catch (err) {
+      console.warn("Could not query live invitations:", err);
+    }
   }, [user?.id]);
 
-  const outgoingNotifications = notifications.filter((item) => item.direction === "outgoing");
+  useEffect(() => {
+    fetchInvitations();
+  }, [fetchInvitations]);
 
   const displayName = user?.name || "Suryansh";
   const displayEmail = user?.email || "suryansh@example.com";
@@ -103,15 +91,18 @@ function TopHeader() {
       <div className="flex items-center gap-4">
         <SearchBar />
         <NotificationBell
-          incoming={incomingList}
-          outgoing={outgoingNotifications}
+          incoming={incomingInvites}
+          outgoing={outgoingInvites}
           isOpen={isNotificationsOpen}
           activeTab={activeNotificationTab}
+          userId={user?.id}
           onToggle={() => {
             setNotificationsOpen((current) => !current);
             setIsProfileMenuOpen(false);
           }}
+          onClose={() => setNotificationsOpen(false)}
           onTabChange={(tab) => setActiveNotificationTab(tab)}
+          onRefresh={fetchInvitations}
         />
 
         {/* User Profile Menu with Sign Out */}

@@ -341,10 +341,15 @@ router.get("/user/:userId", async (req: Request, res: Response) => {
        JOIN users u_inviter ON u_inviter.id = oi.inviter_user_id
        JOIN organization_employees oe_manager ON oe_manager.id = oi.manager_employee_id
        JOIN users u_manager ON u_manager.id = oe_manager.user_id
-       WHERE oi.invitee_user_id = $1 
-         AND oi.status = 'PENDING'
-         AND (oi.expires_at IS NULL OR oi.expires_at > NOW())
-       ORDER BY oi.created_at DESC;`,
+        WHERE oi.invitee_user_id = $1 
+          AND (
+            (oi.status = 'PENDING' AND (oi.expires_at IS NULL OR oi.expires_at > NOW()))
+            OR oi.status IN ('ACCEPTED', 'REJECTED')
+          )
+        ORDER BY 
+          CASE WHEN oi.status = 'PENDING' THEN 1 ELSE 2 END,
+          oi.updated_at DESC
+        LIMIT 30;`,
       [userId]
     );
 
@@ -372,6 +377,61 @@ router.get("/user/:userId", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error fetching user invitations:", error);
     return res.status(500).json({ error: "Failed to query pending invitations." });
+  }
+});
+
+/**
+ * GET /api/invitations/sent/:userId
+ * Fetches invitations sent by the user (as an inviter / HR / manager)
+ */
+router.get("/sent/:userId", async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await query(
+      `SELECT 
+         oi.id,
+         oi.invite_code,
+         oi.organization_id,
+         oi.position,
+         oi.department,
+         oi.role,
+         oi.status,
+         oi.expires_at,
+         oi.created_at,
+         o.name AS organization_name,
+         u_invitee.name AS invitee_name,
+         u_invitee.username AS invitee_username,
+         u_invitee.avatar_url AS invitee_avatar_url
+       FROM organization_invitations oi
+       JOIN organizations o ON o.id = oi.organization_id
+       JOIN users u_invitee ON u_invitee.id = oi.invitee_user_id
+       WHERE oi.inviter_user_id = $1
+       ORDER BY oi.created_at DESC
+       LIMIT 30;`,
+      [userId]
+    );
+
+    const sentInvitations = result.rows.map((row) => ({
+      id: row.id,
+      inviteCode: row.invite_code,
+      organizationId: row.organization_id,
+      organizationName: row.organization_name,
+      position: row.position,
+      department: row.department,
+      role: row.role,
+      status: row.status,
+      expiresAt: row.expires_at,
+      createdAt: row.created_at,
+      inviteeName: row.invitee_name,
+      inviteeUsername: row.invitee_username,
+      inviteeAvatarUrl: row.invitee_avatar_url,
+    }));
+
+    return res.status(200).json({ invitations: sentInvitations });
+  } catch (error) {
+    console.error("Error fetching sent invitations:", error);
+    return res.status(500).json({ error: "Failed to query sent invitations." });
   }
 });
 

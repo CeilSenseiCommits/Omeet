@@ -49,6 +49,11 @@ function Dashboard() {
     }
 
     loadOrganizations();
+
+    window.addEventListener("organization-updated", loadOrganizations);
+    return () => {
+      window.removeEventListener("organization-updated", loadOrganizations);
+    };
   }, [user?.id]);
 
   const userDisplayName = user?.name || "User";

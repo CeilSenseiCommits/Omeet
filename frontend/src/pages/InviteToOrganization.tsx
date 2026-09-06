@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   ArrowLeft,
@@ -49,6 +49,8 @@ interface UserSearchResult {
 
 export default function InviteToOrganization() {
   const { organizationId } = useParams<{ organizationId: string }>();
+  const [searchParams] = useSearchParams();
+  const candidateId = searchParams.get("candidateId") || searchParams.get("userId");
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -130,6 +132,34 @@ export default function InviteToOrganization() {
 
     checkEligibility();
   }, [organizationId, user?.id]);
+
+  // 1.5 Automatically pre-select candidate if candidateId/userId is passed in URL
+  useEffect(() => {
+    if (!candidateId || selectedUser) return;
+
+    fetch(`http://localhost:5000/api/users/profile/${candidateId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Could not find candidate user");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.user) {
+          setSelectedUser({
+            id: data.user.id,
+            name: data.user.name,
+            username: data.user.username,
+            email: data.user.email,
+            avatarUrl: data.user.avatarUrl || "",
+            initials: data.user.initials,
+            bio: data.user.bio,
+            timezone: data.user.timezone || "UTC",
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not pre-load candidate user:", err);
+      });
+  }, [candidateId, selectedUser]);
 
   // 2. Debounced search for registered OMeet users
   useEffect(() => {
@@ -283,10 +313,16 @@ export default function InviteToOrganization() {
           <div className="mt-8 flex justify-center gap-4">
             <button
               type="button"
-              onClick={() => navigate(`/organization/${organizationId}`)}
+              onClick={() => {
+                if (candidateId || selectedUser?.id) {
+                  navigate(`/profile/${candidateId || selectedUser?.id}`);
+                } else {
+                  navigate("/");
+                }
+              }}
               className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black hover:bg-zinc-200 transition-colors"
             >
-              Back to Workspace
+              Return
             </button>
           </div>
         </div>
@@ -301,11 +337,17 @@ export default function InviteToOrganization() {
         <div>
           <button
             type="button"
-            onClick={() => navigate(`/organization/${organizationId}`)}
+            onClick={() => {
+              if (candidateId || selectedUser?.id) {
+                navigate(`/profile/${candidateId || selectedUser?.id}`);
+              } else {
+                navigate("/");
+              }
+            }}
             className="group flex items-center text-sm font-medium text-zinc-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-            Back to Workspace
+            {candidateId || selectedUser?.id ? "Back to Profile" : "Back to Dashboard"}
           </button>
 
           <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -410,10 +452,16 @@ export default function InviteToOrganization() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate(`/organization/${organizationId}`)}
+                onClick={() => {
+                  if (selectedUser?.id) {
+                    navigate(`/profile/${selectedUser.id}`);
+                  } else {
+                    navigate("/");
+                  }
+                }}
                 className="rounded-full bg-white px-8 py-2.5 text-sm font-semibold text-black hover:bg-zinc-200 transition-colors"
               >
-                Return to Workspace
+                Return to {selectedUser ? `@${selectedUser.username}'s Profile` : "Profile"}
               </button>
             </div>
           </div>
@@ -728,7 +776,13 @@ export default function InviteToOrganization() {
             <div className="flex items-center justify-end gap-x-4 pt-4">
               <button
                 type="button"
-                onClick={() => navigate(`/organization/${organizationId}`)}
+                onClick={() => {
+                  if (candidateId || selectedUser?.id) {
+                    navigate(`/profile/${candidateId || selectedUser?.id}`);
+                  } else {
+                    navigate("/");
+                  }
+                }}
                 className="rounded-full px-6 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors"
               >
                 Cancel
