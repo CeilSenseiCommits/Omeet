@@ -31,8 +31,9 @@ export async function initializeDatabase() {
       );
     `);
 
-    console.log("Applying schema migrations (e.g. gender column)...");
+    console.log("Applying schema migrations (e.g. gender column, avatar_url)...");
     await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(20);`);
+    await client.query(`ALTER TABLE users ALTER COLUMN avatar_url DROP NOT NULL;`);
 
     console.log("Creating unique B-Tree indexes for users...");
     await client.query(`

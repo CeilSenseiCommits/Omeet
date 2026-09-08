@@ -46,7 +46,7 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
   }, []);
 
   const [name, setName] = useState(user?.name || "Google User");
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(user?.username || "");
   const [phone, setPhone] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
   const [bio, setBio] = useState("");
@@ -61,6 +61,7 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
   );
   const [customAvatarUrl, setCustomAvatarUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Dynamic alphabet initial badge URL based on current typed name
   const initialsAvatarUrl = useMemo(() => {
@@ -157,6 +158,7 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
     e.preventDefault();
     if (!isFormValid || isSubmitting) return;
 
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       const fullPhone = phone.trim() ? `${countryCode} ${phone.trim()}` : undefined;
@@ -170,8 +172,9 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
         timezone,
       });
       onSuccess();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to complete profile onboarding", err);
+      setSubmitError(err.message || "Failed to complete setup on server. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -192,6 +195,14 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
           Personalize your identity so team members can discover and connect with you.
         </p>
       </div>
+
+      {/* Error banner if submission failed */}
+      {submitError && (
+        <div className="mt-4 flex items-start gap-2.5 rounded-[5px] border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+          <XCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-500" />
+          <span>{submitError}</span>
+        </div>
+      )}
 
       {/* Verified Google Account Banner */}
       <div className="mt-5 flex items-center justify-between rounded-[5px] border border-[#D8D4CB] bg-[#FAF9F6] p-3">

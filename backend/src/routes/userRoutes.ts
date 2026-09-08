@@ -117,34 +117,16 @@ router.post("/google-auth", async (req: Request, res: Response) => {
       [googleId, email]
     );
 
-    // If user already exists with this Google account or Gmail, always use the existing account!
-    if (existing.rows.length > 0 && existing.rows[0].is_onboarded) {
+    // If user already exists with this Google account or Gmail, always return existing account!
+    if (existing.rows.length > 0) {
       const user = existing.rows[0];
-      return res.status(200).json({
-        user: {
-          id: user.id,
-          googleId: user.google_id,
-          email: user.email,
-          username: user.username,
-          name: user.name,
-          avatarUrl: user.avatar_url,
-          initials: user.name
-            .split(" ")
-            .map((n: string) => n[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase(),
-          phone: user.phone,
-          bio: user.bio,
-          gender: user.gender,
-          timezone: user.timezone,
-          isOnboarded: true,
-        },
-      });
-    }
+      const initials = (user.name || "Google User")
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
 
-    if (existing.rows.length > 0 && !isNewAccount) {
-      const user = existing.rows[0];
       return res.status(200).json({
         user: {
           id: user.id,
@@ -153,12 +135,7 @@ router.post("/google-auth", async (req: Request, res: Response) => {
           username: user.username,
           name: user.name,
           avatarUrl: user.avatar_url,
-          initials: user.name
-            .split(" ")
-            .map((n: string) => n[0])
-            .join("")
-            .slice(0, 2)
-            .toUpperCase(),
+          initials,
           phone: user.phone,
           bio: user.bio,
           gender: user.gender,
@@ -168,13 +145,25 @@ router.post("/google-auth", async (req: Request, res: Response) => {
       });
     }
 
-    // First time user or explicit create account mode
-    const initials = (name || "Google User")
-      .split(" ")
-      .map((n: string) => n[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
+    // First-time user: generate a clean unique username from email handle
+    const rawPrefix = (email.split("@")[0] || "user")
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, "");
+    let baseUsername = rawPrefix.length >= 3 ? rawPrefix.slice(0, 25) : `${rawPrefix}user`.slice(0, 25);
+    if (baseUsername.length < 3) baseUsername = `user_${Date.now().toString().slice(-4)}`;
+
+    let chosenUsername = baseUsername;
+    let counter = 1;
+    while (true) {
+      const check = await query(
+        `SELECT 1 FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1;`,
+        [chosenUsername]
+      );
+      if (check.rows.length === 0 && !RESERVED_USERNAMES.has(chosenUsername.toLowerCase())) {
+        break;
+      }
+      chosenUsername = `${baseUsername}_${counter++}`;
+    }
 
     const fallbackAvatar =
       avatarUrl ||
@@ -182,18 +171,56 @@ router.post("/google-auth", async (req: Request, res: Response) => {
         name || "User"
       )}&background=2563eb&color=ffffff&bold=true`;
 
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+    // Immediately persist the new Google user in Neon PostgreSQL
+    const insertResult = await query(
+      `
+      INSERT INTO users (
+        google_id,
+        email,
+        username,
+        name,
+        avatar_url,
+        timezone,
+        is_onboarded,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, FALSE, NOW(), NOW())
+      ON CONFLICT (email) DO UPDATE SET
+        google_id = EXCLUDED.google_id,
+        name = EXCLUDED.name,
+        avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
+        updated_at = NOW()
+      RETURNING *;
+      `,
+      [googleId, email, chosenUsername, name || "Google User", fallbackAvatar, detectedTimezone]
+    );
+
+    const newUser = insertResult.rows[0];
+
+    const initials = (newUser.name || "Google User")
+      .split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+
     return res.status(200).json({
       user: {
-        id: existing.rows[0]?.id || `temp_${Date.now()}`,
-        googleId,
-        email,
-        username: "",
-        name: name || "Google User",
-        avatarUrl: fallbackAvatar,
+        id: newUser.id,
+        googleId: newUser.google_id,
+        email: newUser.email,
+        username: newUser.username,
+        name: newUser.name,
+        avatarUrl: newUser.avatar_url,
         initials,
-        gender: null,
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-        isOnboarded: false,
+        phone: newUser.phone,
+        bio: newUser.bio,
+        gender: newUser.gender,
+        timezone: newUser.timezone,
+        isOnboarded: newUser.is_onboarded,
       },
     });
   } catch (error) {
@@ -259,6 +286,12 @@ router.post("/onboard", async (req: Request, res: Response) => {
       return res.status(409).json({ error: "Username is already used by someone" });
     }
 
+    const safeAvatar =
+      avatarUrl ||
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        name.trim()
+      )}&background=2563eb&color=ffffff&bold=true`;
+
     // Upsert into Neon PostgreSQL
     const upsertQuery = `
       INSERT INTO users (
@@ -279,11 +312,11 @@ router.post("/onboard", async (req: Request, res: Response) => {
         google_id = EXCLUDED.google_id,
         username = EXCLUDED.username,
         name = EXCLUDED.name,
-        avatar_url = EXCLUDED.avatar_url,
-        phone = EXCLUDED.phone,
-        bio = EXCLUDED.bio,
-        gender = EXCLUDED.gender,
-        timezone = EXCLUDED.timezone,
+        avatar_url = COALESCE(EXCLUDED.avatar_url, users.avatar_url),
+        phone = COALESCE(EXCLUDED.phone, users.phone),
+        bio = COALESCE(EXCLUDED.bio, users.bio),
+        gender = COALESCE(EXCLUDED.gender, users.gender),
+        timezone = COALESCE(EXCLUDED.timezone, users.timezone),
         is_onboarded = TRUE,
         updated_at = NOW()
       RETURNING *;
@@ -294,7 +327,7 @@ router.post("/onboard", async (req: Request, res: Response) => {
       email,
       cleanUsername,
       name.trim(),
-      avatarUrl,
+      safeAvatar,
       phone || null,
       bio || null,
       gender || null,

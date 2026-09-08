@@ -150,32 +150,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let savedUserData: any = null;
 
     // Persist to Neon cloud PostgreSQL via our backend API
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/users/onboard`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          googleId: user?.googleId || `gid_${Date.now()}`,
-          email: user?.email || "user@gmail.com",
-          username: cleanUsername,
-          name: cleanName,
-          avatarUrl: data.avatarUrl,
-          phone: fullPhone,
-          bio: cleanBio,
-          gender: data.gender,
-          timezone: data.timezone,
-        }),
-      });
+    const response = await fetch(`${API_BASE_URL}/api/users/onboard`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        googleId: user?.googleId || `gid_${Date.now()}`,
+        email: user?.email || "user@gmail.com",
+        username: cleanUsername,
+        name: cleanName,
+        avatarUrl: data.avatarUrl,
+        phone: fullPhone,
+        bio: cleanBio,
+        gender: data.gender,
+        timezone: data.timezone,
+      }),
+    });
 
-      if (response.ok) {
-        const json = await response.json();
-        savedUserData = json.user;
-      } else {
-        console.warn("Backend API returned error, continuing with client state:", await response.text());
-      }
-    } catch (apiError) {
-      console.warn("Backend API unreachable, persisting to client storage:", apiError);
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || errData.message || "Failed to save profile to server. Please try again.");
     }
+
+    const json = await response.json();
+    savedUserData = json.user;
 
     const updatedUser: AuthUser = {
       ...(user || {
