@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { 
@@ -27,21 +28,21 @@ export default function HomeNotificationsView() {
       setIsLoading(true);
 
       // 1. Org Invites
-      const orgRes = await fetch(`http://localhost:5000/api/invitations/user/${user.id}`);
+      const orgRes = await fetch(`${API_BASE_URL}/api/invitations/user/${user.id}`);
       if (orgRes.ok) {
         const data = await orgRes.json();
         setOrgInvites(data.invitations || []);
       }
 
       // 2. Meeting Invites
-      const meetingRes = await fetch(`http://localhost:5000/api/meetings/invitations/user/${user.id}`);
+      const meetingRes = await fetch(`${API_BASE_URL}/api/meetings/invitations/user/${user.id}`);
       if (meetingRes.ok) {
         const data = await meetingRes.json();
         setMeetingInvites(data.invitations || []);
       }
 
       // 3. Friend Requests
-      const friendRes = await fetch("http://localhost:5000/api/friends/requests", {
+      const friendRes = await fetch(`${API_BASE_URL}/api/friends/requests`, {
         headers: { "x-user-id": user.id },
       });
       if (friendRes.ok) {
@@ -77,7 +78,7 @@ export default function HomeNotificationsView() {
   const handleOrgInviteResponse = async (invitationId: string, action: "accept" | "decline") => {
     try {
       setActionLoadingId(invitationId);
-      const res = await fetch(`http://localhost:5000/api/invitations/${invitationId}/${action}`, {
+      const res = await fetch(`${API_BASE_URL}/api/invitations/${invitationId}/${action}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user?.id }),
@@ -96,7 +97,7 @@ export default function HomeNotificationsView() {
   const handleMeetingInviteResponse = async (invitationId: string, action: "ACCEPT" | "DECLINE") => {
     try {
       setActionLoadingId(invitationId);
-      const res = await fetch(`http://localhost:5000/api/meetings/invitations/${invitationId}/respond`, {
+      const res = await fetch(`${API_BASE_URL}/api/meetings/invitations/${invitationId}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, userId: user?.id }),
@@ -114,7 +115,7 @@ export default function HomeNotificationsView() {
   const handleFriendRequestResponse = async (requestId: string, action: "ACCEPT" | "DECLINE") => {
     try {
       setActionLoadingId(requestId);
-      const res = await fetch(`http://localhost:5000/api/friends/requests/${requestId}/respond`, {
+      const res = await fetch(`${API_BASE_URL}/api/friends/requests/${requestId}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user?.id || "" },
         body: JSON.stringify({ action, userId: user?.id }),

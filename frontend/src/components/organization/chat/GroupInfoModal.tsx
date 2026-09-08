@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../../lib/api";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { 
@@ -95,7 +96,7 @@ function GroupInfoModal({
       setIsLoading(true);
       setError(null);
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/details?userId=${user.id}`,
+        `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}/details?userId=${user.id}`,
         {
           headers: {
             "x-user-id": user.id,
@@ -136,7 +137,7 @@ function GroupInfoModal({
       setIsAdding(true);
       setError(null);
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/participants`,
+        `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}/participants`,
         {
           method: "POST",
           headers: {
@@ -172,7 +173,7 @@ function GroupInfoModal({
       setRemovingUserId(targetUserId);
       setError(null);
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/participants/${targetUserId}`,
+        `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}/participants/${targetUserId}`,
         {
           method: "DELETE",
           headers: {
@@ -209,7 +210,7 @@ function GroupInfoModal({
       setIsDeleting(true);
       setError(null);
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}`,
+        `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}`,
         {
           method: "DELETE",
           headers: {

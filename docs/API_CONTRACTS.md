@@ -388,10 +388,13 @@ Marks a conversation as read by updating caller's `last_read_at = NOW()` in `con
 ```
 
 ### GET /api/organizations/:id/conversations/:convId/messages
-Fetches message history for a conversation, auto-marks messages read for the requesting user, and returns recipient/group context.
+Fetches message history for a conversation using reverse-cursor sequence pagination (default 20 most recent messages), auto-marks messages read for the requesting user, and returns recipient/group context.
 
 **Request**:
 - Headers: `x-user-id: <uuid>` or Query `?userId=<uuid>`
+- Query Parameters:
+  - `limit` (optional, default `20`): Number of messages to retrieve.
+  - `beforeSeq` (optional): Retrieve messages strictly preceding this sequence number (used for "See More" scroll-up loading).
 
 **Response**:
 ```json
@@ -402,13 +405,17 @@ Fetches message history for a conversation, auto-marks messages read for the req
     "name": "Core Engineering",
     "topic": "Frontend and backend architecture",
     "isPrivate": false,
-    "participantCount": 6
+    "participantCount": 6,
+    "lastSeq": 142
   },
   "recipient": null,
+  "hasMore": true,
+  "nextBeforeSeq": 123,
   "messages": [
     {
       "id": "uuid",
       "conversationId": "uuid",
+      "seq": 123,
       "senderId": "user-uuid",
       "senderName": "Suryansh Rao",
       "senderUsername": "suryansh",
@@ -606,15 +613,50 @@ Responds to a meeting invitation (`ACCEPT` or `DECLINE`).
 
 ### GET /api/organizations/:id/meetings
 Returns ongoing, upcoming, and recently ended meetings for the organization dashboard `MeetingsTab`. Executes auto-clean rules before returning.
+- `ongoingMeetings`: Only includes meetings currently `LIVE`, and `participants` lists strictly those who joined and have not left (`left_at IS NULL`).
+- `upcomingMeetings`: Includes scheduled meetings (`status = 'SCHEDULED'`) with `meetingCode` for direct join action.
+- `recentlyEndedMeetings`: Concluded meetings sorted by ended timestamp.
 
 ### GET /api/organizations/:id/public
 Returns public organization metadata, founder info, public channels, member count, active meetings, and member roster preview for the public organization profile page (`/org-profile/:id`).
 
 ### GET /api/meetings/user/:userId
 Returns user meetings across all organizations and personal spaces:
-- `upcoming`: Scheduled meetings with countdown / datetime.
-- `active`: Live ongoing meetings.
-- `recent`: Concluded meetings with duration and participant count.
+- `upcoming`: Scheduled meetings (`status = 'SCHEDULED'`) where user is host, accepted participant, or pending invitee.
+- `active`: Live ongoing meetings (`status = 'LIVE'`) where user is host, active joined participant, OR invited colleague whose invitation is not declined. This enables live meetings to show up under "Live Ongoing Meetings" on the Home page immediately.
+- `recent`: Concluded meetings (`status = 'ENDED'`) with duration and participant count.
+
+### GET /api/meetings/invitations/user/:userId
+Fetches pending meeting invitations for a user, optionally filtered by organization.
+- Query Parameter: `?organizationId=<uuid>` (optional).
+- Returns invitations where `status = 'PENDING'` and `meeting.status != 'ENDED'`.
+- Response items include:
+  ```json
+  {
+    "id": "invitation-uuid",
+    "meetingId": "meeting-uuid",
+    "meetingCode": "OM-Z7AQCF",
+    "title": "Architecture Sync",
+    "meetingStatus": "LIVE", // or "SCHEDULED"
+    "scheduledAt": "2026-09-06T16:00:00Z",
+    "startedAt": "2026-09-06T16:00:00Z",
+    "organizationId": "org-uuid",
+    "organizationName": "Acme Corp",
+    "inviterName": "Suryansh Rao",
+    "inviterAvatarUrl": "https://...",
+    "status": "PENDING"
+  }
+  ```
+
+### GET /api/meetings/:meetingCode
+Fetches meeting room metadata and active participants, and performs dynamic enrollment:
+- Query Parameter: `?userId=<uuid>`
+- Logic:
+  - Validates organization membership if meeting is organization-scoped.
+  - Automatically enrolls the user into `meeting_participants` (`role = 'LISTENER'`, `left_at = NULL`, `joined_at = NOW()`).
+  - Marks user's pending `meeting_invitations` as `'ACCEPTED'`.
+  - If meeting was `SCHEDULED`, transitions it to `LIVE`.
+  - Returns `meeting` object with `participants` containing only active room attendees (`left_at IS NULL`).
 
 ---
 

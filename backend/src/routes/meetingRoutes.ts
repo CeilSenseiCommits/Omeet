@@ -98,7 +98,7 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
              ))
              FROM meeting_participants mp
              JOIN users pu ON pu.id = mp.user_id
-             WHERE mp.meeting_id = m.id
+             WHERE mp.meeting_id = m.id AND mp.left_at IS NULL
            ),
            '[]'::json
          ) AS participants
@@ -143,12 +143,12 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
 
       const callerMembership = memberCheck.rows[0];
 
-      // Auto-register participant and mark pending invitation accepted
-      if (userId) {
+      // Auto-register participant, reset left_at if rejoining, and mark pending invitation accepted
+      if (userId && meeting.status !== "ENDED") {
         await query(
-          `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
-           VALUES ($1, $2, 'LISTENER', NOW())
-           ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+          `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at, left_at)
+           VALUES ($1, $2, 'LISTENER', NOW(), NULL)
+           ON CONFLICT (meeting_id, user_id) DO UPDATE SET left_at = NULL, joined_at = NOW();`,
           [meeting.id, userId]
         );
         await query(
@@ -157,7 +157,27 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
            WHERE meeting_id = $1 AND invitee_user_id = $2 AND status = 'PENDING';`,
           [meeting.id, userId]
         );
+
+        // Transition scheduled meeting to LIVE upon participant join
+        if (meeting.status === "SCHEDULED") {
+          await query(
+            `UPDATE organization_meetings
+             SET status = 'LIVE', started_at = COALESCE(started_at, NOW()), updated_at = NOW()
+             WHERE id = $1 AND status = 'SCHEDULED';`,
+            [meeting.id]
+          );
+          meeting.status = "LIVE";
+        }
       }
+
+      // Fetch fresh active participants currently in the room
+      const activeParticipantsRes = await query(
+        `SELECT pu.id, pu.name, pu.avatar_url AS "avatarUrl", mp.role
+         FROM meeting_participants mp
+         JOIN users pu ON pu.id = mp.user_id
+         WHERE mp.meeting_id = $1 AND mp.left_at IS NULL;`,
+        [meeting.id]
+      );
 
       return res.status(200).json({
         meeting: {
@@ -183,7 +203,7 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
           },
           userRole: callerMembership.role,
           userPosition: callerMembership.position,
-          participants: meeting.participants || [],
+          participants: activeParticipantsRes.rows || [],
         },
       });
     }
@@ -191,9 +211,9 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
     // Non-hierarchical / Public meeting
     if (userId && meeting.status !== "ENDED") {
       await query(
-        `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
-         VALUES ($1, $2, 'LISTENER', NOW())
-         ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
+        `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at, left_at)
+         VALUES ($1, $2, 'LISTENER', NOW(), NULL)
+         ON CONFLICT (meeting_id, user_id) DO UPDATE SET left_at = NULL, joined_at = NOW();`,
         [meeting.id, userId]
       );
       await query(
@@ -202,7 +222,27 @@ router.get("/:meetingCode", async (req: Request, res: Response) => {
          WHERE meeting_id = $1 AND invitee_user_id = $2 AND status = 'PENDING';`,
         [meeting.id, userId]
       );
+
+      // Transition scheduled meeting to LIVE upon participant join
+      if (meeting.status === "SCHEDULED") {
+        await query(
+          `UPDATE organization_meetings
+           SET status = 'LIVE', started_at = COALESCE(started_at, NOW()), updated_at = NOW()
+           WHERE id = $1 AND status = 'SCHEDULED';`,
+          [meeting.id]
+        );
+        meeting.status = "LIVE";
+      }
     }
+
+    // Fetch fresh active participants currently in the room
+    const publicActiveParticipantsRes = await query(
+      `SELECT pu.id, pu.name, pu.avatar_url AS "avatarUrl", mp.role
+       FROM meeting_participants mp
+       JOIN users pu ON pu.id = mp.user_id
+       WHERE mp.meeting_id = $1 AND mp.left_at IS NULL;`,
+      [meeting.id]
+    );
 
     return res.status(200).json({
       meeting: {
@@ -542,16 +582,10 @@ router.post("/public", async (req: Request, res: Response) => {
       [meeting.id, userId]
     );
 
-    // Insert invited participants & meeting invitations
+    // Insert meeting invitations ONLY (do not insert into meeting_participants until user actually joins)
     if (Array.isArray(participantUserIds) && participantUserIds.length > 0) {
       for (const pId of participantUserIds) {
         if (!pId || pId === userId) continue;
-        await query(
-          `INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at)
-           VALUES ($1, $2, 'LISTENER', NOW())
-           ON CONFLICT (meeting_id, user_id) DO NOTHING;`,
-          [meeting.id, pId]
-        );
         await query(
           `INSERT INTO meeting_invitations (meeting_id, organization_id, inviter_user_id, invitee_user_id, status)
            VALUES ($1, NULL, $2, $3, 'PENDING')
@@ -642,7 +676,8 @@ router.get("/user/:userId", async (req: Request, res: Response) => {
        LEFT JOIN organizations o ON o.id = m.organization_id
        JOIN users u_host ON u_host.id = m.host_user_id
        LEFT JOIN meeting_participants mp ON mp.meeting_id = m.id AND mp.user_id = $1
-       WHERE (m.host_user_id = $1 OR mp.user_id = $1)
+       LEFT JOIN meeting_invitations mi ON mi.meeting_id = m.id AND mi.invitee_user_id = $1
+       WHERE (m.host_user_id = $1 OR mp.user_id = $1 OR (mi.invitee_user_id = $1 AND mi.status != 'DECLINED'))
          AND m.status = 'LIVE'
        ORDER BY m.started_at DESC;`,
       [userId]
@@ -770,7 +805,7 @@ router.get("/invitations/user/:userId", async (req: Request, res: Response) => {
       JOIN organization_meetings m ON m.id = mi.meeting_id
       LEFT JOIN organizations o ON o.id = mi.organization_id
       JOIN users u_inviter ON u_inviter.id = mi.inviter_user_id
-      WHERE mi.invitee_user_id = $1
+      WHERE mi.invitee_user_id = $1 AND mi.status = 'PENDING' AND m.status != 'ENDED'
     `;
     const params: any[] = [userId];
 

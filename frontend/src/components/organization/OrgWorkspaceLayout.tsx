@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Calendar, Users, Sparkles, Loader2, ShieldCheck, UserCheck, Mail, Search } from "lucide-react";
@@ -104,14 +105,14 @@ function OrgWorkspaceLayout() {
       }
       setLoadError(null);
 
-      let res = await fetch(`http://localhost:5000/api/organizations/${organizationId}/workspace`, {
+      let res = await fetch(`${API_BASE_URL}/api/organizations/${organizationId}/workspace`, {
         headers: {
           "x-user-id": user?.id || "",
         },
       });
 
       if (!res.ok) {
-        res = await fetch(`http://localhost:5000/api/organizations/${organizationId}`, {
+        res = await fetch(`${API_BASE_URL}/api/organizations/${organizationId}`, {
           headers: {
             "x-user-id": user?.id || "",
           },
@@ -152,8 +153,10 @@ function OrgWorkspaceLayout() {
     };
 
     window.addEventListener("organization-updated", handleOrgUpdate);
+    const interval = setInterval(fetchWorkspaceData, 8000);
     return () => {
       window.removeEventListener("organization-updated", handleOrgUpdate);
+      clearInterval(interval);
     };
   }, [fetchWorkspaceData]);
 
@@ -162,19 +165,25 @@ function OrgWorkspaceLayout() {
     (convId: string) => {
       if (!convId || !organizationId || !user?.id) return;
 
-      // 1. Optimistically clear unread badge in sidebar state immediately
-      setDirectMessagesList((prev) =>
-        prev.map((dm) => (dm.id === convId ? { ...dm, unreadCount: 0 } : dm))
-      );
-      setGroupsList((prev) =>
-        prev.map((g) => (g.id === convId ? { ...g, unreadCount: 0 } : g))
-      );
-      setChatRooms((prev) =>
-        prev.map((r) => (r.id === convId ? { ...r, unreadCount: 0 } : r))
-      );
+      // 1. Optimistically clear unread badge in sidebar state only if it was > 0
+      setDirectMessagesList((prev) => {
+        const item = prev.find((dm) => dm.id === convId);
+        if (!item || item.unreadCount === 0) return prev;
+        return prev.map((dm) => (dm.id === convId ? { ...dm, unreadCount: 0 } : dm));
+      });
+      setGroupsList((prev) => {
+        const item = prev.find((g) => g.id === convId);
+        if (!item || item.unreadCount === 0) return prev;
+        return prev.map((g) => (g.id === convId ? { ...g, unreadCount: 0 } : g));
+      });
+      setChatRooms((prev) => {
+        const item = prev.find((r) => r.id === convId);
+        if (!item || item.unreadCount === 0) return prev;
+        return prev.map((r) => (r.id === convId ? { ...r, unreadCount: 0 } : r));
+      });
 
       // 2. Call backend endpoint to update caller's last_read_at in DB
-      fetch(`http://localhost:5000/api/organizations/${organizationId}/conversations/${convId}/read`, {
+      fetch(`${API_BASE_URL}/api/organizations/${organizationId}/conversations/${convId}/read`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -194,12 +203,18 @@ function OrgWorkspaceLayout() {
     }
   }, [selectedConversationId, markConversationAsRead]);
 
+  const handleMessagesRead = useCallback(() => {
+    if (selectedConversationId) {
+      markConversationAsRead(selectedConversationId);
+    }
+  }, [selectedConversationId, markConversationAsRead]);
+
   // Direct message initiation
   const handleStartDirectMessage = async (colleague: any) => {
     if (!organizationId || !user?.id) return;
     try {
       const recipientUserId = colleague.userId || colleague.id;
-      const res = await fetch(`http://localhost:5000/api/organizations/${organizationId}/conversations/direct`, {
+      const res = await fetch(`${API_BASE_URL}/api/organizations/${organizationId}/conversations/direct`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -213,12 +228,8 @@ function OrgWorkspaceLayout() {
 
       if (!res.ok) throw new Error("Could not start direct conversation.");
       const data = await res.json();
-      if (selectedConversationId === data.conversationId) {
-        setSelectedConversationId(null);
-      } else {
-        setSelectedConversationId(data.conversationId);
-        markConversationAsRead(data.conversationId);
-      }
+      setSelectedConversationId(data.conversationId);
+      markConversationAsRead(data.conversationId);
       setSelectedEmployeeForModal(null);
       // Auto-refresh workspace to register DM in list
       fetchWorkspaceData();
@@ -278,7 +289,7 @@ function OrgWorkspaceLayout() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-transparent p-4 lg:p-5 text-[#1E293B] space-y-3.5">
+    <main className="flex h-screen max-h-screen flex-col bg-transparent p-4 lg:p-5 text-[#1E293B] space-y-3.5 overflow-hidden">
       {/* Top Header Row */}
       <OrgHeader
         organization={organization}
@@ -319,7 +330,7 @@ function OrgWorkspaceLayout() {
             onClose={() => setSelectedConversationId(null)}
             onViewProfile={(employee) => setSelectedEmployeeForModal(employee)}
             onStartMeeting={(config) => handleOpenCreateMeeting(config)}
-            onMessagesRead={() => markConversationAsRead(selectedConversationId)}
+            onMessagesRead={handleMessagesRead}
             onGroupDeleted={() => {
               setSelectedConversationId(null);
               fetchWorkspaceData();

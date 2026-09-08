@@ -25,7 +25,7 @@ export const API = {
 
 import type { Organization, ActivityItem } from "../types/organization";
 
-export const API_BASE_URL = "http://localhost:5000";
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:5000";
 
 /**
  * Queries the user's active organizations from PostgreSQL backend:

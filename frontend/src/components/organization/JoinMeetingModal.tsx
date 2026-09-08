@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -58,7 +59,7 @@ function JoinMeetingModal({ isOpen, onClose, organizationId }: JoinMeetingModalP
       setError(null);
       setRestrictedInfo(null);
 
-      const res = await fetch("http://localhost:5000/api/meetings/join", {
+      const res = await fetch(`${API_BASE_URL}/api/meetings/join`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -74,6 +74,11 @@ OMeet is actively under development with a fully functional frontend and databas
 
 - **Google OAuth Authentication & Profiles:** One-tap Google authentication with 1-step profile completion, live unique username validation, and dynamic avatars.
 - **Organization Hierarchy & Management:** Organization creation with atomic multi-table transactions, owner role assignment, and dynamic dashboard carousel.
+- **Home Multi-Workspace Suite:** 6 dedicated workspaces: Dashboard, Organizations, Meetings Hub, People (Personal 1-on-1 Chat), Groups, and Notifications.
+- **Log-Based High-Throughput Chat:** Append-only commit log with monotonic sequence numbers (`seq`), reverse cursor 20-message pagination, and smooth "See More" prepend loading.
+- **Meeting Participant & Invitee Separation:** Invited users are tracked strictly as pending invitees until they join; dynamic enrollment on entry; host-only initial roster; active filtering (`left_at IS NULL`).
+- **Live Notifications & Ongoing Meeting Sync:** Green pulsating `● LIVE NOW` badges and direct "Join Live" CTA; synchronized polling across Home Meetings Hub and Organization Workspace.
+- **Fixed Viewport Scroll Containment:** Viewport-pinned layout (`h-screen max-h-screen overflow-hidden`) with internal flexbox scroll containment preventing window overflow.
 - **Live Search & Public Profiles:** Debounced search bar querying PostgreSQL users with organizational affiliation; public profile views with dynamic invitation handshake.
 - **In-App Notification Center:** Dual-stream notification center (Received & Sent tabs) exclusively handling invitations with dynamic unread badges.
 - **Frictionless In-App Acceptance:** Accept or decline invitations without page redirects; automatic `organization_employees` provisioning and live dashboard carousel refresh.

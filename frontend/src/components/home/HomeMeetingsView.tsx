@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -48,11 +49,11 @@ export default function HomeMeetingsView() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
-  const fetchMeetings = useCallback(async () => {
+  const fetchMeetings = useCallback(async (showLoading = false) => {
     if (!user?.id) return;
     try {
-      setIsLoading(true);
-      const res = await fetch(`http://localhost:5000/api/meetings/user/${user.id}`);
+      if (showLoading) setIsLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/meetings/user/${user.id}`);
       if (res.ok) {
         const data = await res.json();
         setUpcoming(data.upcoming || []);
@@ -62,12 +63,16 @@ export default function HomeMeetingsView() {
     } catch (err) {
       console.warn("Failed to fetch meetings:", err);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [user?.id]);
 
   useEffect(() => {
-    fetchMeetings();
+    fetchMeetings(true);
+    const interval = setInterval(() => {
+      fetchMeetings(false);
+    }, 6000);
+    return () => clearInterval(interval);
   }, [fetchMeetings]);
 
   const handleCopyCode = async (code: string) => {

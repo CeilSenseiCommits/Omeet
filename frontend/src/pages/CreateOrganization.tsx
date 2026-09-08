@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -54,7 +55,7 @@ function CreateOrganization() {
     setError(null);
 
     try {
-      const res = await fetch("http://localhost:5000/api/organizations", {
+      const res = await fetch(`${API_BASE_URL}/api/organizations`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

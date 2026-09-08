@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, Menu } from "lucide-react";
 import NotificationBell from "../NotificationBell";
@@ -35,7 +36,7 @@ function OrgHeader({
     if (!user?.id || !organization.id) return;
     try {
       // 1. Fetch user's incoming org invitations, filtered strictly to this organization
-      const incRes = await fetch(`http://localhost:5000/api/invitations/user/${user.id}`);
+      const incRes = await fetch(`${API_BASE_URL}/api/invitations/user/${user.id}`);
       if (incRes.ok) {
         const data = await incRes.json();
         const filtered = (data.invitations || []).filter(
@@ -45,7 +46,7 @@ function OrgHeader({
       }
 
       // 2. Fetch user's outgoing invitations, filtered strictly to this organization
-      const outRes = await fetch(`http://localhost:5000/api/invitations/sent/${user.id}`);
+      const outRes = await fetch(`${API_BASE_URL}/api/invitations/sent/${user.id}`);
       if (outRes.ok) {
         const data = await outRes.json();
         const filtered = (data.invitations || []).filter(
@@ -56,7 +57,7 @@ function OrgHeader({
 
       // 3. Fetch meeting invitations specifically for this organization
       const meetRes = await fetch(
-        `http://localhost:5000/api/meetings/invitations/user/${user.id}?organizationId=${organization.id}`
+        `${API_BASE_URL}/api/meetings/invitations/user/${user.id}?organizationId=${organization.id}`
       );
       if (meetRes.ok) {
         const data = await meetRes.json();
@@ -69,6 +70,8 @@ function OrgHeader({
 
   useEffect(() => {
     fetchOrgNotifications();
+    const interval = setInterval(fetchOrgNotifications, 6000);
+    return () => clearInterval(interval);
   }, [fetchOrgNotifications]);
 
   return (

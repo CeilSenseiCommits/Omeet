@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { 
@@ -9,7 +10,8 @@ import {
   Loader2, 
   Trash2,
   LogOut,
-  X
+  X,
+  ArrowUp
 } from "lucide-react";
 import CreatePublicMeetingModal from "../CreatePublicMeetingModal";
 
@@ -26,6 +28,7 @@ interface PersonalGroup {
 interface Message {
   id: string;
   conversationId: string;
+  seq?: number;
   senderId: string;
   senderName: string;
   senderUsername: string;
@@ -48,7 +51,17 @@ export default function HomeGroupsView() {
   const [messageInput, setMessageInput] = useState("");
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<Message[]>([]);
+  messagesRef.current = messages;
+
+  const scrollToBottom = (smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
+  };
 
   // Group info & member management modal
   const [isGroupInfoOpen, setIsGroupInfoOpen] = useState(false);
@@ -71,7 +84,7 @@ export default function HomeGroupsView() {
     if (!user?.id) return;
     try {
       setIsLoadingGroups(true);
-      const res = await fetch("http://localhost:5000/api/personal/conversations", {
+      const res = await fetch(`${API_BASE_URL}/api/personal/conversations`, {
         headers: { "x-user-id": user.id },
       });
       if (res.ok) {
@@ -99,12 +112,14 @@ export default function HomeGroupsView() {
     setIsLoadingMessages(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/personal/conversations/${group.id}/messages`, {
+      const res = await fetch(`${API_BASE_URL}/api/personal/conversations/${group.id}/messages?limit=20`, {
         headers: { "x-user-id": user.id },
       });
       if (res.ok) {
         const data = await res.json();
         setMessages(data.messages || []);
+        setHasMore(Boolean(data.hasMore));
+        setTimeout(() => scrollToBottom(false), 50);
       }
     } catch (err) {
       console.error("Failed to load group messages:", err);
@@ -113,9 +128,79 @@ export default function HomeGroupsView() {
     }
   };
 
+  // Load older messages (paginating backwards)
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore || !selectedGroup || messages.length === 0 || !user?.id) return;
+    const oldestSeq = messages[0]?.seq;
+    if (oldestSeq === undefined || oldestSeq === null) return;
+
+    const container = scrollContainerRef.current;
+    const prevScrollHeight = container ? container.scrollHeight : 0;
+    const prevScrollTop = container ? container.scrollTop : 0;
+
+    try {
+      setIsLoadingMore(true);
+      const res = await fetch(
+        `${API_BASE_URL}/api/personal/conversations/${selectedGroup.id}/messages?limit=20&before_seq=${oldestSeq}`,
+        {
+          headers: { "x-user-id": user.id },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const olderMessages: Message[] = data.messages || [];
+        setHasMore(Boolean(data.hasMore));
+
+        if (olderMessages.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const filteredOlder = olderMessages.filter((m) => !existingIds.has(m.id));
+            return [...filteredOlder, ...prev];
+          });
+
+          requestAnimationFrame(() => {
+            if (container) {
+              container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load older group messages:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Delta polling for incoming group messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!selectedGroup || !user?.id) return;
+    const interval = setInterval(async () => {
+      const currentList = messagesRef.current;
+      const maxSeq = currentList.reduce((max, m) => (m.seq && m.seq > max ? m.seq : max), 0);
+      if (maxSeq === 0) return;
+
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/personal/conversations/${selectedGroup.id}/messages?since_seq=${maxSeq}`,
+          { headers: { "x-user-id": user.id } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages && data.messages.length > 0) {
+            setMessages((prev) => {
+              const existingIds = new Set(prev.map((m) => m.id));
+              const newMsgs = data.messages.filter((m: Message) => !existingIds.has(m.id));
+              if (newMsgs.length === 0) return prev;
+              return [...prev, ...newMsgs];
+            });
+            setTimeout(() => scrollToBottom(true), 50);
+          }
+        }
+      } catch {}
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [selectedGroup, user?.id]);
 
   // Send message
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -137,10 +222,11 @@ export default function HomeGroupsView() {
     setMessages((prev) => [...prev, optimisticMsg]);
     const textToSend = messageInput.trim();
     setMessageInput("");
+    setTimeout(() => scrollToBottom(true), 50);
 
     try {
       setIsSending(true);
-      const res = await fetch(`http://localhost:5000/api/personal/conversations/${selectedGroup.id}/messages`, {
+      const res = await fetch(`${API_BASE_URL}/api/personal/conversations/${selectedGroup.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user.id },
         body: JSON.stringify({ content: textToSend, messageType: "TEXT" }),
@@ -164,7 +250,7 @@ export default function HomeGroupsView() {
     setNewGroupTopic("");
     setSelectedFriendIds([]);
     try {
-      const res = await fetch("http://localhost:5000/api/friends", {
+      const res = await fetch(`${API_BASE_URL}/api/friends`, {
         headers: { "x-user-id": user.id },
       });
       if (res.ok) {
@@ -181,7 +267,7 @@ export default function HomeGroupsView() {
 
     try {
       setIsCreatingGroup(true);
-      const res = await fetch("http://localhost:5000/api/personal/groups", {
+      const res = await fetch(`${API_BASE_URL}/api/personal/groups`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user.id },
         body: JSON.stringify({
@@ -217,7 +303,7 @@ export default function HomeGroupsView() {
     setIsGroupInfoOpen(true);
     setIsLoadingDetails(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/personal/groups/${selectedGroup.id}/details`, {
+      const res = await fetch(`${API_BASE_URL}/api/personal/groups/${selectedGroup.id}/details`, {
         headers: { "x-user-id": user.id },
       });
       if (res.ok) {
@@ -235,7 +321,7 @@ export default function HomeGroupsView() {
   const handleAddMember = async (targetUserId: string) => {
     if (!selectedGroup || !user?.id) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/personal/groups/${selectedGroup.id}/participants`, {
+      const res = await fetch(`${API_BASE_URL}/api/personal/groups/${selectedGroup.id}/participants`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user.id },
         body: JSON.stringify({ targetUserId }),
@@ -252,7 +338,7 @@ export default function HomeGroupsView() {
     if (!selectedGroup || !user?.id) return;
     try {
       const res = await fetch(
-        `http://localhost:5000/api/personal/groups/${selectedGroup.id}/participants/${targetUserId}`,
+        `${API_BASE_URL}/api/personal/groups/${selectedGroup.id}/participants/${targetUserId}`,
         {
           method: "DELETE",
           headers: { "x-user-id": user.id },
@@ -277,7 +363,7 @@ export default function HomeGroupsView() {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:5000/api/personal/groups/${selectedGroup.id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/personal/groups/${selectedGroup.id}`, {
         method: "DELETE",
         headers: { "x-user-id": user.id },
       });
@@ -393,7 +479,7 @@ export default function HomeGroupsView() {
             </div>
 
             {/* Messages Stream */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-3">
+            <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto p-5 space-y-3">
               {isLoadingMessages ? (
                 <div className="flex h-full items-center justify-center">
                   <Loader2 className="h-5 w-5 animate-spin text-[#7E7C77]" />
@@ -407,7 +493,32 @@ export default function HomeGroupsView() {
                   </p>
                 </div>
               ) : (
-                messages.map((msg) => {
+                <>
+                  {/* See More Messages Button */}
+                  {hasMore && (
+                    <div className="flex justify-center py-1">
+                      <button
+                        type="button"
+                        onClick={handleLoadMore}
+                        disabled={isLoadingMore}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#D8D4CB] bg-white px-3.5 py-1 text-xs font-semibold text-[#585754] shadow-2xs hover:bg-[#F3EFE6] hover:text-[#242427] hover:border-[#4963C8] transition disabled:opacity-50 cursor-pointer"
+                      >
+                        {isLoadingMore ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#4963C8]" />
+                            <span>Loading older messages...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUp className="h-3.5 w-3.5 text-[#4963C8]" />
+                            <span>See more messages</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {messages.map((msg) => {
                   const isMe = msg.senderId === user?.id;
                   const isSystem = msg.messageType === "SYSTEM";
 
@@ -457,8 +568,9 @@ export default function HomeGroupsView() {
                       </div>
                     </div>
                   );
-                })
-              )}
+                })}
+              </>
+            )}
               <div ref={messagesEndRef} />
             </div>
 

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "./api";
 /**
  * Organization API service connecting to PostgreSQL backend
  */
@@ -22,7 +23,7 @@ export interface CreateOrganizationResponse {
 export async function createOrganizationAPI(
   data: CreateOrganizationRequest
 ): Promise<CreateOrganizationResponse> {
-  const res = await fetch("http://localhost:5000/api/organizations", {
+  const res = await fetch(`${API_BASE_URL}/api/organizations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),

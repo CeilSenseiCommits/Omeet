@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -51,7 +52,7 @@ function OrgInvitationsTab({ organizationId }: OrgInvitationsTabProps) {
       setIsLoading(true);
       setError(null);
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/invitations/logs?userId=${user?.id || ""}`,
+        `${API_BASE_URL}/api/organizations/${organizationId}/invitations/logs?userId=${user?.id || ""}`,
         {
           headers: {
             "x-user-id": user?.id || "",

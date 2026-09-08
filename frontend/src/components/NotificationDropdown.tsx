@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { Mail, Send, Video, Calendar, ArrowRight, X, Building, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import NotificationItem from "./NotificationItem";
@@ -38,7 +39,7 @@ function NotificationDropdown({
   const handleDeclineMeeting = async (inviteId: string) => {
     if (!userId) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/meetings/invitations/${inviteId}/respond`, {
+      const res = await fetch(`${API_BASE_URL}/api/meetings/invitations/${inviteId}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "DECLINE", userId }),
@@ -116,11 +117,19 @@ function NotificationDropdown({
               meetingInvitations.map((meetingInv) => (
                 <div
                   key={meetingInv.id}
-                  className="rounded-[5px] border border-[#D8D4CB] bg-white p-3 space-y-2.5 hover:border-[#4963C8]/50 transition shadow-xs"
+                  className={`rounded-[6px] border p-3.5 space-y-2.5 transition shadow-xs ${
+                    meetingInv.meetingStatus === "LIVE"
+                      ? "border-[#10B981]/50 bg-[#F0FDF4]"
+                      : "border-[#D8D4CB] bg-white hover:border-[#4963C8]/50"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-2.5 min-w-0">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[4px] bg-[#EDE9DF] border border-[#D8D4CB] text-[#4963C8]">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[5px] border ${
+                        meetingInv.meetingStatus === "LIVE"
+                          ? "border-[#10B981]/40 bg-[#10B981]/15 text-[#059669]"
+                          : "border-[#D8D4CB] bg-[#EDE9DF] text-[#4963C8]"
+                      }`}>
                         <Video className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
@@ -131,7 +140,7 @@ function NotificationDropdown({
                           Invited by <span className="text-[#242427] font-medium">{meetingInv.inviterName}</span>
                         </p>
                         <div className="mt-1 flex items-center gap-1.5">
-                          <span className="flex items-center gap-1 text-[11px] text-[#4963C8]">
+                          <span className="flex items-center gap-1 text-[11px] text-[#4963C8] font-medium">
                             <Building className="h-3 w-3" /> {meetingInv.organizationName}
                           </span>
                         </div>
@@ -139,17 +148,29 @@ function NotificationDropdown({
                     </div>
 
                     {meetingInv.meetingStatus === "LIVE" ? (
-                      <span className="flex items-center gap-1 rounded-[3px] border border-[#10B981]/40 bg-[#10B981]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#10B981] shrink-0">
-                        ● LIVE NOW
+                      <span className="relative flex items-center gap-1.5 rounded-[4px] border border-[#10B981]/50 bg-[#10B981]/20 px-2 py-0.5 text-[10px] font-bold text-[#059669] shrink-0">
+                        <span className="h-2 w-2 rounded-full bg-[#10B981] animate-pulse" />
+                        LIVE NOW
                       </span>
                     ) : (
-                      <span className="rounded-[3px] border border-[#D8D4CB] bg-[#EDE9DF] px-1.5 py-0.5 text-[10px] font-mono text-[#585754] shrink-0">
-                        {new Date(meetingInv.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      <span className="rounded-[4px] border border-[#D8D4CB] bg-[#EDE9DF] px-2 py-0.5 text-[10px] font-mono text-[#585754] shrink-0">
+                        {meetingInv.scheduledAt ? new Date(meetingInv.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Scheduled"}
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between border-t border-[#D8D4CB] pt-2">
+                  {/* Explicit status message per user requirement */}
+                  <div className={`rounded-[4px] px-2.5 py-1.5 text-[11px] ${
+                    meetingInv.meetingStatus === "LIVE"
+                      ? "bg-[#DCFCE7] text-[#166534] font-medium"
+                      : "bg-[#EDE9DF]/60 text-[#585754]"
+                  }`}>
+                    {meetingInv.meetingStatus === "LIVE"
+                      ? "Meeting started! You are invited to join."
+                      : `You are invited to this meeting scheduled for ${meetingInv.scheduledAt ? new Date(meetingInv.scheduledAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "future"}.`}
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-[#D8D4CB]/80 pt-2">
                     <span className="text-[11px] font-mono text-[#7E7C77]">
                       Code: {meetingInv.meetingCode}
                     </span>
@@ -157,7 +178,7 @@ function NotificationDropdown({
                       <button
                         type="button"
                         onClick={() => handleDeclineMeeting(meetingInv.id)}
-                        className="rounded-[4px] border border-[#D8D4CB] bg-[#EDE9DF] hover:bg-[#B44A4A]/10 hover:border-[#B44A4A] p-1 text-[#7E7C77] hover:text-[#B44A4A] transition"
+                        className="rounded-[4px] border border-[#D8D4CB] bg-[#EDE9DF] hover:bg-[#B44A4A]/10 hover:border-[#B44A4A] p-1.5 text-[#7E7C77] hover:text-[#B44A4A] transition"
                         title="Decline invite"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -165,9 +186,13 @@ function NotificationDropdown({
                       <button
                         type="button"
                         onClick={() => navigate(`/meeting/${meetingInv.meetingCode}`)}
-                        className="flex items-center gap-1.5 rounded-[5px] bg-[#4963C8] hover:bg-[#3E56B5] px-2.5 py-1 text-xs font-semibold text-white shadow-xs transition"
+                        className={`flex items-center gap-1.5 rounded-[5px] px-3 py-1 text-xs font-semibold text-white shadow-xs transition ${
+                          meetingInv.meetingStatus === "LIVE"
+                            ? "bg-[#10B981] hover:bg-[#059669]"
+                            : "bg-[#4963C8] hover:bg-[#3E56B5]"
+                        }`}
                       >
-                        <span>Join</span>
+                        <span>{meetingInv.meetingStatus === "LIVE" ? "Join Live" : "Join"}</span>
                         <ArrowRight className="h-3.5 w-3.5" />
                       </button>
                     </div>

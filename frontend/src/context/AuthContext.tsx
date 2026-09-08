@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 export interface AuthUser {
@@ -88,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let backendUser: AuthUser | null = null;
 
     try {
-      const response = await fetch("http://localhost:5000/api/users/google-auth", {
+      const response = await fetch(`${API_BASE_URL}/api/users/google-auth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -150,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Persist to Neon cloud PostgreSQL via our backend API
     try {
-      const response = await fetch("http://localhost:5000/api/users/onboard", {
+      const response = await fetch(`${API_BASE_URL}/api/users/onboard`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

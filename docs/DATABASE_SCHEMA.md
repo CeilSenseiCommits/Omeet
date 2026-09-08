@@ -488,6 +488,38 @@ CREATE INDEX idx_meeting_invitations_org ON meeting_invitations(organization_id)
 CREATE INDEX idx_meeting_invitations_meeting ON meeting_invitations(meeting_id);
 ```
 
+#### Meeting Participant vs. Invitee Separation & Dynamic Enrollment Lifecycle:
+1. **Creation Phase (`POST /api/meetings/public` or `POST /api/organizations/:id/meetings`)**:
+   - Only the host is inserted into `meeting_participants (role = 'HOST', joined_at = NOW(), left_at = NULL)`.
+   - Colleague invitees are recorded **strictly** in `meeting_invitations (status = 'PENDING')`.
+   - **Crucial Invariant**: Invitees do NOT exist in `meeting_participants` and therefore are NEVER counted or rendered as active meeting attendees until they physically join.
+2. **Room Entry / Dynamic Join Phase (`GET /api/meetings/:meetingCode?userId=...`)**:
+   - When the invited user navigates to the meeting room:
+     - Atomically upserts into `meeting_participants`:
+       ```sql
+       INSERT INTO meeting_participants (meeting_id, user_id, role, joined_at, left_at)
+       VALUES ($1, $2, 'LISTENER', NOW(), NULL)
+       ON CONFLICT (meeting_id, user_id) DO UPDATE SET left_at = NULL, joined_at = NOW();
+       ```
+     - Updates their pending invitation record to accepted:
+       ```sql
+       UPDATE meeting_invitations SET status = 'ACCEPTED', updated_at = NOW()
+       WHERE meeting_id = $1 AND invitee_user_id = $2 AND status = 'PENDING';
+       ```
+     - If the meeting was `SCHEDULED`, transitions it to `LIVE`:
+       ```sql
+       UPDATE organization_meetings SET status = 'LIVE', started_at = COALESCE(started_at, NOW())
+       WHERE id = $1 AND status = 'SCHEDULED';
+       ```
+3. **Leaving & Departure Phase (`POST /api/meetings/:meetingCode/leave` or `/end`)**:
+   - When a user clicks "Leave", their record is marked `left_at = NOW()`.
+   - When the host clicks "End for All", `organization_meetings.status = 'ENDED'`, `ended_at = NOW()`, and all active participant records receive `left_at = NOW()`.
+4. **Active Attendees Query Filter**:
+   - All queries computing active meeting attendance (e.g. room participant roster, ongoing workspace cards) filter strictly with:
+     ```sql
+     WHERE mp.meeting_id = m.id AND mp.left_at IS NULL
+     ```
+
 ---
 
 ## 9. Real-Time Chat, Team Groups & Group Message Storage Architecture
@@ -534,6 +566,7 @@ Stores individual messages across all channels, team groups, and 1-on-1 direct c
 CREATE TABLE messages (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id     UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    seq                 BIGINT NOT NULL DEFAULT 0,               -- Monotonically increasing per-conversation sequence number
     sender_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     content             TEXT NOT NULL,
     message_type        VARCHAR(20) NOT NULL DEFAULT 'TEXT',     -- 'TEXT' | 'FILE' | 'SYSTEM' | 'MEETING_LINK'
@@ -544,9 +577,37 @@ CREATE TABLE messages (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX idx_messages_conv_seq ON messages(conversation_id, seq DESC);
 CREATE INDEX idx_messages_conv_created ON messages(conversation_id, created_at ASC);
 CREATE INDEX idx_messages_sender ON messages(sender_id);
 ```
+
+### Log-Based Message Commit & Reverse Cursor Architecture
+Similar to systems like Instagram Direct and Slack, messages follow an append-only commit pattern:
+1. **Monotonic Sequence Allocation**:
+   - Each conversation maintains `last_seq` in `conversations`.
+   - When a new message arrives, the backend executes an atomic CTE:
+     ```sql
+     WITH next_seq AS (
+       UPDATE conversations
+       SET last_seq = last_seq + 1, updated_at = NOW()
+       WHERE id = $1
+       RETURNING last_seq
+     )
+     INSERT INTO messages (conversation_id, seq, sender_id, content, message_type)
+     SELECT $1, next_seq.last_seq, $2, $3, $4
+     FROM next_seq
+     RETURNING *;
+     ```
+2. **Reverse 20-Message Pagination**:
+   - Initial chat screen load fetches the most recent 20 messages:
+     ```sql
+     SELECT * FROM messages
+     WHERE conversation_id = $1
+     ORDER BY seq DESC LIMIT 20;
+     ```
+   - Returned in chronological order to the frontend. If older messages exist (`hasMore = true`), a `"See More"` banner appears at the top of the scroll container.
+   - Clicking `"See More"` or scrolling up loads the previous 20 messages (`WHERE seq < $beforeSeq ORDER BY seq DESC LIMIT 20`) without resetting the scroll position.
 
 ### How Group Messages are Stored & Managed (End-to-End Walkthrough)
 

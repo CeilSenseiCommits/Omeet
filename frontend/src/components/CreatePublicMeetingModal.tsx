@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -87,7 +88,7 @@ function CreatePublicMeetingModal({ isOpen, onClose }: CreatePublicMeetingModalP
       try {
         setIsSearching(true);
         const res = await fetch(
-          `http://localhost:5000/api/users/search?q=${encodeURIComponent(
+          `${API_BASE_URL}/api/users/search?q=${encodeURIComponent(
             searchQuery.trim()
           )}&currentUserId=${user?.id || ""}`,
           {
@@ -159,7 +160,7 @@ function CreatePublicMeetingModal({ isOpen, onClose }: CreatePublicMeetingModalP
       setIsSubmitting(true);
       setError(null);
 
-      const res = await fetch("http://localhost:5000/api/meetings/public", {
+      const res = await fetch(`${API_BASE_URL}/api/meetings/public`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

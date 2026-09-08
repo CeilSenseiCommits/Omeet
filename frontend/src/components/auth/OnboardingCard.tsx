@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import React, { useMemo, useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -119,7 +120,7 @@ export default function OnboardingCard({ onSuccess }: OnboardingCardProps) {
     const timer = setTimeout(async () => {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/users/check-username?username=${encodeURIComponent(raw)}`
+          `${API_BASE_URL}/api/users/check-username?username=${encodeURIComponent(raw)}`
         );
         if (res.ok) {
           const data = await res.json();

@@ -199,32 +199,97 @@ router.get("/conversations/:convId/messages", async (req: Request, res: Response
     );
     const participantCount = countRes.rows[0]?.count || 0;
 
-    // 4. Fetch messages
-    const messagesResult = await query(
-      `SELECT 
-         m.id,
-         m.conversation_id,
-         m.sender_id,
-         u.name AS sender_name,
-         u.username AS sender_username,
-         u.avatar_url AS sender_avatar_url,
-         m.content,
-         m.message_type,
-         m.attachments,
-         m.reply_to_id,
-         m.is_edited,
-         m.created_at
-       FROM messages m
-       JOIN users u ON u.id = m.sender_id
-       WHERE m.conversation_id = $1
-       ORDER BY m.created_at ASC
-       LIMIT 100;`,
-      [convId]
-    );
+    // 4. Fetch messages using log-based range window (default: last 20 messages)
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 20, 1), 100);
+    const beforeSeq = req.query.before_seq ? parseInt(req.query.before_seq as string, 10) : null;
+    const sinceSeq = req.query.since_seq ? parseInt(req.query.since_seq as string, 10) : null;
+
+    let messagesResult;
+
+    if (beforeSeq && !isNaN(beforeSeq)) {
+      // Historical fetch: fetch up to `limit` messages strictly before beforeSeq
+      messagesResult = await query(
+        `SELECT * FROM (
+           SELECT 
+             m.id,
+             m.conversation_id,
+             m.seq,
+             m.sender_id,
+             u.name AS sender_name,
+             u.username AS sender_username,
+             u.avatar_url AS sender_avatar_url,
+             m.content,
+             m.message_type,
+             m.attachments,
+             m.reply_to_id,
+             m.is_edited,
+             m.created_at
+           FROM messages m
+           JOIN users u ON u.id = m.sender_id
+           WHERE m.conversation_id = $1 AND m.seq < $2
+           ORDER BY m.seq DESC
+           LIMIT $3
+         ) sub
+         ORDER BY sub.seq ASC;`,
+        [convId, beforeSeq, limit]
+      );
+    } else if (sinceSeq && !isNaN(sinceSeq)) {
+      // Delta sync: fetch messages created after sinceSeq
+      messagesResult = await query(
+        `SELECT 
+           m.id,
+           m.conversation_id,
+           m.seq,
+           m.sender_id,
+           u.name AS sender_name,
+           u.username AS sender_username,
+           u.avatar_url AS sender_avatar_url,
+           m.content,
+           m.message_type,
+           m.attachments,
+           m.reply_to_id,
+           m.is_edited,
+           m.created_at
+         FROM messages m
+         JOIN users u ON u.id = m.sender_id
+         WHERE m.conversation_id = $1 AND m.seq > $2
+         ORDER BY m.seq ASC
+         LIMIT $3;`,
+        [convId, sinceSeq, limit]
+      );
+    } else {
+      // Initial load: fetch latest `limit` messages (default: 20)
+      messagesResult = await query(
+        `SELECT * FROM (
+           SELECT 
+             m.id,
+             m.conversation_id,
+             m.seq,
+             m.sender_id,
+             u.name AS sender_name,
+             u.username AS sender_username,
+             u.avatar_url AS sender_avatar_url,
+             m.content,
+             m.message_type,
+             m.attachments,
+             m.reply_to_id,
+             m.is_edited,
+             m.created_at
+           FROM messages m
+           JOIN users u ON u.id = m.sender_id
+           WHERE m.conversation_id = $1
+           ORDER BY m.seq DESC
+           LIMIT $2
+         ) sub
+         ORDER BY sub.seq ASC;`,
+        [convId, limit]
+      );
+    }
 
     const messages = messagesResult.rows.map((row) => ({
       id: row.id,
       conversationId: row.conversation_id,
+      seq: parseInt(row.seq, 10),
       senderId: row.sender_id,
       senderName: row.sender_name,
       senderUsername: row.sender_username,
@@ -236,6 +301,19 @@ router.get("/conversations/:convId/messages", async (req: Request, res: Response
       isEdited: row.is_edited,
       createdAt: row.created_at,
     }));
+
+    // Check if older messages exist prior to the oldest fetched message
+    const oldestSeq = messages.length > 0 ? messages[0].seq : null;
+    const latestSeq = messages.length > 0 ? messages[messages.length - 1].seq : null;
+
+    let hasMore = false;
+    if (oldestSeq && oldestSeq > 1) {
+      const moreCheck = await query(
+        "SELECT 1 FROM messages WHERE conversation_id = $1 AND seq < $2 LIMIT 1;",
+        [convId, oldestSeq]
+      );
+      hasMore = moreCheck.rows.length > 0;
+    }
 
     // 5. Update caller's last_read_at
     await query(
@@ -256,6 +334,9 @@ router.get("/conversations/:convId/messages", async (req: Request, res: Response
       },
       recipient,
       messages,
+      hasMore,
+      oldestSeq,
+      latestSeq,
     });
   } catch (err) {
     console.error("Failed to load personal messages:", err);
@@ -280,18 +361,22 @@ router.post("/conversations/:convId/messages", async (req: Request, res: Respons
       return res.status(400).json({ error: "Message content cannot be empty." });
     }
 
-    // Insert message
+    // Atomically increment conversation sequence and insert message
     const insertRes = await query(
-      `INSERT INTO messages (conversation_id, sender_id, content, message_type, attachments)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, conversation_id, sender_id, content, message_type, attachments, is_edited, created_at;`,
+      `WITH next_seq AS (
+         UPDATE conversations 
+         SET last_seq = last_seq + 1, updated_at = NOW() 
+         WHERE id = $1 
+         RETURNING last_seq
+       )
+       INSERT INTO messages (conversation_id, seq, sender_id, content, message_type, attachments)
+       SELECT $1, next_seq.last_seq, $2, $3, $4, $5
+       FROM next_seq
+       RETURNING id, conversation_id, seq, sender_id, content, message_type, attachments, is_edited, created_at;`,
       [convId, userId, content.trim(), messageType, JSON.stringify(attachments)]
     );
 
     const newMsg = insertRes.rows[0];
-
-    // Update conversation updated_at
-    await query("UPDATE conversations SET updated_at = NOW() WHERE id = $1;", [convId]);
 
     // Update sender last_read_at
     await query(
@@ -307,6 +392,7 @@ router.post("/conversations/:convId/messages", async (req: Request, res: Respons
       message: {
         id: newMsg.id,
         conversationId: newMsg.conversation_id,
+        seq: parseInt(newMsg.seq, 10),
         senderId: newMsg.sender_id,
         senderName: sender.name || "Member",
         senderUsername: sender.username || "user",
@@ -397,12 +483,19 @@ router.post("/groups", async (req: Request, res: Response) => {
       }
     }
 
-    // Insert system message
+    // Insert system message with atomic sequence increment
     const creatorRes = await query("SELECT name FROM users WHERE id = $1;", [userId]);
     const creatorName = creatorRes.rows[0]?.name || "Creator";
     await query(
-      `INSERT INTO messages (conversation_id, sender_id, content, message_type)
-       VALUES ($1, $2, $3, 'SYSTEM');`,
+      `WITH next_seq AS (
+         UPDATE conversations 
+         SET last_seq = last_seq + 1, updated_at = NOW() 
+         WHERE id = $1 
+         RETURNING last_seq
+       )
+       INSERT INTO messages (conversation_id, seq, sender_id, content, message_type)
+       SELECT $1, next_seq.last_seq, $2, $3, 'SYSTEM'
+       FROM next_seq;`,
       [group.id, userId, `${creatorName} created the group "${name.trim()}".`]
     );
 
@@ -534,8 +627,15 @@ router.post("/groups/:convId/participants", async (req: Request, res: Response) 
     if (namesRes.rows.length > 0) {
       const { adder, added } = namesRes.rows[0];
       await query(
-        `INSERT INTO messages (conversation_id, sender_id, content, message_type)
-         VALUES ($1, $2, $3, 'SYSTEM');`,
+        `WITH next_seq AS (
+           UPDATE conversations 
+           SET last_seq = last_seq + 1, updated_at = NOW() 
+           WHERE id = $1 
+           RETURNING last_seq
+         )
+         INSERT INTO messages (conversation_id, seq, sender_id, content, message_type)
+         SELECT $1, next_seq.last_seq, $2, $3, 'SYSTEM'
+         FROM next_seq;`,
         [convId, userId, `${adder} added ${added} to the group.`]
       );
     }
@@ -569,8 +669,15 @@ router.delete("/groups/:convId/participants/:targetUserId", async (req: Request,
       const { remover, removed } = namesRes.rows[0];
       const msg = userId === targetUserId ? `${removed} left the group.` : `${remover} removed ${removed} from the group.`;
       await query(
-        `INSERT INTO messages (conversation_id, sender_id, content, message_type)
-         VALUES ($1, $2, $3, 'SYSTEM');`,
+        `WITH next_seq AS (
+           UPDATE conversations 
+           SET last_seq = last_seq + 1, updated_at = NOW() 
+           WHERE id = $1 
+           RETURNING last_seq
+         )
+         INSERT INTO messages (conversation_id, seq, sender_id, content, message_type)
+         SELECT $1, next_seq.last_seq, $2, $3, 'SYSTEM'
+         FROM next_seq;`,
         [convId, userId, msg]
       );
     }

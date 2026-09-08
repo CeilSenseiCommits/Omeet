@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Users, X } from "lucide-react";
@@ -29,7 +30,7 @@ function CreateGroupModal({ isOpen, onClose, organizationId, onGroupCreated }: C
       setIsSubmitting(true);
       setError(null);
 
-      const res = await fetch(`http://localhost:5000/api/organizations/${organizationId}/groups`, {
+      const res = await fetch(`${API_BASE_URL}/api/organizations/${organizationId}/groups`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

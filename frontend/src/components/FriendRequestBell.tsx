@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { UserPlus, Users, Check, X, Search, Loader2, Clock } from "lucide-react";
 import UserAvatar from "./UserAvatar";
@@ -44,7 +45,7 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
   const fetchFriendRequests = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch("http://localhost:5000/api/friends/requests", {
+      const res = await fetch(`${API_BASE_URL}/api/friends/requests`, {
         headers: { "x-user-id": user.id },
       });
       if (res.ok) {
@@ -87,7 +88,7 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
         setIsSearching(true);
         setAddFriendError(null);
         const res = await fetch(
-          `http://localhost:5000/api/users/search?q=${encodeURIComponent(searchQuery.trim())}&currentUserId=${user?.id || ""}`
+          `${API_BASE_URL}/api/users/search?q=${encodeURIComponent(searchQuery.trim())}&currentUserId=${user?.id || ""}`
         );
         if (res.ok) {
           const data = await res.json();
@@ -106,7 +107,7 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
     if (!user?.id) return;
     try {
       setActionLoadingId(requestId);
-      const res = await fetch(`http://localhost:5000/api/friends/requests/${requestId}/respond`, {
+      const res = await fetch(`${API_BASE_URL}/api/friends/requests/${requestId}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user.id },
         body: JSON.stringify({ action, userId: user.id }),
@@ -127,7 +128,7 @@ export default function FriendRequestBell({ onRefresh }: FriendRequestBellProps)
     if (!user?.id) return;
     try {
       setAddFriendError(null);
-      const res = await fetch("http://localhost:5000/api/friends/request", {
+      const res = await fetch(`${API_BASE_URL}/api/friends/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user.id },
         body: JSON.stringify({ targetUserId }),

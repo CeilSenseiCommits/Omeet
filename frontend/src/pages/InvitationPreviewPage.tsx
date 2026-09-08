@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -46,7 +47,7 @@ function InvitationPreviewPage() {
       setError(null);
 
       try {
-        const res = await fetch(`http://localhost:5000/api/invitations/${invitationId}`, {
+        const res = await fetch(`${API_BASE_URL}/api/invitations/${invitationId}`, {
           headers: {
             "x-user-id": user?.id || "",
           },
@@ -116,7 +117,7 @@ function InvitationPreviewPage() {
     setActionLoading(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/invitations/${invitationId}/respond`, {
+      const res = await fetch(`${API_BASE_URL}/api/invitations/${invitationId}/respond`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -149,7 +150,7 @@ function InvitationPreviewPage() {
     setActionLoading(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/invitations/${invitationId}/respond`, {
+      const res = await fetch(`${API_BASE_URL}/api/invitations/${invitationId}/respond`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

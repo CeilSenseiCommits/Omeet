@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -20,7 +21,7 @@ export default function InvitationPage() {
       return;
     }
 
-    fetch(`http://localhost:5000/api/organizations/user/${user.id}`)
+    fetch(`${API_BASE_URL}/api/organizations/user/${user.id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Failed to load organizations");
         return res.json();

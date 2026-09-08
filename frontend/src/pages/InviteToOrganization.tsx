@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -104,7 +105,7 @@ export default function InviteToOrganization() {
 
       try {
         const res = await fetch(
-          `http://localhost:5000/api/organizations/${organizationId}/invitations/eligibility`,
+          `${API_BASE_URL}/api/organizations/${organizationId}/invitations/eligibility`,
           {
             headers: {
               "x-user-id": user.id,
@@ -150,7 +151,7 @@ export default function InviteToOrganization() {
   useEffect(() => {
     if (!candidateId || selectedUser) return;
 
-    fetch(`http://localhost:5000/api/users/profile/${candidateId}`)
+    fetch(`${API_BASE_URL}/api/users/profile/${candidateId}`)
       .then((res) => {
         if (!res.ok) throw new Error("Could not find candidate user");
         return res.json();
@@ -186,7 +187,7 @@ export default function InviteToOrganization() {
       try {
         const cleanQ = searchQuery.trim().replace(/^@/, "");
         const res = await fetch(
-          `http://localhost:5000/api/users/search?q=${encodeURIComponent(cleanQ)}&orgId=${organizationId}&currentUserId=${user?.id || ""}`
+          `${API_BASE_URL}/api/users/search?q=${encodeURIComponent(cleanQ)}&orgId=${organizationId}&currentUserId=${user?.id || ""}`
         );
         if (res.ok) {
           const data = await res.json();
@@ -224,7 +225,7 @@ export default function InviteToOrganization() {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/invitations`,
+        `${API_BASE_URL}/api/organizations/${organizationId}/invitations`,
         {
           method: "POST",
           headers: {

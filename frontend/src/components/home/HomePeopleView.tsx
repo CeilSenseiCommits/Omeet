@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -10,7 +11,8 @@ import {
   MessageSquare, 
   ExternalLink, 
   Loader2,
-  X
+  X,
+  ArrowUp
 } from "lucide-react";
 import CreatePublicMeetingModal from "../CreatePublicMeetingModal";
 
@@ -31,6 +33,7 @@ interface Friend {
 interface Message {
   id: string;
   conversationId: string;
+  seq?: number;
   senderId: string;
   senderName: string;
   senderUsername: string;
@@ -55,7 +58,17 @@ export default function HomePeopleView() {
   const [messageInput, setMessageInput] = useState("");
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<Message[]>([]);
+  messagesRef.current = messages;
+
+  const scrollToBottom = (smooth = true) => {
+    messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" });
+  };
 
   // Add Friend Modal
   const [isAddFriendOpen, setIsAddFriendOpen] = useState(false);
@@ -76,7 +89,7 @@ export default function HomePeopleView() {
     if (!user?.id) return;
     try {
       setIsLoadingFriends(true);
-      const res = await fetch("http://localhost:5000/api/friends", {
+      const res = await fetch(`${API_BASE_URL}/api/friends`, {
         headers: { "x-user-id": user.id },
       });
       if (res.ok) {
@@ -113,7 +126,7 @@ export default function HomePeopleView() {
 
     try {
       // 1. Get or create 1-on-1 personal conversation
-      const convRes = await fetch(`http://localhost:5000/api/friends/chat/${friend.id}`, {
+      const convRes = await fetch(`${API_BASE_URL}/api/friends/chat/${friend.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user.id },
       });
@@ -122,13 +135,15 @@ export default function HomePeopleView() {
       const convId = convData.conversationId;
       setActiveConvId(convId);
 
-      // 2. Load messages for this conversation
-      const msgRes = await fetch(`http://localhost:5000/api/personal/conversations/${convId}/messages`, {
+      // 2. Load latest 20 messages for this conversation
+      const msgRes = await fetch(`${API_BASE_URL}/api/personal/conversations/${convId}/messages?limit=20`, {
         headers: { "x-user-id": user.id },
       });
       if (msgRes.ok) {
         const msgData = await msgRes.json();
         setMessages(msgData.messages || []);
+        setHasMore(Boolean(msgData.hasMore));
+        setTimeout(() => scrollToBottom(false), 50);
       }
     } catch (err) {
       console.error("Failed to select friend:", err);
@@ -137,10 +152,80 @@ export default function HomePeopleView() {
     }
   };
 
-  // Auto-scroll messages
+  // Load older messages (paginating backwards)
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore || !activeConvId || messages.length === 0 || !user?.id) return;
+    const oldestSeq = messages[0]?.seq;
+    if (oldestSeq === undefined || oldestSeq === null) return;
+
+    const container = scrollContainerRef.current;
+    const prevScrollHeight = container ? container.scrollHeight : 0;
+    const prevScrollTop = container ? container.scrollTop : 0;
+
+    try {
+      setIsLoadingMore(true);
+      const res = await fetch(
+        `${API_BASE_URL}/api/personal/conversations/${activeConvId}/messages?limit=20&before_seq=${oldestSeq}`,
+        {
+          headers: { "x-user-id": user.id },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const olderMessages: Message[] = data.messages || [];
+        setHasMore(Boolean(data.hasMore));
+
+        if (olderMessages.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const filteredOlder = olderMessages.filter((m) => !existingIds.has(m.id));
+            return [...filteredOlder, ...prev];
+          });
+
+          // Preserve scroll position
+          requestAnimationFrame(() => {
+            if (container) {
+              container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load older messages:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Polling for incoming delta messages without wiping older history
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!activeConvId || !user?.id) return;
+    const interval = setInterval(async () => {
+      const currentList = messagesRef.current;
+      const maxSeq = currentList.reduce((max, m) => (m.seq && m.seq > max ? m.seq : max), 0);
+      if (maxSeq === 0) return;
+
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/personal/conversations/${activeConvId}/messages?since_seq=${maxSeq}`,
+          { headers: { "x-user-id": user.id } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages && data.messages.length > 0) {
+            setMessages((prev) => {
+              const existingIds = new Set(prev.map((m) => m.id));
+              const newMsgs = data.messages.filter((m: Message) => !existingIds.has(m.id));
+              if (newMsgs.length === 0) return prev;
+              return [...prev, ...newMsgs];
+            });
+            setTimeout(() => scrollToBottom(true), 50);
+          }
+        }
+      } catch {}
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [activeConvId, user?.id]);
 
   // Send message
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -162,10 +247,11 @@ export default function HomePeopleView() {
     setMessages((prev) => [...prev, optimisticMsg]);
     const textToSend = messageInput.trim();
     setMessageInput("");
+    setTimeout(() => scrollToBottom(true), 50);
 
     try {
       setIsSending(true);
-      const res = await fetch(`http://localhost:5000/api/personal/conversations/${activeConvId}/messages`, {
+      const res = await fetch(`${API_BASE_URL}/api/personal/conversations/${activeConvId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user.id },
         body: JSON.stringify({ content: textToSend, messageType: "TEXT" }),
@@ -192,7 +278,7 @@ export default function HomePeopleView() {
         setIsSearchingUsers(true);
         setAddFriendStatus(null);
         const res = await fetch(
-          `http://localhost:5000/api/users/search?q=${encodeURIComponent(userSearchQuery.trim())}&currentUserId=${user?.id || ""}`
+          `${API_BASE_URL}/api/users/search?q=${encodeURIComponent(userSearchQuery.trim())}&currentUserId=${user?.id || ""}`
         );
         if (res.ok) {
           const data = await res.json();
@@ -210,7 +296,7 @@ export default function HomePeopleView() {
   const handleSendFriendRequest = async (targetUserId: string) => {
     if (!user?.id) return;
     try {
-      const res = await fetch("http://localhost:5000/api/friends/request", {
+      const res = await fetch(`${API_BASE_URL}/api/friends/request`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-user-id": user.id },
         body: JSON.stringify({ targetUserId }),
@@ -360,7 +446,7 @@ export default function HomePeopleView() {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-3">
+            <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto p-5 space-y-3">
               {isLoadingMessages ? (
                 <div className="flex h-full items-center justify-center">
                   <Loader2 className="h-5 w-5 animate-spin text-[#7E7C77]" />
@@ -376,7 +462,32 @@ export default function HomePeopleView() {
                   </p>
                 </div>
               ) : (
-                messages.map((msg) => {
+                <>
+                  {/* See More Messages Button */}
+                  {hasMore && (
+                    <div className="flex justify-center py-1">
+                      <button
+                        type="button"
+                        onClick={handleLoadMore}
+                        disabled={isLoadingMore}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#D8D4CB] bg-white px-3.5 py-1 text-xs font-semibold text-[#585754] shadow-2xs hover:bg-[#F3EFE6] hover:text-[#242427] hover:border-[#4963C8] transition disabled:opacity-50 cursor-pointer"
+                      >
+                        {isLoadingMore ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#4963C8]" />
+                            <span>Loading older messages...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ArrowUp className="h-3.5 w-3.5 text-[#4963C8]" />
+                            <span>See more messages</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+
+                  {messages.map((msg) => {
                   const isMe = msg.senderId === user?.id;
                   const time = new Date(msg.createdAt).toLocaleTimeString("en-US", {
                     hour: "numeric",
@@ -411,8 +522,9 @@ export default function HomePeopleView() {
                       </div>
                     </div>
                   );
-                })
-              )}
+                })}
+              </>
+            )}
               <div ref={messagesEndRef} />
             </div>
 

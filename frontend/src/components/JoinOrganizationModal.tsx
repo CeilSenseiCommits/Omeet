@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -27,7 +28,7 @@ function JoinOrganizationModal({
     const cleanCode = inviteCode.trim().toUpperCase();
 
     try {
-      const res = await fetch(`http://localhost:5000/api/invitations/code/${cleanCode}`, {
+      const res = await fetch(`${API_BASE_URL}/api/invitations/code/${cleanCode}`, {
         headers: {
           "x-user-id": user?.id || "",
         },

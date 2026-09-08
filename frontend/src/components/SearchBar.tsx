@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X, Loader2 } from "lucide-react";
@@ -56,7 +57,7 @@ function SearchBar() {
     const timeoutId = window.setTimeout(async () => {
       try {
         const response = await fetch(
-          `http://localhost:5000/api/users/search?q=${encodeURIComponent(trimmed)}`,
+          `${API_BASE_URL}/api/users/search?q=${encodeURIComponent(trimmed)}`,
           { signal: abortController.signal }
         );
 

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
@@ -45,7 +46,7 @@ function PublicProfilePage() {
         headers["x-user-id"] = currentUser.id;
       }
 
-      const res = await fetch(`http://localhost:5000/api/users/profile/${userId}`, { headers });
+      const res = await fetch(`${API_BASE_URL}/api/users/profile/${userId}`, { headers });
       if (!res.ok) throw new Error("User not found in database");
       const data = await res.json();
       if (data.user) {
@@ -79,7 +80,7 @@ function PublicProfilePage() {
     setIsFriendActionLoading(true);
     setFriendActionFeedback(null);
     try {
-      const res = await fetch("http://localhost:5000/api/friends/request", {
+      const res = await fetch(`${API_BASE_URL}/api/friends/request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -108,7 +109,7 @@ function PublicProfilePage() {
     setIsFriendActionLoading(true);
     setFriendActionFeedback(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/friends/requests/${profile.friendshipId}/respond`, {
+      const res = await fetch(`${API_BASE_URL}/api/friends/requests/${profile.friendshipId}/respond`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,7 +138,7 @@ function PublicProfilePage() {
     setIsFriendActionLoading(true);
     setFriendActionFeedback(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/friends/${profile.friendshipId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/friends/${profile.friendshipId}`, {
         method: "DELETE",
         headers: { "x-user-id": currentUser.id },
       });
@@ -165,7 +166,7 @@ function PublicProfilePage() {
     setIsFriendActionLoading(true);
     setFriendActionFeedback(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/friends/${profile.friendshipId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/friends/${profile.friendshipId}`, {
         method: "DELETE",
         headers: { "x-user-id": currentUser.id },
       });
@@ -200,7 +201,7 @@ function PublicProfilePage() {
 
     setIsCheckingOrg(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/organizations/user/${currentUser.id}`);
+      const res = await fetch(`${API_BASE_URL}/api/organizations/user/${currentUser.id}`);
       if (!res.ok) throw new Error("Could not load your organizations");
       const data = await res.json();
       const orgs = data.organizations || [];

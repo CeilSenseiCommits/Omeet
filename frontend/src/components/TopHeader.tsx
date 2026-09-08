@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import SearchBar from "./SearchBar";
@@ -29,21 +30,21 @@ function TopHeader() {
     if (!user?.id) return;
     try {
       // 1. Fetch received pending invitations for user
-      const incomingRes = await fetch(`http://localhost:5000/api/invitations/user/${user.id}`);
+      const incomingRes = await fetch(`${API_BASE_URL}/api/invitations/user/${user.id}`);
       if (incomingRes.ok) {
         const data = await incomingRes.json();
         setIncomingInvites(data.invitations || []);
       }
 
       // 2. Fetch sent invitations created by this user
-      const outgoingRes = await fetch(`http://localhost:5000/api/invitations/sent/${user.id}`);
+      const outgoingRes = await fetch(`${API_BASE_URL}/api/invitations/sent/${user.id}`);
       if (outgoingRes.ok) {
         const data = await outgoingRes.json();
         setOutgoingInvites(data.invitations || []);
       }
 
       // 3. Fetch meeting invitations for this user (all organizations)
-      const meetingRes = await fetch(`http://localhost:5000/api/meetings/invitations/user/${user.id}`);
+      const meetingRes = await fetch(`${API_BASE_URL}/api/meetings/invitations/user/${user.id}`);
       if (meetingRes.ok) {
         const data = await meetingRes.json();
         setMeetingInvites(data.invitations || []);
@@ -55,6 +56,8 @@ function TopHeader() {
 
   useEffect(() => {
     fetchInvitations();
+    const interval = setInterval(fetchInvitations, 6000);
+    return () => clearInterval(interval);
   }, [fetchInvitations]);
 
   const displayName = user?.name || "User";

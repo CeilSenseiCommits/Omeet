@@ -170,10 +170,20 @@ function MeetingsTab({
                       <p className="text-xs text-[#585754] truncate">{meeting.organizer}</p>
                       <p className="text-[10px] text-[#7E7C77] mt-0.5">Organizer</p>
                     </div>
-                    <div className="w-20 shrink-0 flex justify-end pr-2">
-                      <span className="rounded-[3px] border border-[#CBD5E1] bg-[#EEF2FF] px-2 py-0.5 text-[10px] font-semibold text-[#4963C8]">
-                        {meeting.status}
-                      </span>
+                    <div className="w-24 shrink-0 flex items-center justify-end gap-1.5 pr-2">
+                      {meeting.meetingCode ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/meeting/${meeting.meetingCode}`, { state: { fromOrgId: organizationId, fromTab: "Meetings" } })}
+                          className="rounded-[4px] bg-[#4963C8] hover:bg-[#3E56B5] px-2.5 py-1 text-xs font-medium text-white transition-colors shadow-2xs"
+                        >
+                          Join
+                        </button>
+                      ) : (
+                        <span className="rounded-[3px] border border-[#CBD5E1] bg-[#EEF2FF] px-2 py-0.5 text-[10px] font-semibold text-[#4963C8]">
+                          {meeting.status}
+                        </span>
+                      )}
                     </div>
                     <button type="button" className="text-[#7E7C77] hover:text-[#242427] p-1 rounded-[4px] opacity-0 group-hover:opacity-100 transition-opacity">
                       <MoreVertical className="h-3.5 w-3.5" />

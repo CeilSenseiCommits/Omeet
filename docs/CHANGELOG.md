@@ -4,7 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- **Public User Profile Friend Request System**:
+- **Append-Only Log Messaging Architecture & 20-Message Reverse Pagination**:
+  - Implemented log-based monotonic sequence numbering (`conversations.last_seq` and `messages.seq`) using atomic CTEs.
+  - Added reverse-cursor 20-message pagination (`GET /api/organizations/:id/conversations/:convId/messages?limit=20&beforeSeq=...`).
+  - Added interactive `"See More"` button and top-sentinel scrolling in `OrgChatView` that prepends historical messages without disrupting current scroll position.
+- **Meeting Participant vs. Invitee Separation**:
+  - Eliminated premature insertion of invited users into `meeting_participants` on meeting creation (both public and org-scoped).
+  - Only the host is inserted into `meeting_participants` upon creation (`role = 'HOST'`).
+  - Invited users are tracked strictly in `meeting_invitations` (`status = 'PENDING'`).
+  - Implemented dynamic room join lifecycle (`GET /api/meetings/:meetingCode?userId=...`): atomically upserts `meeting_participants` (`role = 'LISTENER'`, `left_at = NULL`), marks invitations `'ACCEPTED'`, and transitions scheduled meetings to `LIVE`.
+  - Strictly filtered active participant queries with `AND mp.left_at IS NULL` across room details, workspace data, and meetings hub.
+- **Live Meeting Notifications & High-Visibility Dropdown UX**:
+  - Enhanced `NotificationDropdown` with live pulsating green badges and explicit copy (`"Meeting started! You are invited to join."` with `"Join Live"` action vs. scheduled alerts with formatted timestamps).
+  - Added background polling (6 seconds) to `TopHeader` and `OrgHeader` for real-time invitation delivery.
+- **Global Home Page Ongoing Meetings Synchronization**:
+  - Updated `GET /api/meetings/user/:userId` `activeRes` to include live meetings where the user has a pending/accepted invitation.
+  - Added 6-second polling in `HomeMeetingsView` so live meetings appear in real time under **Live Ongoing Meetings**.
+- **Organization Workspace Synchronization**:
+  - Added 8-second polling in `OrgWorkspaceLayout` to sync workspace meetings, rosters, and chat streams in real time.
+  - In `MeetingsTab`, ongoing meetings display strictly active joined attendees, and upcoming meetings provide a direct `"Join"` action button.
+- **Fixed Viewport Scroll Containment & Chat UX**:
+  - Applied `h-screen max-h-screen overflow-hidden` to `OrgWorkspaceLayout` and chat wrappers.
+  - Added `min-h-0 overflow-y-auto` to messages container, preventing window scroll while enabling smooth internal chat scrolling.
+  - Resolved direct message switching state glitch between organization members.
   - Added friend request management directly on public user profile pages (`/profile/:userId`).
   - Added dynamic status resolution (`NONE`, `REQUEST_SENT`, `REQUEST_RECEIVED`, `FRIENDS`, or `SELF`) via `GET /api/users/profile/:userId`.
   - Added "Add Friend", "Friend Request Sent", "Accept Friend Request", and "Message" (routing directly to 1-on-1 chat in People workspace) actions.

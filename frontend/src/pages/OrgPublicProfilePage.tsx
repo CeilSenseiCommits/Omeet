@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
@@ -31,7 +32,7 @@ export default function OrgPublicProfilePage() {
     setLoading(true);
     setError(null);
 
-    fetch(`http://localhost:5000/api/organizations/${id}/public`, {
+    fetch(`${API_BASE_URL}/api/organizations/${id}/public`, {
       headers: {
         "x-user-id": currentUser?.id || "",
       },

@@ -174,6 +174,28 @@ export async function initializeDatabase() {
       CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
     `);
 
+    console.log("Applying log-based messaging schema migrations (conversations.last_seq, messages.seq)...");
+    await client.query(`
+      ALTER TABLE conversations ADD COLUMN IF NOT EXISTS last_seq BIGINT NOT NULL DEFAULT 0;
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS seq BIGINT NOT NULL DEFAULT 1;
+
+      -- Backfill existing messages with row numbers per conversation based on created_at
+      WITH ranked AS (
+        SELECT id, ROW_NUMBER() OVER (PARTITION BY conversation_id ORDER BY created_at ASC) AS rnum
+        FROM messages
+      )
+      UPDATE messages m
+      SET seq = r.rnum
+      FROM ranked r
+      WHERE m.id = r.id;
+
+      -- Sync conversations.last_seq to highest existing message sequence
+      UPDATE conversations c
+      SET last_seq = COALESCE((SELECT MAX(seq) FROM messages WHERE conversation_id = c.id), 0);
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_conv_seq ON messages(conversation_id, seq ASC);
+    `);
+
     console.log("Creating 'organization_meetings' table if not exists...");
     await client.query(`
       CREATE TABLE IF NOT EXISTS organization_meetings (

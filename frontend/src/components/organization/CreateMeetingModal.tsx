@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../lib/api";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -93,7 +94,7 @@ function CreateMeetingModal({
       if (!organizationId) return;
       try {
         setIsSearchingColleagues(true);
-        const res = await fetch(`http://localhost:5000/api/organizations/${organizationId}?userId=${user?.id || ""}`, {
+        const res = await fetch(`${API_BASE_URL}/api/organizations/${organizationId}?userId=${user?.id || ""}`, {
           headers: { "x-user-id": user?.id || "" }
         });
         if (res.ok) {
@@ -171,7 +172,7 @@ function CreateMeetingModal({
         scheduledAt = combined.toISOString();
       }
 
-      const res = await fetch(`http://localhost:5000/api/organizations/${organizationId}/meetings`, {
+      const res = await fetch(`${API_BASE_URL}/api/organizations/${organizationId}/meetings`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

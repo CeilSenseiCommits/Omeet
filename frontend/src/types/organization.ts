@@ -86,6 +86,7 @@ export interface UpcomingMeeting {
   organizer: string;
   group: string;
   status: string;
+  meetingCode?: string;
 }
 
 export interface RecentlyEndedMeeting {

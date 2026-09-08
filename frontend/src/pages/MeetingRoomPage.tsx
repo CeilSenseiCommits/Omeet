@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -98,7 +99,7 @@ function MeetingRoomPage() {
         setNotFound(false);
 
         const res = await fetch(
-          `http://localhost:5000/api/meetings/${meetingCode}?userId=${user?.id || ""}`,
+          `${API_BASE_URL}/api/meetings/${meetingCode}?userId=${user?.id || ""}`,
           {
             headers: {
               "x-user-id": user?.id || "",
@@ -145,7 +146,7 @@ function MeetingRoomPage() {
 
     const pollInterval = setInterval(async () => {
       try {
-        const res = await fetch(`http://localhost:5000/api/meetings/${meetingCode}?userId=${user?.id || ""}`, {
+        const res = await fetch(`${API_BASE_URL}/api/meetings/${meetingCode}?userId=${user?.id || ""}`, {
           headers: { "x-user-id": user?.id || "" }
         });
         if (res.ok) {
@@ -222,7 +223,7 @@ function MeetingRoomPage() {
     if (!meetingCode || !user?.id) return;
     try {
       setIsEndingMeeting(true);
-      await fetch(`http://localhost:5000/api/meetings/${meetingCode}/end`, {
+      await fetch(`${API_BASE_URL}/api/meetings/${meetingCode}/end`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -244,7 +245,7 @@ function MeetingRoomPage() {
     if (!meetingCode) return;
     try {
       if (user?.id) {
-        await fetch(`http://localhost:5000/api/meetings/${meetingCode}/leave`, {
+        await fetch(`${API_BASE_URL}/api/meetings/${meetingCode}/leave`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../lib/api";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Check, X, Clock, Building, ArrowUpRight, Copy, CheckCheck } from "lucide-react";
@@ -29,7 +30,7 @@ function NotificationItem({
     setIsResponding(true);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/invitations/${inviteId}/respond`, {
+      const res = await fetch(`${API_BASE_URL}/api/invitations/${inviteId}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, userId }),

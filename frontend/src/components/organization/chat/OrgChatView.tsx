@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "../../../lib/api";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import { 
@@ -10,6 +11,7 @@ import {
   Loader2, 
   Sparkles, 
   ArrowDown, 
+  ArrowUp,
   Info,
   MessageCircle
 } from "lucide-react";
@@ -19,6 +21,7 @@ import UserAvatar from "../../UserAvatar";
 interface ChatMessage {
   id: string;
   conversationId: string;
+  seq?: number;
   senderId: string;
   senderName: string;
   senderUsername: string;
@@ -103,8 +106,18 @@ function OrgChatView({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [isGroupInfoModalOpen, setIsGroupInfoModalOpen] = useState(false);
 
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
+
+  const onMessagesReadRef = useRef(onMessagesRead);
+  useEffect(() => {
+    onMessagesReadRef.current = onMessagesRead;
+  }, [onMessagesRead]);
 
   const scrollToBottom = useCallback((smooth = true) => {
     if (messagesEndRef.current) {
@@ -112,14 +125,14 @@ function OrgChatView({
     }
   }, []);
 
-  // Fetch conversation messages
+  // Fetch initial conversation messages (last 20 messages)
   const fetchMessages = useCallback(async (isInitial = false) => {
     if (!conversationId || !organizationId) return;
 
     try {
       if (isInitial) setIsLoading(true);
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/messages?userId=${user?.id || ""}`,
+        `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}/messages?userId=${user?.id || ""}&limit=20`,
         {
           headers: {
             "x-user-id": user?.id || "",
@@ -132,7 +145,8 @@ function OrgChatView({
         setConversation(data.conversation);
         setRecipient(data.recipient);
         setMessages(data.messages || []);
-        onMessagesRead?.();
+        setHasMore(Boolean(data.hasMore));
+        onMessagesReadRef.current?.();
         if (isInitial) {
           setTimeout(() => scrollToBottom(false), 100);
         }
@@ -144,18 +158,89 @@ function OrgChatView({
     }
   }, [conversationId, organizationId, user?.id, scrollToBottom]);
 
-  // Initial load
+  // Load older messages (paginating back in time)
+  const handleLoadMore = async () => {
+    if (isLoadingMore || !hasMore || messages.length === 0) return;
+    const oldestSeq = messages[0]?.seq;
+    if (oldestSeq === undefined || oldestSeq === null) return;
+
+    const container = scrollContainerRef.current;
+    const prevScrollHeight = container ? container.scrollHeight : 0;
+    const prevScrollTop = container ? container.scrollTop : 0;
+
+    try {
+      setIsLoadingMore(true);
+      const res = await fetch(
+        `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}/messages?userId=${user?.id || ""}&limit=20&before_seq=${oldestSeq}`,
+        {
+          headers: { "x-user-id": user?.id || "" },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const olderMessages: ChatMessage[] = data.messages || [];
+        setHasMore(Boolean(data.hasMore));
+
+        if (olderMessages.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const filteredOlder = olderMessages.filter((m) => !existingIds.has(m.id));
+            return [...filteredOlder, ...prev];
+          });
+
+          // Maintain scroll position so chat does not jump
+          requestAnimationFrame(() => {
+            if (container) {
+              container.scrollTop = prevScrollTop + (container.scrollHeight - prevScrollHeight);
+            }
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load older messages:", err);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Initial load when conversationId or organizationId changes
   useEffect(() => {
     fetchMessages(true);
-  }, [fetchMessages]);
+  }, [conversationId, organizationId, fetchMessages]);
 
-  // Polling every 3.5s for real-time messages while view is active
+  // Polling every 3.5s for real-time delta messages without wiping older history
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchMessages(false);
+    const interval = setInterval(async () => {
+      if (!conversationId || !organizationId || !user?.id) return;
+      const currentList = messagesRef.current;
+      const maxSeq = currentList.reduce((max, m) => (m.seq && m.seq > max ? m.seq : max), 0);
+      if (maxSeq === 0) return;
+
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}/messages?userId=${user.id}&since_seq=${maxSeq}`,
+          {
+            headers: { "x-user-id": user.id },
+          }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.messages && data.messages.length > 0) {
+            setMessages((prev) => {
+              const existingIds = new Set(prev.map((m) => m.id));
+              const newMsgs = data.messages.filter((m: ChatMessage) => !existingIds.has(m.id));
+              if (newMsgs.length === 0) return prev;
+              return [...prev, ...newMsgs];
+            });
+            onMessagesReadRef.current?.();
+          }
+        }
+      } catch {
+        // Silent catch for background polling
+      }
     }, 3500);
     return () => clearInterval(interval);
-  }, [fetchMessages]);
+  }, [conversationId, organizationId, user?.id]);
 
   // Keyboard shortcut Esc to close
   useEffect(() => {
@@ -205,7 +290,7 @@ function OrgChatView({
     try {
       setIsSending(true);
       const res = await fetch(
-        `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/messages`,
+        `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}/messages`,
         {
           method: "POST",
           headers: {
@@ -266,7 +351,7 @@ function OrgChatView({
     } else {
       try {
         const res = await fetch(
-          `http://localhost:5000/api/organizations/${organizationId}/conversations/${conversationId}/details?userId=${user?.id || ""}`,
+          `${API_BASE_URL}/api/organizations/${organizationId}/conversations/${conversationId}/details?userId=${user?.id || ""}`,
           { headers: { "x-user-id": user?.id || "" } }
         );
         if (res.ok) {
@@ -417,7 +502,7 @@ function OrgChatView({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-5 py-5 space-y-4"
+        className="min-h-0 flex-1 overflow-y-auto px-5 py-5 space-y-4"
       >
         {isLoading ? (
           <div className="flex h-full items-center justify-center py-20">
@@ -488,20 +573,46 @@ function OrgChatView({
           </div>
         ) : (
           <>
-            {/* Start of conversation hero banner */}
-            <div className="rounded-[8px] border border-[#E2E8F0] bg-white p-5 text-center max-w-md mx-auto shadow-xs">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-[6px] bg-[#F0FDFA] border border-[#99F6E4] text-[#0D9488] mb-2.5 shadow-2xs">
-                {isDirect ? <User className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+            {/* See More Messages Button */}
+            {hasMore && (
+              <div className="flex justify-center py-2">
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#CBD5E1] bg-white px-4 py-1.5 text-xs font-semibold text-[#475569] shadow-2xs hover:bg-[#F8FAFC] hover:text-[#0D9488] hover:border-[#0D9488]/40 transition disabled:opacity-50 cursor-pointer"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-[#0D9488]" />
+                      <span>Loading older messages...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUp className="h-3.5 w-3.5" />
+                      <span>See more messages</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <h3 className="text-sm font-semibold text-[#1E293B]">
-                {isDirect ? `Chat with ${recipient?.name || "Colleague"}` : `Welcome to #${conversation?.name}`}
-              </h3>
-              <p className="mt-1 text-xs text-[#64748B] leading-relaxed">
-                {isDirect
-                  ? `This is the direct conversation between you and @${recipient?.username || "colleague"}.`
-                  : conversation?.topic || "Collaborate, share updates, and sync with your team members."}
-              </p>
-            </div>
+            )}
+
+            {/* Start of conversation hero banner (show only when beginning of chat is reached) */}
+            {!hasMore && (
+              <div className="rounded-[8px] border border-[#E2E8F0] bg-white p-5 text-center max-w-md mx-auto shadow-xs">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-[6px] bg-[#F0FDFA] border border-[#99F6E4] text-[#0D9488] mb-2.5 shadow-2xs">
+                  {isDirect ? <User className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                </div>
+                <h3 className="text-sm font-semibold text-[#1E293B]">
+                  {isDirect ? `Chat with ${recipient?.name || "Colleague"}` : `Welcome to #${conversation?.name}`}
+                </h3>
+                <p className="mt-1 text-xs text-[#64748B] leading-relaxed">
+                  {isDirect
+                    ? `This is the direct conversation between you and @${recipient?.username || "colleague"}.`
+                    : conversation?.topic || "Collaborate, share updates, and sync with your team members."}
+                </p>
+              </div>
+            )}
 
             {/* Messages Stream */}
             {messages.map((msg, index) => {
@@ -581,7 +692,7 @@ function OrgChatView({
       )}
 
       {/* 3. Message Input Composer */}
-      <footer className="border-t border-[#E2E8F0] bg-white p-3">
+      <footer className="shrink-0 border-t border-[#E2E8F0] bg-white p-3">
         <form onSubmit={handleSendMessage} className="flex items-end gap-2">
           <div className="flex-1 rounded-[6px] border border-[#E2E8F0] bg-[#F8FAFC] focus-within:border-[#0D9488] focus-within:bg-white transition-all p-2 flex flex-col gap-1.5 shadow-2xs">
             <textarea

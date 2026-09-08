@@ -767,3 +767,123 @@ The Home Page meeting suite matches organizational capabilities while maintainin
   - Displays **Recently Ended Meetings** with duration, participant counts, and conclusion timestamps.
   - Quick launcher to initiate a new meeting directly from the hub.
 
+---
+
+## 13. Append-Only Log Messaging Architecture & 20-Message Reverse Pagination
+
+### 13.1 Design Rationale: How Modern Platforms Scale Chat (Instagram, Slack, Kafka)
+Modern high-throughput chat applications do not treat messages as mutable table rows subject to row locks and unindexed linear scans. Instead, they model chat streams as **append-only commit logs**:
+1. **Zero-Contention Commits**: Appending a new message only requires appending to the tail of the log with a strictly monotonic sequence number (`seq`), eliminating row lock contention across concurrent chatters.
+2. **Immutable History**: Sent messages are immutable facts with a sequence number, making replication, cache invalidation, and client synchronization straightforward.
+3. **Cursor-Based Sequence Pagination**: Rather than expensive SQL `OFFSET` scans (which slow down significantly as conversations grow into thousands of messages), clients query with a clean predicate: `WHERE seq < $beforeSeq ORDER BY seq DESC LIMIT 20`.
+
+### 13.2 Database Sequence Generation
+Each conversation tracks its sequence horizon via `last_seq` in `conversations`. When a message is sent, an atomic CTE allocates the next sequence number and commits the message in a single round-trip:
+```sql
+WITH next_seq AS (
+  UPDATE conversations
+  SET last_seq = last_seq + 1, updated_at = NOW()
+  WHERE id = $1
+  RETURNING last_seq
+)
+INSERT INTO messages (conversation_id, seq, sender_id, content, message_type, attachments)
+SELECT $1, next_seq.last_seq, $2, $3, $4, $5
+FROM next_seq
+RETURNING *;
+```
+
+### 13.3 Client-Side 20-Message Reverse Pagination & "See More"
+To deliver fast initial chat loads, low DOM node overhead, and smooth rendering:
+1. **Initial Load**:
+   - `GET /api/organizations/:id/conversations/:convId/messages?limit=20` fetches the 20 most recent messages.
+   - The response includes `hasMore: boolean` and `nextBeforeSeq: number | null`.
+   - The frontend renders these 20 messages and automatically scrolls to the bottom of the container.
+2. **"See More" Expansion**:
+   - If `hasMore` is true, an interactive `"See More"` button and top-sentinel trigger appear above the oldest rendered message.
+   - Clicking `"See More"` or scrolling to the top fetches the previous 20 messages (`beforeSeq = oldestMessage.seq`).
+   - The previous messages are prepended to the list without resetting or jumping the user's current scroll position (`scrollHeight` difference compensation).
+
+---
+
+## 14. Meeting Participant vs. Invitee Separation, Live State Sync & Notifications
+
+### 14.1 The Premature Participation Anti-Pattern & Its Resolution
+In earlier implementations, adding colleagues to a meeting immediately inserted them into `meeting_participants` with `joined_at = NOW()`. This caused critical UX inaccuracies:
+- Invited users falsely appeared inside the video room participant grid before they even opened their browser.
+- The Organization Dashboard's "Ongoing Meetings" card listed invited users as active attendees.
+- Invited users were confused because they had not accepted or joined yet.
+
+### 14.2 The Unified State Lifecycle
+OMeet enforces a strict separation between **Invited Colleagues** and **Active Participants**:
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING_INVITE: Meeting Created (Only Host joins participants)
+    PENDING_INVITE --> DECLINED: User declines invite
+    PENDING_INVITE --> ACCEPTED_AND_JOINED: User opens room (/meeting/:code)
+    
+    state ACCEPTED_AND_JOINED {
+        [*] --> ACTIVE_IN_ROOM: Upsert meeting_participants (left_at = NULL)
+        ACTIVE_IN_ROOM --> DEPARTED: User leaves (left_at = NOW())
+        DEPARTED --> ACTIVE_IN_ROOM: User rejoins (left_at = NULL)
+    }
+
+    ACTIVE_IN_ROOM --> MEETING_ENDED: Host clicks 'End for All' (meeting status = ENDED)
+```
+
+1. **Meeting Creation**:
+   - Only the host is inserted into `meeting_participants` (`role = 'HOST'`).
+   - All invitees are inserted into `meeting_invitations` with `status = 'PENDING'`.
+2. **Live Meeting Invitation Notifications**:
+   - When a meeting is live (`status = 'LIVE'`), invitees receive a high-visibility notification in their notification drawer:
+     - Green pulsating indicator with `● LIVE NOW` badge.
+     - Clear text: `"Meeting started! You are invited to join."`
+     - Action button: `"Join Live"` directing to `/meeting/:code`.
+   - When a meeting is scheduled for the future (`status = 'SCHEDULED'`):
+     - Formatted scheduled time badge.
+     - Notification text: `"You are invited to this meeting scheduled for [Date & Time]."`
+     - Action button: `"Join"`.
+3. **Dynamic Room Entry (`GET /api/meetings/:meetingCode?userId=...`)**:
+   - When the user opens the meeting room:
+     - Server upserts `meeting_participants` with `role = 'LISTENER'`, `joined_at = NOW()`, `left_at = NULL`.
+     - Server updates `meeting_invitations` to `status = 'ACCEPTED'`.
+     - If the meeting was `SCHEDULED`, server transitions it to `status = 'LIVE'`.
+     - Server queries fresh active attendees filtering `WHERE mp.left_at IS NULL`.
+4. **Global Home Page Ongoing Meetings Synchronization**:
+   - In `GET /api/meetings/user/:userId`, `activeRes` matches live meetings where the user is host, participant, OR invitee with a non-declined invitation.
+   - `HomeMeetingsView` polls every 6 seconds. Invited users see the meeting appear under **Live Ongoing Meetings** with a **Join Live** button the moment the host starts it.
+5. **Organization Workspace Synchronization**:
+   - `OrgWorkspaceLayout` polls every 8 seconds.
+   - **Ongoing Meetings Carousel** only lists members who are actually inside the room (`left_at IS NULL`).
+   - **Upcoming Meetings List** lists scheduled meetings with date, organizer, and direct Join buttons.
+
+---
+
+## 15. Fixed Viewport Scroll Containment & Chat Layout Architecture
+
+### 15.1 Viewport Pinning (`h-screen max-h-screen overflow-hidden`)
+To prevent the entire browser page from expanding vertically when long chat conversations or large lists render:
+- The root layout containers (`OrgWorkspaceLayout.tsx`, `OrgChatView.tsx`, and main page wrappers) apply strict viewport pinning:
+  ```html
+  <div className="flex h-screen max-h-screen w-screen overflow-hidden bg-[#FAF9F6]">
+  ```
+- This guarantees that the header, navigation bars, and footer controls remain permanently docked in place without the window itself scrolling.
+
+### 15.2 Internal Scroll Containment & Flex Layout
+Inside `OrgChatView.tsx`, message history is rendered inside a dedicated scroll containment flexbox:
+```html
+<div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+  <!-- Messages Scroll Area -->
+  <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3">
+    <!-- Messages & See More button -->
+  </div>
+  <!-- Docked Message Input Box -->
+  <div className="shrink-0 border-t border-[#D8D4CB] p-4 bg-white">
+    <!-- Input form -->
+  </div>
+</div>
+```
+- The `min-h-0` class is critical: in CSS Flexbox, flex items default to `min-height: auto`, which permits children to expand beyond their container's height. Adding `min-h-0` allows the container to shrink to fit the viewport and delegates all scrolling to `overflow-y-auto`.
+- Result: Chat messages scroll smoothly with mouse wheel or touch gesture, while the header, member lists, and input box remain perfectly static and accessible at all times.
+
+
