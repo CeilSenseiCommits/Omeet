@@ -25,7 +25,8 @@ export const API = {
 
 import type { Organization, ActivityItem } from "../types/organization";
 
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:5000";
+const rawBaseUrl = ((import.meta.env.VITE_API_BASE_URL as string) || "https://omeet.onrender.com").trim();
+export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
 /**
  * Queries the user's active organizations from PostgreSQL backend:

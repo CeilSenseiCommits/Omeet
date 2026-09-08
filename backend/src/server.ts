@@ -17,6 +17,12 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
+// Normalize repeated slashes in URLs e.g. //api/... -> /api/...
+app.use((req, res, next) => {
+  req.url = req.url.replace(/\/{2,}/g, "/");
+  next();
+});
+
 // API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/organizations", organizationRoutes);

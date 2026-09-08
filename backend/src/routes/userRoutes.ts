@@ -359,9 +359,9 @@ router.post("/onboard", async (req: Request, res: Response) => {
         createdAt: saved.created_at,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Onboarding error in PostgreSQL:", error);
-    return res.status(500).json({ error: "Failed to persist user in PostgreSQL" });
+    return res.status(500).json({ error: error?.message || "Failed to persist user in PostgreSQL" });
   }
 });
 
