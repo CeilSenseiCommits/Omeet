@@ -117,6 +117,32 @@ router.post("/google-auth", async (req: Request, res: Response) => {
       [googleId, email]
     );
 
+    // If user already exists with this Google account or Gmail, always use the existing account!
+    if (existing.rows.length > 0 && existing.rows[0].is_onboarded) {
+      const user = existing.rows[0];
+      return res.status(200).json({
+        user: {
+          id: user.id,
+          googleId: user.google_id,
+          email: user.email,
+          username: user.username,
+          name: user.name,
+          avatarUrl: user.avatar_url,
+          initials: user.name
+            .split(" ")
+            .map((n: string) => n[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase(),
+          phone: user.phone,
+          bio: user.bio,
+          gender: user.gender,
+          timezone: user.timezone,
+          isOnboarded: true,
+        },
+      });
+    }
+
     if (existing.rows.length > 0 && !isNewAccount) {
       const user = existing.rows[0];
       return res.status(200).json({
@@ -187,6 +213,37 @@ router.post("/onboard", async (req: Request, res: Response) => {
     if (!googleId || !email || !username || !name) {
       return res.status(400).json({
         error: "Missing required onboarding fields: googleId, email, username, name",
+      });
+    }
+
+    // Check if an account already exists and is onboarded with this email - prevent creating a duplicate ID
+    const alreadyOnboarded = await query(
+      `SELECT * FROM users WHERE email = $1 AND is_onboarded = TRUE LIMIT 1;`,
+      [email]
+    );
+    if (alreadyOnboarded.rows.length > 0) {
+      const user = alreadyOnboarded.rows[0];
+      return res.status(200).json({
+        user: {
+          id: user.id,
+          googleId: user.google_id,
+          email: user.email,
+          username: user.username,
+          name: user.name,
+          avatarUrl: user.avatar_url,
+          initials: user.name
+            .split(" ")
+            .map((n: string) => n[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase(),
+          phone: user.phone,
+          bio: user.bio,
+          gender: user.gender,
+          timezone: user.timezone,
+          isOnboarded: true,
+        },
+        message: "You already have an active account with this email.",
       });
     }
 
