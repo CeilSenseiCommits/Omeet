@@ -1,5 +1,7 @@
 # Omeet
 
+## Live Demo [Open OMeet](https://omeet-one.vercel.app/login)
+
 Omeet is a hierarchical communication and meeting platform for organizations.
 Unlike conventional meeting tools, Omeet uses an organization's reporting structure
 to decide who can speak, who receives a broadcast, and how far a message travels.
